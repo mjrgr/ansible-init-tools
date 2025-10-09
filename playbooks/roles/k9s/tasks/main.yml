@@ -1,0 +1,18 @@
+
+---
+# role: k9s
+
+- name: Install k9s
+  ansible.builtin.shell: |
+    echo "Installing k9s..."
+    # Use official GitHub latest binary path
+    curl -fsSL -o /tmp/k9s.tar.gz $(curl -s https://api.github.com/repos/derailed/k9s/releases/latest | grep browser_download_url | grep Linux_amd64 | head -n1 | cut -d '"' -f4)
+    tar xzf /tmp/k9s.tar.gz -C /tmp
+    mv /tmp/k9s /usr/local/bin/k9s || true
+    chmod +x /usr/local/bin/k9s || true
+    k9s version || true
+
+  args:
+    executable: /bin/bash
+  register: k9s_install
+  changed_when: "'already installed' not in k9s_install.stdout.lower()"

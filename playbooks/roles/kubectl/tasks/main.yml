@@ -1,0 +1,16 @@
+
+---
+- name: Install kubectl
+  ansible.builtin.shell: |
+    set -euo pipefail
+
+    echo "Installing latest kubectl..."
+    KUBECTL_VERSION=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
+    curl -fsSL -o /usr/local/bin/kubectl https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl
+    chmod +x /usr/local/bin/kubectl
+    /usr/local/bin/kubectl version --client || true
+
+  args:
+    executable: /bin/bash
+  register: kubectl_install
+  changed_when: "'already installed' not in kubectl_install.stdout.lower()"

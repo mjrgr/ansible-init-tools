@@ -1,0 +1,17 @@
+
+---
+# role: kwok
+- name: Install kwok
+  ansible.builtin.shell: |
+    echo "Installing kwok (latest)..."
+    curl -fsSL -o /usr/local/bin/kwok https://github.com/kubernetes-sigs/kwok/releases/latest/download/kwok-linux-amd64 || true
+    curl -fsSL -o /usr/local/bin/kwokctl https://github.com/kubernetes-sigs/kwok/releases/latest/download/kwokctl-linux-amd64 || true
+    chmod +x /usr/local/bin/kwok || true
+    chmod +x /usr/local/bin/kwokctl || true
+    kwok --version || true
+    kwokctl --version || true
+
+  args:
+    executable: /bin/bash
+  register: kwok_install
+  changed_when: "'already installed' not in kwok_install.stdout.lower()"

@@ -1,0 +1,15 @@
+
+---
+# role: podman
+- name: Install podman
+  ansible.builtin.shell: |
+    set -euo pipefail
+    echo "Installing podman from apt..."
+    apt-get update
+    apt-get install -y podman || true
+    podman --version || true
+
+  args:
+    executable: /bin/bash
+  register: podman_install
+  changed_when: "'already installed' not in podman_install.stdout.lower()"

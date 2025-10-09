@@ -1,0 +1,16 @@
+
+---
+# role: yq
+- name: Install yq
+  ansible.builtin.shell: |
+    set -euo pipefail
+    echo "Installing yq (MikeFarah yq) ..."
+    LATEST=$(curl -s https://api.github.com/repos/mikefarah/yq/releases/latest | grep browser_download_url | grep linux_amd64 | head -n1 | cut -d '"' -f4)
+    curl -fsSL -o /usr/local/bin/yq ${LATEST} || true
+    chmod +x /usr/local/bin/yq || true
+    yq --version || true
+
+  args:
+    executable: /bin/bash
+  register: yq_install
+  changed_when: "'already installed' not in yq_install.stdout.lower()"

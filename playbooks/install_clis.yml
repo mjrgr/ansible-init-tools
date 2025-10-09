@@ -1,0 +1,51 @@
+
+- name: Install CLIs on localhost
+  hosts: localhost
+  become: true
+  vars:
+    install_list:
+      - kubectl
+      - helm
+      - kind
+      - kwok
+      - k9s
+      - docker
+      - podman
+      - krew
+      - awscli
+      - helmfile
+      - nerdctl
+      - crictl
+      - terraform
+      - yq
+      - jq
+  tasks:
+    - name: "Ensure apt cache is updated"
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: "Install common tools/dependencies"
+      ansible.builtin.apt:
+        name:
+          - git
+          - curl
+          - wget
+          - gnupg
+          - unzip
+          - zsh
+          - fzf
+          - apt-transport-https
+          - ca-certificates
+          - software-properties-common
+          - lsb-release
+        state: present
+
+    - name: "Choose which roles to run (optional: use install_only=NAME)"
+      ansible.builtin.set_fact:
+        to_install: "{{ install_list if (install_only is not defined) else [install_only] }}"
+
+    - name: "Run role for each tool"
+      ansible.builtin.include_role:
+        name: "{{ item }}"
+      loop: "{{ to_install }}"

@@ -1,0 +1,16 @@
+
+---
+# role: helmfile
+- name: Install helmfile
+  ansible.builtin.shell: |
+    echo "Installing helmfile..."
+    curl -fsSL -o /tmp/helmfile.tar.gz $(curl -s https://api.github.com/repos/helmfile/helmfile/releases/latest | grep browser_download_url | grep linux_amd64 | head -n1 | cut -d '"' -f4)
+    tar xzf /tmp/helmfile.tar.gz -C /tmp
+    mv /tmp/helmfile /usr/local/bin/helmfile || true
+    chmod +x /usr/local/bin/helmfile || true
+    helmfile --version || true
+
+  args:
+    executable: /bin/bash
+  register: helmfile_install
+  changed_when: "'already installed' not in helmfile_install.stdout.lower()"

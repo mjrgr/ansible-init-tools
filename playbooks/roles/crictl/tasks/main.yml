@@ -1,0 +1,15 @@
+
+---
+# role: crictl
+- name: Install crictl
+  ansible.builtin.shell: |
+    echo "Installing crictl..."
+    CRICTL_VER=$(curl -s https://api.github.com/repos/kubernetes-sigs/cri-tools/releases/latest | grep tag_name | head -n1 | cut -d '"' -f4)
+    curl -fsSL -o /tmp/crictl.tgz https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VER}/crictl-${CRICTL_VER}-linux-amd64.tar.gz || true
+    tar xzf /tmp/crictl.tgz -C /usr/local/bin || true
+    crictl --version || true
+
+  args:
+    executable: /bin/bash
+  register: crictl_install
+  changed_when: "'already installed' not in crictl_install.stdout.lower()"

@@ -1,0 +1,21 @@
+
+---
+# role: krew
+- name: Install krew
+  ansible.builtin.shell: |
+    echo "Installing krew plugin manager..."
+    KREWDIR="$(mktemp -d)"
+    cd $KREWDIR
+    OS="$(uname | tr '[:upper:]' '[:lower:]')"
+    ARCH="$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/')"
+    KREW="krew-${OS}_${ARCH}"
+    curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/${KREW}.tar.gz"
+    tar zxvf "${KREW}.tar.gz"
+    mv ${KREW} /usr/local/bin/kubectl-krew
+    chmod 0755 /usr/local/bin/kubectl-krew
+    rm -rf $KREWDIR
+    kubectl krew --help || true
+  args:
+    executable: /bin/bash
+  register: krew_install
+  changed_when: "'already installed' not in krew_install.stdout.lower()"

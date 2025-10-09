@@ -1,0 +1,17 @@
+
+---
+# role: jq
+
+- name: Install jq
+  ansible.builtin.shell: |
+    set -euo pipefail
+
+    echo "Installing jq via apt..."
+    apt-get update
+    apt-get install -y jq || true
+    jq --version || true
+
+  args:
+    executable: /bin/bash
+  register: jq_install
+  changed_when: "'already installed' not in jq_install.stdout.lower()"

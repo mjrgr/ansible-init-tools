@@ -1,0 +1,16 @@
+
+---
+# role: kind
+- name: Install kind
+  ansible.builtin.shell: |
+    set -euo pipefail
+
+    echo "Installing kind..."
+    curl -fsSL -o /usr/local/bin/kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
+    chmod +x /usr/local/bin/kind
+    kind --version || true
+
+  args:
+    executable: /bin/bash
+  register: kind_install
+  changed_when: "'already installed' not in kind_install.stdout.lower()"

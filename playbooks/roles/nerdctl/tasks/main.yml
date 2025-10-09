@@ -1,0 +1,16 @@
+
+---
+# role: nerdctl
+- name: Install nerdctl
+  ansible.builtin.shell: |
+    set -euo pipefail
+    echo "Installing nerdctl (part of containerd releases)..."
+    curl -fsSL -o /tmp/nerdctl.tar.gz $(curl -s https://api.github.com/repos/containerd/nerdctl/releases/latest | grep browser_download_url | grep linux-amd64.tar.gz | head -n1 | cut -d '"' -f4)
+    tar xzf /tmp/nerdctl.tar.gz -C /tmp
+    mv /tmp/nerdctl /usr/local/bin/ || true
+    nerdctl --version || true
+
+  args:
+    executable: /bin/bash
+  register: nerdctl_install
+  changed_when: "'already installed' not in nerdctl_install.stdout.lower()"

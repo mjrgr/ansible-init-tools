@@ -1,0 +1,17 @@
+---
+# role: awscli
+
+- name: Install awscli
+  ansible.builtin.shell: |
+    echo "Installing AWS CLI v2..."
+    apt-get update
+    apt-get install -y unzip groff || true
+    curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+    unzip -q /tmp/awscliv2.zip -d /tmp
+    /tmp/aws/install -i /usr/local/aws-cli -b /usr/local/bin || true
+    aws --version || true
+
+  args:
+    executable: /bin/bash
+  register: awscli_install
+  changed_when: "'already installed' not in awscli_install.stdout.lower()"

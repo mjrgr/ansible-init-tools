@@ -1,0 +1,17 @@
+
+---
+# role: helm
+- name: Install helm
+  ansible.builtin.shell: |
+    set -euo pipefail
+    echo "Installing latest helm..."
+    curl -fsSL -o /tmp/get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    chmod +x /tmp/get_helm.sh
+    /tmp/get_helm.sh
+    rm -rf /tmp/get_helm.sh
+    helm version --client || true
+
+  args:
+    executable: /bin/bash
+  register: helm_install
+  changed_when: "'already installed' not in helm_install.stdout.lower()"

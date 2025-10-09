@@ -1,0 +1,17 @@
+
+---
+# role: docker
+- name: Install docker
+  ansible.builtin.shell: |
+    set -euo pipefail
+
+    echo "Installing Docker CE via official repository..."
+    apt-get update
+    apt-get install -y ca-certificates curl gnupg lsb-release
+    apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin || true
+    docker --version || true
+
+  args:
+    executable: /bin/bash
+  register: docker_install
+  changed_when: "'already installed' not in docker_install.stdout.lower()"
