@@ -13,6 +13,7 @@ An Ansible project for installing a collection of CLI tools on **Ubuntu / Debian
 - docker, podman, nerdctl, crictl
 - awscli, terraform
 - yq, jq
+- ollama
 - git, make, curl, wget, gnupg, unzip
 
 ## Usage

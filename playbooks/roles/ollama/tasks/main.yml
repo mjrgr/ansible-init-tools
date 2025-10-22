@@ -1,0 +1,17 @@
+
+---
+# role: ollama
+- name: Install ollama
+  ansible.builtin.shell: |
+    set -euo pipefail
+    echo "Installing latest ollama..."
+    curl -fsSL -o /tmp/install_ollama.sh https://ollama.com/install.sh
+    chmod +x /tmp/install_ollama.sh
+    /tmp/install_ollama.sh
+    rm -rf /tmp/install_ollama.sh
+    ollama --version || true
+
+  args:
+    executable: /bin/bash
+  register: ollama_install
+  changed_when: "'already installed' not in ollama_install.stdout.lower()"
