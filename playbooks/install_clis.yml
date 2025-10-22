@@ -19,7 +19,8 @@
       - terraform
       - yq
       - jq
-      - ollama      
+      - gh
+      - ollama
   tasks:
     - name: "Ensure apt cache is updated"
       ansible.builtin.apt:
