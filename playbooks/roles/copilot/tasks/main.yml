@@ -1,0 +1,10 @@
+
+---
+# role: copilot
+- name: Install copilot
+  ansible.builtin.shell: |
+    echo "Installing latest copilot..."
+    curl -fsSL https://gh.io/copilot-install | bash
+
+  register: copilot_install
+  changed_when: "'already installed' not in copilot_install.stdout.lower()"

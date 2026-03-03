@@ -17,6 +17,7 @@
       - nerdctl
       - crictl
       - terraform
+      - copilot
       - yq
       - jq
       - gh
@@ -37,6 +38,7 @@
           - unzip
           - zsh
           - fzf
+          - age
           - apt-transport-https
           - ca-certificates
           - software-properties-common
