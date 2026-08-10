@@ -114,13 +114,13 @@ case "$TARGET" in
       echo "ORIGINAL STARSHIP" > ~/.config/starship.toml
 
       echo "==> deploy"
-      $PB >/dev/null 2>&1
+      $PB >/tmp/d.log 2>&1 || { tail -30 /tmp/d.log; exit 1; }
       printf "    ~/.zshrc                is a symlink: %s\n" "$([ -L ~/.zshrc ] && echo yes || echo NO)"
       printf "    ~/.config/starship.toml is a symlink: %s\n" "$([ -L ~/.config/starship.toml ] && echo yes || echo NO)"
 
       echo
       echo "==> rollback"
-      $RB >/dev/null 2>&1
+      $RB >/tmp/rb.log 2>&1 || { tail -30 /tmp/rb.log; exit 1; }
 
       echo "    after rollback:"
       for f in ~/.zshrc ~/.config/starship.toml; do
@@ -150,7 +150,8 @@ case "$TARGET" in
       set -e
       echo "==> installing wezterm"
       sudo -E ansible-playbook /repo/playbooks/install_clis.yml -c local -i localhost, \
-        -e install_only=wezterm >/dev/null 2>&1
+        -e install_only=wezterm >/tmp/wt.log 2>&1 || {
+          echo "    install failed:"; tail -40 /tmp/wt.log | sed "s/^/      /"; exit 1; }
       echo "    $(wezterm --version)"
       echo
       echo "==> parsing dotfiles/wezterm/wezterm.lua"
