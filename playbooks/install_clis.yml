@@ -1,8 +1,11 @@
-
 - name: Install CLIs on localhost
   hosts: localhost
   become: true
   vars:
+    # present = install only what is missing (default)
+    # latest  = re-run every installer and upgrade in place
+    clis_state: present
+
     install_list:
       - kubectl
       - helm
@@ -12,7 +15,6 @@
       - docker
       - podman
       - krew
-      - awscli
       - helmfile
       - nerdctl
       - crictl
@@ -21,35 +23,63 @@
       - yq
       - jq
       - gh
-      - ollama
+      - sops
+      - starship
+      - wezterm
+
+    common_packages:
+      - git
+      - curl
+      - wget
+      - gnupg
+      - unzip
+      - zsh
+      - fzf
+      - age
+      - fontconfig
+      - apt-transport-https
+      - ca-certificates
+      - software-properties-common
+      - lsb-release
+
   tasks:
+    - name: "Refuse to run on a non-Debian family"
+      ansible.builtin.fail:
+        msg: >-
+          This playbook targets Debian/Ubuntu (apt). Detected
+          {{ ansible_distribution }} {{ ansible_distribution_version }}
+          (family {{ ansible_os_family }}).
+      when: ansible_os_family != 'Debian'
+      tags: [always]
+
     - name: "Ensure apt cache is updated"
       ansible.builtin.apt:
         update_cache: true
         cache_valid_time: 3600
+      tags: [always]
 
     - name: "Install common tools/dependencies"
       ansible.builtin.apt:
-        name:
-          - git
-          - curl
-          - wget
-          - gnupg
-          - unzip
-          - zsh
-          - fzf
-          - age
-          - apt-transport-https
-          - ca-certificates
-          - software-properties-common
-          - lsb-release
+        name: "{{ common_packages }}"
         state: present
+      tags: [common]
+
+    - name: "Ensure the apt keyring directory exists"
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+      tags: [always]
 
     - name: "Choose which roles to run (optional: use install_only=NAME)"
       ansible.builtin.set_fact:
         to_install: "{{ install_list if (install_only is not defined) else [install_only] }}"
+      tags: [always]
 
     - name: "Run role for each tool"
       ansible.builtin.include_role:
         name: "{{ item }}"
+        apply:
+          tags: ["{{ item }}"]
       loop: "{{ to_install }}"
+      tags: [tools]

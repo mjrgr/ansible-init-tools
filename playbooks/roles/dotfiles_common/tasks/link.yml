@@ -1,0 +1,28 @@
+---
+# Symlinks dl.dest -> dl.src, backing up any pre-existing target.
+# Included by the dotfiles_* roles:
+#   include_tasks: "{{ role_path }}/../dotfiles_common/tasks/link.yml"
+#   loop_control: { loop_var: dl }
+
+- name: "Current state of {{ dl.dest }}"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.stat:
+    path: "{{ dl.dest }}"
+    follow: false
+  register: dl_stat
+
+# Only real files are worth saving. A stale symlink carries no user data, so it
+# gets replaced silently instead of piling up in the backup directory.
+- name: "Back up pre-existing {{ dl.dest }}"
+  ansible.builtin.command:
+    cmd: mv -- "{{ dl.dest }}" "{{ dotfiles_backup_dir }}/{{ dl.dest | basename }}.{{ dotfiles_stamp }}"
+    removes: "{{ dl.dest }}"
+  when:
+    - dl_stat.stat.exists
+    - not (dl_stat.stat.islnk | default(false))
+
+- name: "Link into the repo: {{ dl.dest }}"
+  ansible.builtin.file:
+    src: "{{ dl.src }}"
+    dest: "{{ dl.dest }}"
+    state: link
+    force: true

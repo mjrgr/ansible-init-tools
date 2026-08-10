@@ -1,0 +1,63 @@
+- name: Deploy dotfiles on localhost
+  hosts: localhost
+  become: false
+  vars:
+    dotfiles_src: "{{ playbook_dir | dirname }}/dotfiles"
+    dotfiles_home: "{{ ansible_env.HOME }}"
+    dotfiles_backup_dir: "{{ ansible_env.HOME }}/.dotfiles-backup"
+    dotfiles_stamp: "{{ ansible_date_time.iso8601_basic_short }}"
+    # Off by default so the whole play stays unprivileged.
+    # Fresh machine: -e dotfiles_set_default_shell=true --ask-become-pass
+    dotfiles_set_default_shell: false
+
+    # Provided by install_clis.yml; checked before anything is written.
+    dotfiles_requirements:
+      - zsh
+      - git
+      - curl
+      - fc-cache
+
+    dotfiles_list:
+      - zsh
+      - starship
+      - tmux
+      - git
+      - wezterm
+      - fonts
+
+  tasks:
+    - name: "Refuse to run on a non-Debian family"
+      ansible.builtin.fail:
+        msg: >-
+          This playbook targets Debian/Ubuntu. Detected
+          {{ ansible_distribution }} {{ ansible_distribution_version }}
+          (family {{ ansible_os_family }}).
+      when: ansible_os_family != 'Debian'
+      tags: [always]
+
+    - name: "Prepare the directory tree and backup location"
+      ansible.builtin.include_role:
+        name: dotfiles_common
+      tags: [always]
+
+    - name: "Choose which dotfiles to deploy (optional: use dotfiles_only=NAME)"
+      ansible.builtin.set_fact:
+        to_deploy: "{{ dotfiles_list if (dotfiles_only is not defined) else [dotfiles_only] }}"
+      tags: [always]
+
+    - name: "Deploy each dotfiles group"
+      ansible.builtin.include_role:
+        name: "dotfiles_{{ item }}"
+        apply:
+          tags: ["{{ item }}"]
+      loop: "{{ to_deploy }}"
+      tags: [dotfiles]
+
+    - name: "Summary"
+      ansible.builtin.debug:
+        msg:
+          - "Dotfiles linked from {{ dotfiles_src }}"
+          - "Backups of replaced files: {{ dotfiles_backup_dir }}"
+          - "Still to fill in: ~/.zshenv.local (secrets), ~/.gitconfig.local (identity)"
+          - "Rollback: ansible-playbook playbooks/dotfiles_rollback.yml -c local"
+      tags: [always]

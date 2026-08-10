@@ -1,0 +1,62 @@
+---
+# role: dotfiles_zsh — oh-my-zsh, external plugins, zsh symlinks
+
+- name: "Install oh-my-zsh"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    RUNZSH=no CHSH=no KEEP_ZSHRC=yes \
+      sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+  args:
+    executable: /bin/bash
+    creates: "{{ dotfiles_home }}/.oh-my-zsh/oh-my-zsh.sh"
+
+- name: "Clone external zsh plugins"
+  ansible.builtin.git:
+    repo: "https://github.com/zsh-users/{{ item }}"
+    dest: "{{ dotfiles_home }}/.oh-my-zsh/custom/plugins/{{ item }}"
+    depth: 1
+    version: master
+    update: false
+  loop:
+    - zsh-autosuggestions
+    - zsh-syntax-highlighting
+    - zsh-history-substring-search
+
+- name: "Deploy zsh symlinks"
+  ansible.builtin.include_tasks: "{{ role_path }}/../dotfiles_common/tasks/link.yml"
+  loop:
+    - { src: "{{ dotfiles_src }}/zsh/.zshrc", dest: "{{ dotfiles_home }}/.zshrc" }
+    - { src: "{{ dotfiles_src }}/zsh/.zshenv", dest: "{{ dotfiles_home }}/.zshenv" }
+    - { src: "{{ dotfiles_src }}/zsh/config/wezterm.zsh", dest: "{{ dotfiles_home }}/.config/zsh/wezterm.zsh" }
+    - { src: "{{ dotfiles_src }}/kube/k8s-clusters.sh", dest: "{{ dotfiles_home }}/.kube/k8s-clusters.sh" }
+  loop_control:
+    loop_var: dl
+    label: "{{ dl.dest }}"
+
+# Previously downloaded from .zshrc on first start: a network call on the shell
+# startup path, which a proxy can truncate into an empty file that the guard then
+# accepts forever. Fetched here instead, where a failure is visible.
+- name: "Fetch the fzf key bindings"
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/junegunn/fzf/master/shell/key-bindings.zsh
+    dest: "{{ dotfiles_home }}/.fzf-key-bindings.zsh"
+    mode: "0644"
+
+- name: "Drop local override templates (never overwritten)"
+  ansible.builtin.copy:
+    src: "{{ dotfiles_src }}/zsh/{{ item.tpl }}"
+    dest: "{{ dotfiles_home }}/{{ item.dest }}"
+    mode: "{{ item.mode }}"
+    force: false
+  loop:
+    - { tpl: ".zshenv.local.example", dest: ".zshenv.local", mode: "0600" }
+    - { tpl: ".zshrc.local.example", dest: ".zshrc.local", mode: "0644" }
+  loop_control:
+    label: "{{ item.dest }}"
+
+- name: "Set zsh as the login shell"
+  ansible.builtin.user:
+    name: "{{ ansible_user_id }}"
+    shell: /bin/zsh
+  become: true
+  when: dotfiles_set_default_shell | bool

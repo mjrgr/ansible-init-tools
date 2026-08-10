@@ -1,19 +1,27 @@
-
 ---
-# role: SOPS
-- name: Install SOPS
+# role: sops
+- name: "Decide whether sops must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: sops
+    clis_bin: /usr/local/bin/sops
+    clis_target: "{{ sops_version }}"
+
+- name: "Install sops"
   ansible.builtin.shell: |
     set -euo pipefail
-    echo "Installing SOPS (latest)..."
-    # Get latest version dynamically from GitHub API
-    SOPS_VERSION=$(curl -s https://api.github.com/repos/getsops/sops/releases/latest | grep '"tag_name"' | cut -d '"' -f4)
-    echo "Latest version: ${SOPS_VERSION}"
-    # Download the binary
-    curl -fsSL -o /usr/local/bin/sops "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.amd64"
-    # Make the binary executable
+    VERSION="{{ sops_version }}"
+    # api.github.com allows 60 unauthenticated calls per hour per IP, which a
+    # shared egress address burns through; the release redirect has no such limit.
+    latest_tag() {
+      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+        | sed 's#.*/tag/##'
+    }
+    [ "$VERSION" = latest ] && VERSION=$(latest_tag getsops/sops)
+    curl -fsSL -o /usr/local/bin/sops \
+      "https://github.com/getsops/sops/releases/download/${VERSION}/sops-${VERSION}.linux.amd64"
     chmod +x /usr/local/bin/sops
-    sops --version || true
+    /usr/local/bin/sops --version
   args:
     executable: /bin/bash
-  register: sops_install
-  changed_when: "'already installed' not in sops_install.stdout.lower()"
+  when: clis_need_install | bool

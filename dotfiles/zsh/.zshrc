@@ -1,0 +1,276 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║                    ZSH CONFIG — DevOps Edition               ║
+# ║                oh-my-zsh + Starship + fzf                    ║
+# ╚══════════════════════════════════════════════════════════════╝
+#
+# Versioned in ansible-init-tools — deployed by `playbooks/dotfiles.yml`.
+# Secrets and machine specifics: ~/.zshenv.local and ~/.zshrc.local (not versioned).
+
+# ─── PATH ────────────────────────────────────────────────────────────────────
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH="$HOME/bin:$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
+export PATH="$HOME/.local/bin:/usr/local/py-utils/bin:${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
+
+# Go
+export GOPATH="$HOME/go"
+export PATH="$PATH:/usr/local/go/bin:$GOPATH/bin"
+
+# Rust / Cargo
+export PATH="$PATH:$HOME/.cargo/bin"
+
+# Krew (kubectl plugin manager)
+export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
+
+# ─── OH-MY-ZSH ───────────────────────────────────────────────────────────────
+export ZSH="$HOME/.oh-my-zsh"
+export ZSH_CUSTOM="${ZSH_CUSTOM:-$ZSH/custom}"
+
+ZSH_THEME="gnzh"
+DISABLE_UNTRACKED_FILES_DIRTY="true"  # Perf: don't mark untracked files as dirty
+
+zstyle ':omz:update' mode auto
+zstyle ':omz:update' frequency 7
+
+# ─── PLUGINS ─────────────────────────────────────────────────────────────────
+# The 3 external plugins are cloned by the `dotfiles_zsh` Ansible role.
+plugins=(
+  # ── Shell UX
+  sudo                          # ESC ESC → prepend sudo
+  zsh-autosuggestions           # grey inline suggestions (→ or ↓ to accept)
+  zsh-syntax-highlighting       # live syntax highlighting
+  zsh-history-substring-search  # ↑↓ searches through history
+
+  # ── Git
+  git                           # aliases: gst, gco, gp, gl...
+  gitignore                     # gi <lang> → generate a .gitignore
+
+  # ── Kubernetes / DevOps
+  kubectl                       # completion + kube* aliases
+  helm                          # Helm completion
+  docker                        # Docker completion
+  docker-compose                # docker-compose completion
+  terraform                     # completion + tf* aliases
+  ansible                       # ansible* completion
+
+  # ── Languages
+  golang                        # go* aliases
+  virtualenv                    # shows active venv in prompt
+  python                        # py, pyfind... aliases
+
+  # ── System
+  debian                        # apt* aliases
+  systemd                       # sc-* aliases
+  copypath                      # copy current path to clipboard
+  dirhistory                    # Alt+← / Alt+→ directory navigation
+  command-not-found             # suggest package if command is unknown
+)
+
+source "$ZSH/oh-my-zsh.sh"
+
+# ─── FZF KEY BINDINGS ────────────────────────────────────────────────────────
+# Bypasses the OMZ fzf plugin (broken on Debian without the apt package).
+# The file is placed by the dotfiles_zsh role — no network call on the startup path.
+[[ -s "$HOME/.fzf-key-bindings.zsh" ]] && source "$HOME/.fzf-key-bindings.zsh"
+
+# ─── HISTORY ─────────────────────────────────────────────────────────────────
+HISTSIZE=50000
+SAVEHIST=50000
+HISTFILE="$HOME/.zsh_history"
+setopt HIST_IGNORE_ALL_DUPS HIST_FIND_NO_DUPS HIST_REDUCE_BLANKS
+setopt SHARE_HISTORY EXTENDED_HISTORY
+
+# Bind ↑↓ to history substring search
+bindkey '^[[A' history-substring-search-up
+bindkey '^[[B' history-substring-search-down
+
+# ─── COMPLETION ──────────────────────────────────────────────────────────────
+# Cache compinit: only rescans _* files if dump is older than 24h (perf boost)
+autoload -Uz compinit
+if [[ -n "$HOME/.zcompdump"(#qN.mh+24) ]]; then
+  compinit
+else
+  compinit -C  # -C = skip security check, use cached dump
+fi
+
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'  # case-insensitive
+zstyle ':completion:*:descriptions' format '%F{yellow}-- %d --%f'
+
+# ─── EDITOR / TTY ────────────────────────────────────────────────────────────
+export EDITOR="vim"
+export KUBE_EDITOR="vim"
+export GPG_TTY="$(tty)"
+
+# ─── KUBERNETES ──────────────────────────────────────────────────────────────
+export K9S_FEATURE_GATE_NODE_SHELL=true
+[[ -f "$HOME/.kube/k8s-clusters.sh" ]] && source "$HOME/.kube/k8s-clusters.sh"
+
+# ─── HTTP PROXY (opt-in) ─────────────────────────────────────────────────────
+# Set _PROXY / _NO_PROXY in ~/.zshenv.local to enable. Unset here on purpose:
+# a proxy is site-specific and a wrong default breaks every outbound call.
+: "${_PROXY:=}"
+: "${_NO_PROXY:=localhost,127.0.0.1,::1}"
+
+if [[ -n "$_PROXY" ]]; then
+  export http_proxy="$_PROXY" https_proxy="$_PROXY"
+  export HTTP_PROXY="$_PROXY" HTTPS_PROXY="$_PROXY"
+  export no_proxy="$_NO_PROXY" NO_PROXY="$_NO_PROXY"
+fi
+
+proxy-off() {
+  unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+  print "🔓 Proxy disabled"
+}
+proxy-on() {
+  if [[ -z "$_PROXY" ]]; then
+    print "⚠️  _PROXY is not set — define it in ~/.zshenv.local"
+    return 1
+  fi
+  export http_proxy="$_PROXY" https_proxy="$_PROXY"
+  export HTTP_PROXY="$_PROXY" HTTPS_PROXY="$_PROXY"
+  export no_proxy="$_NO_PROXY" NO_PROXY="$_NO_PROXY"
+  print "🔒 Proxy enabled → $_PROXY"
+}
+
+# ─── ANSIBLE ─────────────────────────────────────────────────────────────────
+export ANSIBLE_HOST_KEY_CHECKING=False
+
+# ─── ALIASES — NAVIGATION ────────────────────────────────────────────────────
+alias ll="ls -lah --color=auto"
+alias la="ls -A --color=auto"
+
+# ─── ALIASES — KUBERNETES ────────────────────────────────────────────────────
+alias k="kubectl"
+alias kctx="kubectl config use-context"
+alias kgctx="kubectl config get-contexts"
+alias kns="kubectl config set-context --current --namespace"  # switch namespace
+alias kgp="kubectl get pods -o wide"
+alias kgl="kubectl get pods --all-namespaces"
+alias kd="kubectl describe"
+alias ke="kubectl exec -it"
+alias kl="kubectl logs -f"
+alias kaf="kubectl apply -f"
+alias kdf="kubectl delete -f"
+alias krr="kubectl rollout restart deployment"
+
+# ─── ALIASES — HELM ──────────────────────────────────────────────────────────
+alias h="helm"
+alias hls="helm list -A"
+alias hup="helm upgrade --install"
+alias hdr="helm diff upgrade"  # requires helm-diff plugin
+
+# ─── ALIASES — DOCKER ────────────────────────────────────────────────────────
+alias d="docker"
+alias dc="docker compose"
+alias dps="docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
+alias dex="docker exec -it"
+alias dlf="docker logs -f"
+alias dprune="docker system prune -af --volumes"
+
+# ─── ALIASES — GIT ───────────────────────────────────────────────────────────
+# OMZ git plugin already covers: gst, gco, gp, gl, gd, gcmsg...
+alias lg="lazygit"
+alias gundo="git reset --soft HEAD~1"
+alias gwip="git add -A && git commit -m 'WIP'"
+
+# ─── ALIASES — TERMINATOR ────────────────────────────────────────────────────
+alias tm="terminator -l matrix"
+alias tq="terminator -l quad"
+alias td="terminator -l dev"
+
+# ─── ALIASES — SSH ───────────────────────────────────────────────────────────
+if command -v sshpass &>/dev/null; then
+  alias sp="sshpass -e ssh"
+fi
+
+# ─── ALIASES — UTILITIES ─────────────────────────────────────────────────────
+alias reload="source ~/.zshrc && print '✅ .zshrc reloaded'"
+alias zshrc="$EDITOR ~/.zshrc"
+alias starshiprc="$EDITOR ~/.config/starship.toml"
+alias myip="curl -s ifconfig.me && echo"
+alias ports="ss -tulpn"
+alias dus="du -sh * | sort -h"
+
+# ─── ALIASES — CLAUDE / PROXY ────────────────────────────────────────────────
+alias claude-noproxy='env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy -u no_proxy -u NO_PROXY claude'
+alias s3cmd='docker run --rm -it -v $(pwd):/s3 -v $HOME/.s3:/root d3fk/s3cmd'
+
+# ─── FZF ─────────────────────────────────────────────────────────────────────
+# Ctrl+R: history search | Ctrl+T: file picker | Alt+C: directory jump
+export FZF_DEFAULT_OPTS="
+  --height 40% --layout=reverse --border=rounded
+  --color=fg:#cdd6f4,bg:#1e1e2e,hl:#89b4fa
+  --color=fg+:#cdd6f4,bg+:#313244,hl+:#89dceb
+  --color=info:#cba6f7,prompt:#cba6f7,pointer:#f38ba8
+  --color=marker:#a6e3a1,spinner:#f5c2e7,header:#89b4fa
+"
+export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git 2>/dev/null || find . -type f"
+
+# ─── AUTOSUGGESTIONS ─────────────────────────────────────────────────────────
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=#585b70,underline"
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+
+# ─── STARSHIP PROMPT ─────────────────────────────────────────────────────────
+if command -v starship &>/dev/null; then
+  eval "$(starship init zsh)"
+else
+  print "⚠️  Starship not installed → ansible-playbook playbooks/install_clis.yml -e install_only=starship -c local -K"
+fi
+
+# ─── WEZTERM ─────────────────────────────────────────────────────────────────
+# After starship: the precmd hooks must run once the prompt is defined
+[[ -r ~/.config/zsh/wezterm.zsh ]] && source ~/.config/zsh/wezterm.zsh
+
+# ─── BUN ─────────────────────────────────────────────────────────────────────
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+[[ -s "$BUN_INSTALL/_bun" ]] && source "$BUN_INSTALL/_bun"
+
+# ─── NVM ─────────────────────────────────────────────────────────────────────
+export NVM_DIR="$HOME/.nvm"
+
+# Static PATH: sourcing nvm.sh costs ~1.3s, almost all of it in alias resolution.
+# We walk the default -> lts/* -> lts/<name> -> vX chain ourselves (3 reads, 0 forks).
+() {
+  local v=default i=0
+  while [[ -f "$NVM_DIR/alias/$v" ]] && (( i++ < 10 )); do v=$(<"$NVM_DIR/alias/$v"); done
+  [[ -x "$NVM_DIR/versions/node/$v/bin/node" ]] && export PATH="$NVM_DIR/versions/node/$v/bin:$PATH"
+}
+
+# nvm.sh and its completion are sourced on the first `nvm` call only
+nvm() {
+  unset -f nvm
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+  nvm "$@"
+}
+
+# ─── MISC ────────────────────────────────────────────────────────────────────
+mywatch() {
+  local interval=5
+  [[ "$1" =~ ^[0-9]+$ ]] && { interval="$1"; shift; }
+  watch -n "$interval" "zsh -ic '$*'"
+}
+
+# Warm the plugin marketplace caches before Claude starts: a self-hosted
+# marketplace ls-remote measured 1.86s (vs 766ms for github), so an in-startup
+# autoUpdate races plugin enumeration and leaves plugins/MCP unloaded until
+# /reload-plugins.
+claude() {
+  local stamp=~/.claude/.mkt-warm
+  local age=999999
+  [[ -f $stamp ]] && age=$(( $(date +%s) - $(stat -c %Y $stamp) ))
+  if (( age > 21600 )); then
+    print -u2 "claude: warming plugin marketplaces..."
+    command claude plugin marketplace update >/dev/null 2>&1 && touch $stamp
+  fi
+  # Pre-launch: the SessionStart hook runs after plugin enumeration, so it can only
+  # fix the current session. Here the current session loads clean.
+  node ~/.claude/hooks/plugin-drift-check.mjs --heal >/dev/null 2>&1
+  command claude "$@"
+}
+
+# ─── LOCAL OVERRIDES (not versioned) ─────────────────────────────────────────
+# Interactive aliases and overrides specific to this machine.
+# Secrets/tokens go in ~/.zshenv.local (loaded earlier, available non-interactively).
+[[ -s "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"

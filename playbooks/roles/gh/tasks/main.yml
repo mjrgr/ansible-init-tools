@@ -1,21 +1,25 @@
-
 ---
 # role: gh
-- name: Install github CLI
-  ansible.builtin.shell: |
-    set -euo pipefail
+# Upstream ships an already-dearmored keyring, so it drops straight into
+# /etc/apt/keyrings with no gpg --dearmor step.
 
-    mkdir -p -m 755 /etc/apt/keyrings
-    out=$(mktemp)
-    wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg
-    cat $out | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
-    chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-    apt update
-    apt install gh -y
-    gh --version || true
+- name: "Fetch the GitHub CLI keyring"
+  ansible.builtin.get_url:
+    url: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+    dest: /etc/apt/keyrings/githubcli.gpg
+    mode: "0644"
 
-  args:
-    executable: /bin/bash
-  register: terraform_install
-  changed_when: "'already installed' not in terraform_install.stdout.lower()"
+- name: "Add the GitHub CLI apt source"
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ 'amd64' if ansible_architecture == 'x86_64' else ansible_architecture }}
+      signed-by=/etc/apt/keyrings/githubcli.gpg]
+      https://cli.github.com/packages stable main
+    filename: github-cli
+    state: present
+
+- name: "Install gh"
+  ansible.builtin.apt:
+    name: gh
+    state: "{{ 'latest' if clis_state == 'latest' else 'present' }}"
+    update_cache: true

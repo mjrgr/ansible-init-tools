@@ -1,16 +1,30 @@
-
 ---
 # role: helmfile
-- name: Install helmfile
-  ansible.builtin.shell: |
-    echo "Installing helmfile..."
-    curl -fsSL -o /tmp/helmfile.tar.gz $(curl -s https://api.github.com/repos/helmfile/helmfile/releases/latest | grep browser_download_url | grep linux_amd64 | head -n1 | cut -d '"' -f4)
-    tar xzf /tmp/helmfile.tar.gz -C /tmp
-    mv /tmp/helmfile /usr/local/bin/helmfile || true
-    chmod +x /usr/local/bin/helmfile || true
-    helmfile --version || true
+- name: "Decide whether helmfile must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: helmfile
+    clis_bin: /usr/local/bin/helmfile
+    clis_target: "{{ helmfile_version }}"
 
+- name: "Install helmfile"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    VERSION="{{ helmfile_version }}"
+    # api.github.com allows 60 unauthenticated calls per hour per IP, which a
+    # shared egress address burns through; the release redirect has no such limit.
+    latest_tag() {
+      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+        | sed 's#.*/tag/##'
+    }
+    [ "$VERSION" = latest ] && VERSION=$(latest_tag helmfile/helmfile)
+    V="${VERSION#v}"
+    curl -fsSL -o /tmp/helmfile.tar.gz \
+      "https://github.com/helmfile/helmfile/releases/download/v${V}/helmfile_${V}_linux_amd64.tar.gz"
+    tar xzf /tmp/helmfile.tar.gz -C /tmp helmfile
+    install -m 0755 /tmp/helmfile /usr/local/bin/helmfile
+    rm -f /tmp/helmfile.tar.gz /tmp/helmfile
+    /usr/local/bin/helmfile --version
   args:
     executable: /bin/bash
-  register: helmfile_install
-  changed_when: "'already installed' not in helmfile_install.stdout.lower()"
+  when: clis_need_install | bool

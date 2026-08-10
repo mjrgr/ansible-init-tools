@@ -1,0 +1,17 @@
+---
+# role: dotfiles_git — shared config; identity and credential helper stay local
+
+- name: "Deploy the git config"
+  ansible.builtin.include_tasks: "{{ role_path }}/../dotfiles_common/tasks/link.yml"
+  loop:
+    - { src: "{{ dotfiles_src }}/git/.gitconfig", dest: "{{ dotfiles_home }}/.gitconfig" }
+  loop_control:
+    loop_var: dl
+    label: "{{ dl.dest }}"
+
+- name: "Drop the git identity template (never overwritten)"
+  ansible.builtin.copy:
+    src: "{{ dotfiles_src }}/git/.gitconfig.local.example"
+    dest: "{{ dotfiles_home }}/.gitconfig.local"
+    mode: "0644"
+    force: false

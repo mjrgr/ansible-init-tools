@@ -1,0 +1,227 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║              starship.toml — DevOps Edition                  ║
+# ║   Nerd Font requis : https://www.nerdfonts.com/font-downloads ║
+# ╚══════════════════════════════════════════════════════════════╝
+# Placement : ~/.config/starship.toml
+
+"$schema" = 'https://starship.rs/config-schema.json'
+
+scan_timeout      = 100   # ms — raise it if the warning persists (default: 30)
+command_timeout   = 800   # ms — avoids freezes on slow modules
+
+# ─── FORMAT GLOBAL ───────────────────────────────────────────────────────────
+# Line 1: context (os, directory, git, cloud, tools)
+# Line 2: prompt character
+format = """
+[╭─](bold #585b70)\
+$os\
+$username\
+$hostname\
+$directory\
+$git_branch\
+$git_status\
+$git_metrics\
+[─](bold #585b70)\
+$kubernetes\
+$helm\
+$terraform\
+$docker_context\
+$python\
+$golang\
+$rust\
+$ansible\
+$env_var\
+$cmd_duration\
+$line_break\
+[╰─](bold #585b70)$character"""
+
+right_format = """$time"""
+
+# ─── OS ──────────────────────────────────────────────────────────────────────
+[os]
+disabled = false
+style = "bold #89b4fa"
+
+[os.symbols]
+Windows = " "
+Ubuntu  = " "
+Debian  = " "
+Alpine  = " "
+Arch    = " "
+Macos   = " "
+Unknown = " "
+
+# ─── USER / HOST ─────────────────────────────────────────────────────────────
+[username]
+show_always = false          # n'affiche que si root ou SSH
+style_user  = "bold #a6e3a1"
+style_root  = "bold #f38ba8"
+format      = "[$user]($style)[@](bold #585b70)"
+
+[hostname]
+ssh_only = true
+style    = "bold #fab387"
+format   = "[$hostname]($style) "
+
+# ─── RÉPERTOIRE ──────────────────────────────────────────────────────────────
+[directory]
+style              = "bold #00ff41"
+read_only          = " 󰌾"
+read_only_style    = "bold #f38ba8"
+truncation_length  = 4
+truncate_to_repo   = true
+format             = "[󰉋 $path]($style)[$read_only]($read_only_style) "
+
+[directory.substitutions]
+"~/go/src"   = "󰟓 go/src"
+"~/.kube"    = "󱃾 .kube"
+"~/projects" = " projects"
+"~"          = "~"
+
+# ─── GIT ─────────────────────────────────────────────────────────────────────
+[git_branch]
+symbol            = "  "          # recognizable Nerd Font branch icon
+style             = "bold #89b4fa"
+truncation_length = 24
+format            = "[$symbol$branch(:$remote_branch)]($style) "
+
+[git_status]
+style      = "bold #f38ba8"
+format     = "([$all_status$ahead_behind]($style) )"
+conflicted = "⚡"
+ahead      = "⇡${count}"
+behind     = "⇣${count}"
+diverged   = "⇕⇡${ahead_count}⇣${behind_count}"
+untracked  = "?${count}"
+stashed    = " "
+modified   = "!${count}"
+staged     = "+${count}"
+renamed    = "»${count}"
+deleted    = "✘${count}"
+
+[git_metrics]
+added_style   = "bold #a6e3a1"
+deleted_style = "bold #f38ba8"
+format        = "([+$added]($added_style) [-$deleted]($deleted_style) )"
+disabled      = false
+
+# ─── KUBERNETES ──────────────────────────────────────────────────────────────
+[kubernetes]
+disabled = false
+symbol   = "󱃾 "
+style    = "bold #89dceb"
+format   = "[$symbol$context( \\[$namespace\\])]($style) "
+
+# Color-code by environment
+[[kubernetes.contexts]]
+context_pattern = ".*prod.*"
+style           = "bold #f38ba8"
+context_alias   = "PROD"
+
+[[kubernetes.contexts]]
+context_pattern = ".*staging.*"
+style           = "bold #fab387"
+context_alias   = "staging"
+
+[[kubernetes.contexts]]
+context_pattern = ".*dev.*"
+style           = "bold #a6e3a1"
+context_alias   = "dev"
+
+# ─── HELM ────────────────────────────────────────────────────────────────────
+# Starship has no native Helm module -> surfaced through a custom one
+[custom.helm]
+command     = "helm version --short 2>/dev/null | grep -oP 'v[0-9]+\\.[0-9]+\\.[0-9]+'"
+when        = "command -v helm"
+symbol      = "⎈ "
+style       = "bold #cba6f7"
+format      = "[$symbol($output)]($style) "
+description = "Helm version"
+
+# ─── TERRAFORM ───────────────────────────────────────────────────────────────
+[terraform]
+disabled    = false
+symbol      = "󱁢 "
+style       = "bold #cba6f7"
+format      = "[$symbol$workspace]($style) "
+
+# ─── DOCKER ──────────────────────────────────────────────────────────────────
+[docker_context]
+disabled = false
+symbol   = " "
+style    = "bold #89b4fa"
+format   = "[$symbol$context]($style) "
+only_with_files = false
+
+# ─── ANSIBLE ─────────────────────────────────────────────────────────────────
+[custom.ansible]
+command     = "ansible --version 2>/dev/null | head -1 | awk '{print $2}' | tr -d '['"
+when        = "[[ -f ansible.cfg || -f playbook.yml || -f site.yml ]]"
+symbol      = "  "
+style       = "bold #f38ba8"
+format      = "[$symbol($output)]($style) "
+description = "Ansible version (si fichier présent)"
+
+# ─── GOLANG ──────────────────────────────────────────────────────────────────
+[golang]
+symbol   = " "
+style    = "bold #89dceb"
+format   = "[$symbol($version)]($style) "
+disabled = false
+
+# ─── RUST ────────────────────────────────────────────────────────────────────
+[rust]
+symbol   = "🦀 "
+style    = "bold #fab387"
+format   = "[$symbol($version)]($style) "
+disabled = false
+
+# ─── PYTHON ──────────────────────────────────────────────────────────────────
+[python]
+symbol          = " "
+style           = "bold #f9e2af"
+format          = "[$symbol$pyenv_prefix($version)(\\($virtualenv\\))]($style) "
+detect_files    = ["requirements.txt", "setup.py", "pyproject.toml", "Pipfile", ".python-version"]
+disabled        = false
+
+# ─── DURÉE DE COMMANDE ───────────────────────────────────────────────────────
+[cmd_duration]
+min_time   = 2000          # affiche si > 2s
+style      = "bold #f9e2af"
+format     = "[ $duration]($style) "
+
+# ─── HEURE ───────────────────────────────────────────────────────────────────
+[time]
+disabled    = false
+style       = "bold #585b70"
+time_format = "%H:%M"
+format      = "[$time]($style)"
+
+# ─── CARACTÈRE DE PROMPT ─────────────────────────────────────────────────────
+[character]
+success_symbol = "[❯](bold #a6e3a1)"
+error_symbol   = "[❯](bold #f38ba8)"
+vimcmd_symbol  = "[❮](bold #89b4fa)"
+
+# ─── DISABLED MODULES (keeps the prompt light) ───────────────────────────────
+[package]
+disabled = true     # version package.json trop verbeux
+
+[aws]
+disabled = true     # activer si tu utilises AWS
+
+[azure]
+disabled = true     # activer si tu utilises Azure
+
+[gcloud]
+disabled = true     # activer si tu utilises GCP
+
+[nodejs]
+disabled = true
+
+[ruby]
+disabled = true
+
+[java]
+disabled = true
+

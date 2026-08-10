@@ -1,17 +1,34 @@
-
 ---
 # role: docker
-- name: Install docker
+# docker-ce does not exist in the Ubuntu/Debian archives — the repository below is
+# what makes the package resolvable at all.
+
+- name: "Fetch the Docker signing key"
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker.gpg.armored
+    mode: "0644"
+
+- name: "Dearmor the Docker signing key"
   ansible.builtin.shell: |
     set -euo pipefail
-
-    echo "Installing Docker CE via official repository..."
-    apt-get update
-    apt-get install -y ca-certificates curl gnupg lsb-release
-    apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin || true
-    docker --version || true
-
+    gpg --yes --dearmor -o /etc/apt/keyrings/docker.gpg /etc/apt/keyrings/docker.gpg.armored
+    chmod 644 /etc/apt/keyrings/docker.gpg
   args:
     executable: /bin/bash
-  register: docker_install
-  changed_when: "'already installed' not in docker_install.stdout.lower()"
+    creates: /etc/apt/keyrings/docker.gpg
+
+- name: "Add the Docker apt source"
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ 'amd64' if ansible_architecture == 'x86_64' else ansible_architecture }}
+      signed-by=/etc/apt/keyrings/docker.gpg]
+      https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+    filename: docker
+    state: present
+
+- name: "Install Docker Engine"
+  ansible.builtin.apt:
+    name: "{{ docker_packages }}"
+    state: "{{ 'latest' if clis_state == 'latest' else 'present' }}"
+    update_cache: true

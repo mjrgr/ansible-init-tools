@@ -1,17 +1,22 @@
-
 ---
 # role: kwok
-- name: Install kwok
-  ansible.builtin.shell: |
-    echo "Installing kwok (latest)..."
-    curl -fsSL -o /usr/local/bin/kwok https://github.com/kubernetes-sigs/kwok/releases/latest/download/kwok-linux-amd64 || true
-    curl -fsSL -o /usr/local/bin/kwokctl https://github.com/kubernetes-sigs/kwok/releases/latest/download/kwokctl-linux-amd64 || true
-    chmod +x /usr/local/bin/kwok || true
-    chmod +x /usr/local/bin/kwokctl || true
-    kwok --version || true
-    kwokctl --version || true
+- name: "Decide whether kwok must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: kwok
+    clis_bin: /usr/local/bin/kwok
+    clis_target: "{{ kwok_version }}"
 
+- name: "Install kwok"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    VERSION="{{ kwok_version }}"
+    if [ "$VERSION" = latest ]; then BASE=https://github.com/kubernetes-sigs/kwok/releases/latest/download
+    else BASE="https://github.com/kubernetes-sigs/kwok/releases/download/${VERSION}"; fi
+    curl -fsSL -o /usr/local/bin/kwok   "${BASE}/kwok-linux-amd64"
+    curl -fsSL -o /usr/local/bin/kwokctl "${BASE}/kwokctl-linux-amd64"
+    chmod +x /usr/local/bin/kwok /usr/local/bin/kwokctl
+    /usr/local/bin/kwok --version
   args:
     executable: /bin/bash
-  register: kwok_install
-  changed_when: "'already installed' not in kwok_install.stdout.lower()"
+  when: clis_need_install | bool

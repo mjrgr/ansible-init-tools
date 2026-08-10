@@ -1,0 +1,17 @@
+title = "ansible-init-tools"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Templates and docs deliberately show the shape of a secret, never a value."
+paths = [
+  '''dotfiles/.*\.example$''',
+  '''README\.md''',
+]
+
+# The example files carry commented, empty assignments (`#export SOME_TOKEN=`).
+# Those are the intended shape and must not trip the scan.
+regexes = [
+  '''#\s*export\s+[A-Z_]+=\s*$''',
+]

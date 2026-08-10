@@ -1,0 +1,31 @@
+---
+# role: wezterm
+# Official apt repository — the distro packages lag several releases behind.
+
+- name: "Fetch the WezTerm signing key"
+  ansible.builtin.get_url:
+    url: https://apt.fury.io/wez/gpg.key
+    dest: /etc/apt/keyrings/wezterm-fury.gpg.armored
+    mode: "0644"
+
+- name: "Dearmor the WezTerm signing key"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    gpg --yes --dearmor -o /etc/apt/keyrings/wezterm-fury.gpg \
+      /etc/apt/keyrings/wezterm-fury.gpg.armored
+    chmod 644 /etc/apt/keyrings/wezterm-fury.gpg
+  args:
+    executable: /bin/bash
+    creates: /etc/apt/keyrings/wezterm-fury.gpg
+
+- name: "Add the WezTerm apt source"
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/wezterm-fury.gpg] https://apt.fury.io/wez/ * *"
+    filename: wezterm-fury
+    state: present
+
+- name: "Install wezterm"
+  ansible.builtin.apt:
+    name: wezterm
+    state: present
+    update_cache: true

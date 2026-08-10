@@ -1,0 +1,22 @@
+# ~/.zshenv.local — NOT VERSIONED. Secrets and machine-specific values.
+#
+#   cp dotfiles/zsh/.zshenv.local.example ~/.zshenv.local && chmod 600 ~/.zshenv.local
+#
+# Sourced by every zsh shell, including non-interactive ones. Put secrets here
+# rather than in ~/.zshrc.local: a process spawned outside an interactive shell
+# still needs them.
+
+# ─── HTTP PROXY ──────────────────────────────────────────────────────────────
+# Leave unset on a network without a proxy. The versioned .zshrc only exports
+# http_proxy/https_proxy when _PROXY is non-empty.
+#_PROXY="http://proxy.example.internal:8080"
+#_NO_PROXY="localhost,127.0.0.1,::1,.internal,10.0.0.0/8"
+
+# ─── API TOKENS ──────────────────────────────────────────────────────────────
+# One line per service. Keep the values out of every versioned file.
+#export SOME_SERVICE_TOKEN=
+
+# Better: read them from a password store so nothing sits in cleartext on disk.
+#if command -v pass &>/dev/null; then
+#  export SOME_SERVICE_TOKEN="$(pass show some-service/token)"
+#fi

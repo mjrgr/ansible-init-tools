@@ -1,16 +1,21 @@
-
 ---
-- name: Install kubectl
+# role: kubectl
+- name: "Decide whether kubectl must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: kubectl
+    clis_bin: /usr/local/bin/kubectl
+    clis_target: "{{ kubectl_version }}"
+    clis_version_cmd: "/usr/local/bin/kubectl version --client"
+
+- name: "Install kubectl"
   ansible.builtin.shell: |
     set -euo pipefail
-
-    echo "Installing latest kubectl..."
-    KUBECTL_VERSION=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
-    curl -fsSL -o /usr/local/bin/kubectl https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl
+    VERSION="{{ kubectl_version }}"
+    [ "$VERSION" = latest ] && VERSION=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
+    curl -fsSL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/${VERSION}/bin/linux/amd64/kubectl"
     chmod +x /usr/local/bin/kubectl
-    /usr/local/bin/kubectl version --client || true
-
+    /usr/local/bin/kubectl version --client
   args:
     executable: /bin/bash
-  register: kubectl_install
-  changed_when: "'already installed' not in kubectl_install.stdout.lower()"
+  when: clis_need_install | bool

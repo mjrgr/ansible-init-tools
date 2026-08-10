@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install linters
+        run: pipx install ansible-lint && pipx inject ansible-lint ansible-core && pip install yamllint
+
+      - name: yamllint
+        run: yamllint .
+
+      - name: ansible-lint
+        run: ansible-lint playbooks/
+
+      - name: Syntax check
+        run: |
+          for pb in playbooks/*.yml; do
+            ansible-playbook "$pb" --syntax-check -c local -i localhost,
+          done
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # gitleaks scans history, not just the tip
+
+      - name: gitleaks
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
+            detect --source /repo --config /repo/.gitleaks.toml --redact --verbose
+
+  dotfiles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Deploys onto a pristine $HOME and asserts a second run reports changed=0.
+      - name: Deploy and assert idempotence
+        run: ./test/run.sh dotfiles
+
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Seeds real files, deploys, rolls back, asserts the originals came back
+      # to the right directories.
+      - name: Deploy and roll back
+        run: ./test/run.sh rollback
+
+  wezterm-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Parses the versioned wezterm.lua with the real binary.
+      - name: Parse wezterm.lua
+        run: ./test/run.sh wezterm

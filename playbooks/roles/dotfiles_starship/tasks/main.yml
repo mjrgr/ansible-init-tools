@@ -1,0 +1,10 @@
+---
+# role: dotfiles_starship — prompt config (the binary comes from the `starship` role)
+
+- name: "Deploy the starship config"
+  ansible.builtin.include_tasks: "{{ role_path }}/../dotfiles_common/tasks/link.yml"
+  loop:
+    - { src: "{{ dotfiles_src }}/starship/starship.toml", dest: "{{ dotfiles_home }}/.config/starship.toml" }
+  loop_control:
+    loop_var: dl
+    label: "{{ dl.dest }}"

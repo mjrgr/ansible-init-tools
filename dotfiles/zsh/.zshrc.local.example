@@ -1,0 +1,12 @@
+# ~/.zshrc.local — NOT VERSIONED. Interactive aliases and overrides.
+#
+#   cp dotfiles/zsh/.zshrc.local.example ~/.zshrc.local
+#
+# Sourced at the end of .zshrc: whatever is defined here wins over the versioned
+# file. Secrets belong in ~/.zshenv.local, not here.
+
+# Host-specific shortcuts, site tooling, per-machine overrides.
+#alias bastion="ssh login@bastion.example.internal"
+
+# Extra config that is not worth versioning.
+#[[ -s "$HOME/.some-tool-config.sh" ]] && source "$HOME/.some-tool-config.sh"

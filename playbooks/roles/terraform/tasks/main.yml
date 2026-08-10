@@ -1,18 +1,32 @@
-
 ---
 # role: terraform
-- name: Install terraform
+
+- name: "Fetch the HashiCorp signing key"
+  ansible.builtin.get_url:
+    url: https://apt.releases.hashicorp.com/gpg
+    dest: /etc/apt/keyrings/hashicorp.gpg.armored
+    mode: "0644"
+
+- name: "Dearmor the HashiCorp signing key"
   ansible.builtin.shell: |
     set -euo pipefail
-
-    echo "Installing latest terraform..."
-    sudo rm -rf /usr/share/keyrings/hashicorp-archive-keyring.gpg
-    wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-    sudo apt update && sudo apt install -y terraform
-    terraform -version || true
-
+    gpg --yes --dearmor -o /etc/apt/keyrings/hashicorp.gpg /etc/apt/keyrings/hashicorp.gpg.armored
+    chmod 644 /etc/apt/keyrings/hashicorp.gpg
   args:
     executable: /bin/bash
-  register: terraform_install
-  changed_when: "'already installed' not in terraform_install.stdout.lower()"
+    creates: /etc/apt/keyrings/hashicorp.gpg
+
+- name: "Add the HashiCorp apt source"
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ 'amd64' if ansible_architecture == 'x86_64' else ansible_architecture }}
+      signed-by=/etc/apt/keyrings/hashicorp.gpg]
+      https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main
+    filename: hashicorp
+    state: present
+
+- name: "Install terraform"
+  ansible.builtin.apt:
+    name: "terraform{{ ('=' ~ terraform_version) if terraform_version != 'latest' else '' }}"
+    state: "{{ 'latest' if (clis_state == 'latest' and terraform_version == 'latest') else 'present' }}"
+    update_cache: true

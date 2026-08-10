@@ -1,0 +1,13 @@
+---
+exclude_paths:
+  - test/
+  - .github/
+
+skip_list:
+  # Vendor installers are shell one-shots by nature; the probe task in
+  # clis_common is what provides idempotence, not a native module.
+  - command-instead-of-shell
+  - no-changed-when
+
+warn_list:
+  - experimental

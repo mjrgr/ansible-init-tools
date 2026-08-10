@@ -1,0 +1,45 @@
+---
+# role: dotfiles_fonts
+#
+# starship.toml and wezterm.lua both reference JetBrainsMono Nerd Font and use
+# Private Use Area glyphs. Without the font the prompt and the tab bar render
+# tofu, so the font is part of the config, not an optional extra.
+#
+# Installed per-user under ~/.local/share/fonts: the dotfiles play is unprivileged.
+
+- name: "Check whether the Nerd Font is already present"
+  ansible.builtin.find:
+    paths: "{{ dotfiles_home }}/.local/share/fonts"
+    patterns: "{{ dotfiles_fonts_name }}*.ttf"
+  register: dotfiles_fonts_found
+
+- name: "Install the Nerd Font"
+  when: dotfiles_fonts_found.matched == 0
+  block:
+    - name: "Create the user font directory"
+      ansible.builtin.file:
+        path: "{{ dotfiles_home }}/.local/share/fonts"
+        state: directory
+        mode: "0755"
+
+    - name: "Download the Nerd Font: {{ dotfiles_fonts_name }}"
+      ansible.builtin.get_url:
+        url: "{{ dotfiles_fonts_url }}"
+        dest: "/tmp/{{ dotfiles_fonts_name }}.zip"
+        mode: "0644"
+
+    - name: "Unpack the font"
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ dotfiles_fonts_name }}.zip"
+        dest: "{{ dotfiles_home }}/.local/share/fonts"
+        remote_src: true
+        include: "{{ dotfiles_fonts_faces }}"
+
+    - name: "Drop the archive"
+      ansible.builtin.file:
+        path: "/tmp/{{ dotfiles_fonts_name }}.zip"
+        state: absent
+
+    - name: "Refresh the font cache"
+      ansible.builtin.command: fc-cache -f "{{ dotfiles_home }}/.local/share/fonts"
+      changed_when: true

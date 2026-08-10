@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Blocks a commit that carries a secret. Enable with:  make hooks
+#
+# Runs gitleaks from its container image, so nothing has to be installed locally.
+# If neither gitleaks nor docker is available the hook refuses to pass silently —
+# a scanner that quietly does nothing is worse than no scanner.
+set -euo pipefail
+
+REPO="$(git rev-parse --show-toplevel)"
+
+scan_staged() {
+  if command -v gitleaks >/dev/null 2>&1; then
+    gitleaks protect --staged --source "$REPO" --config "$REPO/.gitleaks.toml" --redact --verbose
+  elif command -v docker >/dev/null 2>&1; then
+    docker run --rm -v "$REPO:/repo" -w /repo ghcr.io/gitleaks/gitleaks:latest \
+      protect --staged --source /repo --config /repo/.gitleaks.toml --redact --verbose
+  else
+    echo "pre-commit: neither gitleaks nor docker found — cannot scan for secrets." >&2
+    echo "            Install one, or commit with --no-verify if you are certain." >&2
+    return 1
+  fi
+}
+
+if ! scan_staged; then
+  cat >&2 <<'MSG'
+
+pre-commit: refusing to commit — a secret was found in the staged changes.
+
+  Move the value to a local, gitignored file:
+    ~/.zshenv.local     secrets and tokens
+    ~/.gitconfig.local  identity and credential helper
+
+  If this is a false positive, add a narrow rule to .gitleaks.toml.
+  Bypass only when you are certain:  git commit --no-verify
+MSG
+  exit 1
+fi

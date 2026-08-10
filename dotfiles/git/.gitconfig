@@ -1,0 +1,20 @@
+# Versioned in ansible-init-tools — deployed by playbooks/dotfiles.yml.
+# Identity, credential helper and machine settings live in ~/.gitconfig.local.
+
+[include]
+	path = ~/.gitconfig.local
+
+[branch]
+	autoSetupMerge = true
+[init]
+	defaultBranch = main
+[push]
+	autoSetupRemote = true
+[safe]
+	directory = *
+
+[filter "lfs"]
+	process = git-lfs filter-process
+	required = true
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f

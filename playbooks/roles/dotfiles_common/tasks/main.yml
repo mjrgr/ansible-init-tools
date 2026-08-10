@@ -1,0 +1,45 @@
+---
+# role: dotfiles_common — target directory tree + backup location
+
+- name: "Check that the versioned dotfiles are present"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.stat:
+    path: "{{ dotfiles_src }}/zsh/.zshrc"
+  register: dotfiles_src_check
+
+- name: "Fail if the dotfiles source is missing"
+  ansible.builtin.fail:
+    msg: "dotfiles_src not found: {{ dotfiles_src }} — run the playbook from the repo."
+  when: not dotfiles_src_check.stat.exists
+
+# Fail here rather than midway through the oh-my-zsh installer, which reports
+# "Zsh is not installed" and leaves a half-built ~/.oh-my-zsh behind.
+- name: "Check the prerequisites are installed"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.shell: "command -v {{ item }}"
+  args:
+    executable: /bin/bash
+  loop: "{{ dotfiles_requirements }}"
+  register: dotfiles_reqs
+  changed_when: false
+  failed_when: false
+
+- name: "Fail if a prerequisite is missing"
+  ansible.builtin.fail:
+    msg: >-
+      Missing command(s):
+      {{ dotfiles_reqs.results | selectattr('rc', 'ne', 0) | map(attribute='item') | join(', ') }}.
+      Run install_clis.yml first —
+      ansible-playbook playbooks/install_clis.yml -c local --ask-become-pass
+  when: dotfiles_reqs.results | selectattr('rc', 'ne', 0) | list | length > 0
+
+- name: "Create target directories"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ dotfiles_home }}/.config"
+    - "{{ dotfiles_home }}/.config/zsh"
+    - "{{ dotfiles_home }}/.config/wezterm"
+    - "{{ dotfiles_home }}/.kube"
+    - "{{ dotfiles_home }}/.local/bin"
+    - "{{ dotfiles_backup_dir }}"

@@ -2,3 +2,14 @@
 *.iml
 .vscode
 __pycache__
+
+# Local overrides: secrets, identity, machine specifics.
+# Never versioned — only the *.example templates are.
+*.local
+!*.local.example
+.zshenv.local
+.zshrc.local
+.gitconfig.local
+
+# Transient files written by the Claude Code harness
+.claude/*.tmp.*

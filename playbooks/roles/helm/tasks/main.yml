@@ -1,17 +1,22 @@
-
 ---
 # role: helm
-- name: Install helm
+- name: "Decide whether helm must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: helm
+    clis_bin: helm
+    clis_target: "{{ helm_version }}"
+    clis_version_cmd: "helm version --short"
+
+- name: "Install helm"
   ansible.builtin.shell: |
     set -euo pipefail
-    echo "Installing latest helm..."
+    VERSION="{{ helm_version }}"
     curl -fsSL -o /tmp/get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
     chmod +x /tmp/get_helm.sh
-    /tmp/get_helm.sh
-    rm -rf /tmp/get_helm.sh
-    helm version --client || true
-
+    if [ "$VERSION" = latest ]; then /tmp/get_helm.sh; else /tmp/get_helm.sh --version "$VERSION"; fi
+    rm -f /tmp/get_helm.sh
+    helm version --short
   args:
     executable: /bin/bash
-  register: helm_install
-  changed_when: "'already installed' not in helm_install.stdout.lower()"
+  when: clis_need_install | bool

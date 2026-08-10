@@ -1,0 +1,46 @@
+---
+# Decides whether a binary-download tool must be (re)installed, and sets
+# clis_need_install for the caller to gate its install task on.
+#
+# Inputs:
+#   clis_name         display name, used in task labels
+#   clis_bin          command or absolute path used to detect the binary
+#   clis_version_cmd  command printing a version  (default: "<clis_bin> --version")
+#   clis_target       wanted version, "latest" or a concrete one
+#
+# clis_state comes from the play: "present" installs only when absent (default),
+# "latest" always re-runs the installer. Same semantics as the apt module, and the
+# reason a plain re-run no longer re-downloads every tool.
+#
+# The clis_* facts are deliberately un-prefixed: this file is included by every
+# tool role, and the caller reads clis_need_install back. A clis_common_ prefix
+# would name a role that never runs on its own.
+
+- name: "Probe {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.shell:
+    cmd: "set -o pipefail; {{ clis_version_cmd | default(clis_bin ~ ' --version') }} 2>&1 | head -1"
+    executable: /bin/bash
+  register: clis_probe
+  changed_when: false
+  failed_when: false
+
+- name: "Extract the installed version of {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    clis_installed: >-
+      {{ (clis_probe.stdout | regex_search('[0-9]+\.[0-9]+(\.[0-9]+)?') | default('', true))
+         if clis_probe.rc == 0 else '' }}
+
+- name: "Decide whether to install {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    clis_need_install: >-
+      {{ (clis_installed | length == 0)
+         or (clis_state == 'latest')
+         or (((clis_target | default('latest')) not in ['latest', ''])
+             and (clis_installed != (clis_target | regex_replace('^v', '')))) }}
+
+- name: "Install decision for {{ clis_name }}"
+  ansible.builtin.debug:
+    msg: >-
+      installed={{ clis_installed | ternary(clis_installed, 'none') }}
+      wanted={{ clis_target | default('latest') }}
+      -> {{ 'install' if (clis_need_install | bool) else 'skip' }}

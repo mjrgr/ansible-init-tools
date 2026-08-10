@@ -1,10 +1,19 @@
-
 ---
 # role: copilot
-- name: Install copilot
-  ansible.builtin.shell: |
-    echo "Installing latest copilot..."
-    curl -fsSL https://gh.io/copilot-install | bash
+- name: "Decide whether copilot must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: copilot
+    clis_bin: copilot
+    clis_target: "{{ copilot_version }}"
 
-  register: copilot_install
-  changed_when: "'already installed' not in copilot_install.stdout.lower()"
+- name: "Install copilot"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    VERSION="{{ copilot_version }}"
+    # Vendor script, no version selection offered upstream.
+    curl -fsSL https://gh.io/copilot-install | bash
+    copilot --version
+  args:
+    executable: /bin/bash
+  when: clis_need_install | bool

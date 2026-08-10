@@ -1,0 +1,22 @@
+---
+# role: starship
+- name: "Decide whether starship must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: starship
+    clis_bin: /usr/local/bin/starship
+    clis_target: "{{ starship_version }}"
+
+- name: "Install starship"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    VERSION="{{ starship_version }}"
+    if [ "$VERSION" = latest ]; then
+      curl -fsSL https://starship.rs/install.sh | sh -s -- --yes --bin-dir /usr/local/bin
+    else
+      curl -fsSL https://starship.rs/install.sh | sh -s -- --yes --bin-dir /usr/local/bin --version "$VERSION"
+    fi
+    /usr/local/bin/starship --version
+  args:
+    executable: /bin/bash
+  when: clis_need_install | bool

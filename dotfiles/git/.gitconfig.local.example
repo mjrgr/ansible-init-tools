@@ -1,0 +1,11 @@
+# ~/.gitconfig.local — NOT VERSIONED. Identity and machine-specific settings.
+#
+#   cp dotfiles/git/.gitconfig.local.example ~/.gitconfig.local
+
+[user]
+	name = Firstname LASTNAME
+	email = firstname.lastname@example.com
+
+# Uncomment to cache credentials in memory instead of retyping them.
+#[credential]
+#	helper = cache --timeout=3600

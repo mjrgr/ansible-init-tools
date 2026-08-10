@@ -1,0 +1,10 @@
+---
+# role: dotfiles_tmux
+
+- name: "Deploy the tmux config"
+  ansible.builtin.include_tasks: "{{ role_path }}/../dotfiles_common/tasks/link.yml"
+  loop:
+    - { src: "{{ dotfiles_src }}/tmux/.tmux.conf", dest: "{{ dotfiles_home }}/.tmux.conf" }
+  loop_control:
+    loop_var: dl
+    label: "{{ dl.dest }}"

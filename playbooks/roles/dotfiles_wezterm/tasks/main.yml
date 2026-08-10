@@ -1,0 +1,10 @@
+---
+# role: dotfiles_wezterm
+
+- name: "Deploy the wezterm config"
+  ansible.builtin.include_tasks: "{{ role_path }}/../dotfiles_common/tasks/link.yml"
+  loop:
+    - { src: "{{ dotfiles_src }}/wezterm/wezterm.lua", dest: "{{ dotfiles_home }}/.config/wezterm/wezterm.lua" }
+  loop_control:
+    loop_var: dl
+    label: "{{ dl.dest }}"
