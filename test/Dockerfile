@@ -3,7 +3,7 @@
 # dotfiles.yml checks for them up front and refuses to run otherwise.
 # The repo itself is bind-mounted read-only at run time, so the image does not need
 # a rebuild between iterations and the run proves the playbooks never write to it.
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 
 ARG USERNAME=tester
 
