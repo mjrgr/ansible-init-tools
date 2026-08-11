@@ -94,8 +94,28 @@ Useful variables:
 | `clis_state` | `present` | `latest` re-runs every installer and upgrades |
 | `<tool>_version` | `latest` | pin one tool, e.g. `-e kubectl_version=v1.30.0` |
 | `install_only` | *(unset)* | install a single tool |
+| `docker_add_user_to_group` | `true` | add the invoking user to the `docker` group |
 | `dotfiles_only` | *(unset)* | deploy a single group |
 | `dotfiles_set_default_shell` | `false` | `chsh` to zsh — needs `--ask-become-pass` |
+
+## The docker group
+
+`docker_add_user_to_group` defaults to `true`, so the account that runs the playbook
+lands in the `docker` group and `docker` works without `sudo`.
+
+**That membership is equivalent to root on the host.** The daemon runs as root and will
+bind-mount any path into a container on request, so anyone in the group can read or
+write anything. It is enabled because the alternative is `sudo` before every docker
+command; disable it where that trade does not hold:
+
+```bash
+ansible-playbook playbooks/install_clis.yml -c local -K -e docker_add_user_to_group=false
+```
+
+The group takes effect at the next login — `newgrp docker` in the meantime.
+
+The user is resolved from `SUDO_USER`, not `ansible_user_id`: the play declares
+`become: true`, so facts are gathered as root and `ansible_user_id` would say `root`.
 
 ## Reproducibility
 

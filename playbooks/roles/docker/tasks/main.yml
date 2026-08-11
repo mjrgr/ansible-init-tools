@@ -32,3 +32,21 @@
     name: "{{ docker_packages }}"
     state: "{{ 'latest' if clis_state == 'latest' else 'present' }}"
     update_cache: true
+
+- name: "Add to the docker group: {{ docker_group_user }}"
+  ansible.builtin.user:
+    name: "{{ docker_group_user }}"
+    groups: docker
+    append: true
+  when:
+    - docker_add_user_to_group | bool
+    - (docker_group_user | trim) not in ['', 'root']
+
+- name: "Group membership needs a new login to take effect"
+  ansible.builtin.debug:
+    msg: >-
+      {{ docker_group_user }} added to the docker group. Log out and back in,
+      or run `newgrp docker`, before docker works without sudo.
+  when:
+    - docker_add_user_to_group | bool
+    - (docker_group_user | trim) not in ['', 'root']

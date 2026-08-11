@@ -5,3 +5,16 @@ docker_packages:
   - containerd.io
   - docker-buildx-plugin
   - docker-compose-plugin
+
+# Membership of the docker group is equivalent to root on the host: the daemon
+# runs as root and will bind-mount any path into a container on request. Enabled
+# because the alternative is typing sudo before every docker command; set to
+# false on a machine where that trade is not acceptable.
+docker_add_user_to_group: true
+
+# Under `become: true` the facts are gathered as root, so ansible_user_id says
+# "root". SUDO_USER carries the account that actually invoked the playbook.
+docker_group_user: >-
+  {{ ansible_env.SUDO_USER
+     | default(lookup('env', 'USER'), true)
+     | default(ansible_user_id, true) }}
