@@ -1,0 +1,29 @@
+---
+# role: dotfiles_claude
+#
+# Claude Code installs per user, into ~/.local/share/claude/versions with a
+# symlink at ~/.local/bin/claude. The upstream installer refuses to run under
+# sudo on purpose: everything goes under $HOME, which with sudo resolves to
+# root's home, and the command would then be missing from the user's own shell.
+# That is why this lives in the dotfiles play rather than install_clis.yml.
+#
+# It self-updates, so nothing is pinned here; dotfiles_claude_channel picks the
+# release train ("stable", "latest", or a concrete version).
+
+- name: "Install Claude Code"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    curl -fsSL https://claude.ai/install.sh | bash -s -- "{{ dotfiles_claude_channel }}"
+  args:
+    executable: /bin/bash
+    creates: "{{ dotfiles_home }}/.local/bin/claude"
+
+- name: "Read back the installed version"
+  ansible.builtin.command: "{{ dotfiles_home }}/.local/bin/claude --version"
+  register: dotfiles_claude_probe
+  changed_when: false
+  failed_when: false
+
+- name: "Claude Code version"
+  ansible.builtin.debug:
+    msg: "{{ dotfiles_claude_probe.stdout | default('not reporting a version', true) }}"

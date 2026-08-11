@@ -19,7 +19,6 @@
       - nerdctl
       - crictl
       - terraform
-      - copilot
       - yq
       - jq
       - gh

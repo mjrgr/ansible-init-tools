@@ -24,6 +24,7 @@
       - git
       - wezterm
       - fonts
+      - claude
 
   tasks:
     - name: "Refuse to run on a non-Debian family"

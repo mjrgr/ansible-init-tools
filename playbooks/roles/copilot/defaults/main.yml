@@ -1,4 +1,0 @@
----
-# The vendor installer offers no version selection, so this only ever means
-# "whatever the script fetches". Kept for a uniform interface across roles.
-copilot_version: latest

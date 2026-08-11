@@ -26,7 +26,7 @@ dotfiles** on **Ubuntu / Debian**.
 - docker, podman, nerdctl, crictl
 - terraform
 - yq, jq
-- copilot, gh
+- gh
 - sops, age
 - starship, wezterm
 - git, make, curl, wget, gnupg, unzip, fontconfig
@@ -41,6 +41,7 @@ packages lag several releases behind.
 | `zsh` | `~/.zshrc`, `~/.zshenv`, oh-my-zsh + 3 external plugins, `~/.config/zsh/wezterm.zsh`, `~/.kube/k8s-clusters.sh` |
 | `starship` | `~/.config/starship.toml` |
 | `fonts` | JetBrainsMono Nerd Font into `~/.local/share/fonts` |
+| `claude` | Claude Code into `~/.local/share/claude`, symlinked at `~/.local/bin/claude` |
 | `tmux` | `~/.tmux.conf` |
 | `git` | `~/.gitconfig` |
 | `wezterm` | `~/.config/wezterm/wezterm.lua` |
@@ -119,8 +120,8 @@ Not pinned, and why:
 
 | Tool | Reason |
 |---|---|
-| copilot | the vendor installer offers no version selection |
 | terraform, docker, gh, podman, jq, wezterm | installed from apt repositories; pin through `terraform_version` as an apt version string if needed |
+| claude | self-updating, and installed per user by the dotfiles play; pick a train with `dotfiles_claude_channel` |
 
 **Dependabot does not watch these pins** — no ecosystem understands versions living in
 Ansible defaults. It covers the GitHub Actions tags and the test image only. What
@@ -220,8 +221,7 @@ absent — under `set -e` that status silently overrides an explicit `exit 0` an
 passing target into a failure.
 
 Caveats: daemons (docker, podman) install but do not start in a container,
-`dotfiles_set_default_shell` is left off so `chsh` is never exercised, and the copilot
-role is not covered.
+and `dotfiles_set_default_shell` is left off so `chsh` is never exercised.
 
 ## Backups and rollback
 
@@ -258,5 +258,4 @@ False positives go in `.gitleaks.toml` as a narrow rule — never by disabling t
 - Debian/Ubuntu only. Both playbooks refuse to run elsewhere rather than failing halfway.
 - apt-based tools (docker, gh, terraform, podman, jq, wezterm) go through the `apt`
   module and its repositories; the rest are binary downloads gated by a version probe.
-- The copilot installer offers no version selection upstream.
-- Daemons install but are not started or enabled — that is left to the machine's owner.
+- - Daemons install but are not started or enabled — that is left to the machine's owner.

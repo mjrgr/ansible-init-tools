@@ -1,0 +1,3 @@
+---
+# "stable", "latest", or a concrete version accepted by the upstream installer.
+dotfiles_claude_channel: stable
