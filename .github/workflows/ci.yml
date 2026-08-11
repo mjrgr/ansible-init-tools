@@ -12,7 +12,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install linters
         run: pipx install ansible-lint && pipx inject ansible-lint ansible-core && pip install yamllint
@@ -32,7 +32,7 @@ jobs:
   secrets:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # gitleaks scans history, not just the tip
 
@@ -44,7 +44,7 @@ jobs:
   dotfiles:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Deploys onto a pristine $HOME and asserts a second run reports changed=0.
       - name: Deploy and assert idempotence
@@ -53,7 +53,7 @@ jobs:
   rollback:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Seeds real files, deploys, rolls back, asserts the originals came back
       # to the right directories.
@@ -63,7 +63,7 @@ jobs:
   pins:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Dependabot cannot watch tool versions living in Ansible defaults, so this
       # is the only thing standing between a yanked tag and a broken bootstrap.
@@ -73,7 +73,7 @@ jobs:
   wezterm-config:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Parses the versioned wezterm.lua with the real binary.
       - name: Parse wezterm.lua
