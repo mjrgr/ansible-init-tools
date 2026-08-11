@@ -52,16 +52,14 @@
       when: ansible_os_family != 'Debian'
       tags: [always]
 
-    - name: "Ensure apt cache is updated"
-      ansible.builtin.apt:
-        update_cache: true
-        cache_valid_time: 3600
-      tags: [always]
-
+    # No cache_valid_time here: it trusts the mtime of /var/lib/apt/lists, which
+    # is recent but empty on an image that purged the lists after building. Ansible
+    # then skips the update and the install fails on packages it cannot see.
     - name: "Install common tools/dependencies"
       ansible.builtin.apt:
         name: "{{ common_packages }}"
         state: present
+        update_cache: true
       tags: [common]
 
     - name: "Ensure the apt keyring directory exists"
