@@ -188,6 +188,17 @@ The repo is bind-mounted **read-only**, so a playbook that tried to write into t
 working tree would fail loudly instead of polluting it silently. The host proxy
 variables are carried through to the build and the run.
 
+The base image is selectable, and CI runs the suite across both LTS releases:
+
+```bash
+UBUNTU_VERSION=22.04 ./test/run.sh dotfiles
+```
+
+This is not cosmetic. 22.04 ships ansible-core 2.12 and 26.04 ships 2.16, and they do
+not behave the same — an `include_role` whose `apply.tags` referenced `item` worked on
+2.16 and failed on 2.12, because `item` resolves inside the included role, against
+that role's own loop. Only the older release surfaced it.
+
 What `dotfiles` asserts:
 
 - run 1 completes on a pristine `$HOME`
@@ -197,6 +208,11 @@ What `dotfiles` asserts:
 - the deployed `.zshrc` parses and an interactive zsh loads it
 - the preflight refuses to run when a prerequisite is missing
 - nothing was written into the repo
+
+The playbooks run as the unprivileged user and escalate per task, which is how the
+README tells you to run them. Running the whole playbook under `sudo -E` instead
+leaves a root-owned `~/.ansible/tmp` behind that then breaks the unprivileged
+dotfiles play.
 
 The container runs `bash -c`, not `bash -lc`: a login shell executes `~/.bash_logout`
 on the way out, and Ubuntu's ends with a test that returns 1 when `clear_console` is

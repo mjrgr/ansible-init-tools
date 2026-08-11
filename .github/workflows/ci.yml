@@ -41,17 +41,29 @@ jobs:
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
             detect --source /repo --config /repo/.gitleaks.toml --redact --verbose
 
+  # 22.04 ships ansible-core 2.12 and 26.04 ships 2.16; they do not behave the same,
+  # and only a matrix catches the difference before a real machine does.
   dotfiles:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ['22.04', '26.04']
     steps:
       - uses: actions/checkout@v7
 
       # Deploys onto a pristine $HOME and asserts a second run reports changed=0.
       - name: Deploy and assert idempotence
         run: ./test/run.sh dotfiles
+        env:
+          UBUNTU_VERSION: ${{ matrix.ubuntu }}
 
   rollback:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ['22.04', '26.04']
     steps:
       - uses: actions/checkout@v7
 
@@ -59,9 +71,15 @@ jobs:
       # to the right directories.
       - name: Deploy and roll back
         run: ./test/run.sh rollback
+        env:
+          UBUNTU_VERSION: ${{ matrix.ubuntu }}
 
   pins:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ['22.04', '26.04']
     steps:
       - uses: actions/checkout@v7
 
@@ -69,6 +87,8 @@ jobs:
       # is the only thing standing between a yanked tag and a broken bootstrap.
       - name: Install every pinned version
         run: ./test/run.sh pins
+        env:
+          UBUNTU_VERSION: ${{ matrix.ubuntu }}
 
   wezterm-config:
     runs-on: ubuntu-latest

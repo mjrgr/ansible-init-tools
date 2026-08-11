@@ -29,7 +29,7 @@ rollback: ## Remove the dotfiles symlinks and restore the backups
 # ─── Testing ─────────────────────────────────────────────────────────────────
 
 .PHONY: test
-test: ## Deploy the dotfiles in a container and assert idempotence
+test: ## Deploy the dotfiles in a container and assert idempotence (UBUNTU_VERSION=22.04 to switch LTS)
 	./test/run.sh dotfiles
 
 .PHONY: test-clis

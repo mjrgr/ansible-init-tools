@@ -45,12 +45,16 @@
         to_deploy: "{{ dotfiles_list if (dotfiles_only is not defined) else [dotfiles_only] }}"
       tags: [always]
 
+    # An explicit loop_var: the default `item` collides with the loops inside the
+    # included roles, and `apply.tags` is evaluated there, not here.
     - name: "Deploy each dotfiles group"
       ansible.builtin.include_role:
-        name: "dotfiles_{{ item }}"
+        name: "dotfiles_{{ dotfiles_group }}"
         apply:
-          tags: ["{{ item }}"]
+          tags: ["{{ dotfiles_group }}"]
       loop: "{{ to_deploy }}"
+      loop_control:
+        loop_var: dotfiles_group
       tags: [dotfiles]
 
     - name: "Summary"

@@ -12,12 +12,6 @@ updates:
     labels:
       - dependencies
 
-  # Base image of the container test bed.
-  - package-ecosystem: docker
-    directory: /test
-    schedule:
-      interval: weekly
-    commit-message:
-      prefix: test
-    labels:
-      - dependencies
+# No docker entry: test/Dockerfile interpolates its base image from an ARG so the
+# suite can run across LTS releases, and dependabot cannot parse that FROM. The
+# versions under test are listed explicitly in the CI matrix instead.

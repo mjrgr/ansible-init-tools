@@ -74,10 +74,14 @@
         to_install: "{{ install_list if (install_only is not defined) else [install_only] }}"
       tags: [always]
 
+    # Same reason as in dotfiles.yml: `item` inside apply.tags resolves against the
+    # included role's own loop, not this one.
     - name: "Run role for each tool"
       ansible.builtin.include_role:
-        name: "{{ item }}"
+        name: "{{ clis_tool }}"
         apply:
-          tags: ["{{ item }}"]
+          tags: ["{{ clis_tool }}"]
       loop: "{{ to_install }}"
+      loop_control:
+        loop_var: clis_tool
       tags: [tools]

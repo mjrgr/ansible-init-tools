@@ -13,8 +13,12 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IMAGE="ansible-init-tools-test"
 TARGET="${1:-dotfiles}"
+
+# UBUNTU_VERSION=22.04 ./test/run.sh dotfiles  — the apt ansible-core differs per
+# LTS and they do not behave the same; CI runs the suite across both.
+UBUNTU_VERSION="${UBUNTU_VERSION:-26.04}"
+IMAGE="ansible-init-tools-test:${UBUNTU_VERSION}"
 
 # The playbooks reach out to github/vendor endpoints; carry the host proxy through.
 PROXY_ENV=()
@@ -23,7 +27,8 @@ for v in http_proxy https_proxy no_proxy HTTP_PROXY HTTPS_PROXY NO_PROXY; do
 done
 
 echo "==> building $IMAGE"
-docker build -q -t "$IMAGE" "${PROXY_ENV[@]/#-e/--build-arg}" "$REPO/test" >/dev/null
+docker build -q -t "$IMAGE" --build-arg "UBUNTU_VERSION=$UBUNTU_VERSION" \
+  "${PROXY_ENV[@]/#-e/--build-arg}" "$REPO/test" >/dev/null
 
 # bash -c, not -lc: a login shell runs ~/.bash_logout on the way out, and Ubuntu's
 # ends with `[ -x /usr/bin/clear_console ] && ...` which returns 1 when that binary
@@ -103,7 +108,7 @@ case "$TARGET" in
     [[ -n "$ROLE" ]] && ONLY="-e install_only=$ROLE"
     echo "==> install_clis.yml ${ROLE:+(role: $ROLE)}"
     echo "    Note: daemons (docker, podman) install but do not start in a container."
-    run "sudo -E ansible-playbook /repo/playbooks/install_clis.yml -c local -i localhost, $ONLY 2>&1 | tail -30"
+    run "ansible-playbook /repo/playbooks/install_clis.yml -c local -i localhost, $ONLY 2>&1 | tail -30"
     ;;
   rollback)
     # Seeds real files first, so the restore path is actually exercised and not
@@ -154,7 +159,7 @@ case "$TARGET" in
     # yanked or an asset URL that changed shape.
     run '
       set -e
-      PB="sudo -E ansible-playbook /repo/playbooks/install_clis.yml -c local -i localhost,"
+      PB="ansible-playbook /repo/playbooks/install_clis.yml -c local -i localhost,"
       fail=0
       for role in kubectl helm kind kwok k9s krew helmfile nerdctl crictl yq sops starship; do
         want=$(sed -n "s/^${role}_version: *\"\?\([^\"]*\)\"\?/\1/p" \
@@ -176,7 +181,7 @@ case "$TARGET" in
     run '
       set -e
       echo "==> installing wezterm"
-      sudo -E ansible-playbook /repo/playbooks/install_clis.yml -c local -i localhost, \
+      ansible-playbook /repo/playbooks/install_clis.yml -c local -i localhost, \
         -e install_only=wezterm >/tmp/wt.log 2>&1 || {
           echo "    install failed:"; tail -40 /tmp/wt.log | sed "s/^/      /"; exit 1; }
       echo "    $(wezterm --version)"
