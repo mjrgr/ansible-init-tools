@@ -1,3 +1,6 @@
 ---
-# Pin to a concrete release (e.g. "v1.30.0") for a reproducible install.
-kind_version: latest
+# Pinned so two machines provisioned months apart get the same binary.
+# Set to "latest" to track upstream, or override on the command line:
+#   -e kind_version=<tag>
+# Bump deliberately, then re-run the container tests.
+kind_version: "v0.32.0"

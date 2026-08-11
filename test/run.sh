@@ -4,6 +4,7 @@
 #   ./test/run.sh dotfiles        # full dotfiles.yml, twice, asserts idempotence
 #   ./test/run.sh clis [role]     # install_clis.yml, optionally a single role
 #   ./test/run.sh rollback        # deploy then roll back, asserts the restore
+#   ./test/run.sh pins            # every pinned tool version still installs
 #   ./test/run.sh wezterm         # installs wezterm and parses the versioned config
 #   ./test/run.sh shell           # interactive shell in the test bed
 #
@@ -24,11 +25,15 @@ done
 echo "==> building $IMAGE"
 docker build -q -t "$IMAGE" "${PROXY_ENV[@]/#-e/--build-arg}" "$REPO/test" >/dev/null
 
+# bash -c, not -lc: a login shell runs ~/.bash_logout on the way out, and Ubuntu's
+# ends with `[ -x /usr/bin/clear_console ] && ...` which returns 1 when that binary
+# is absent. Under set -e that status overrides an explicit `exit 0`, turning a
+# passing target into a CI failure. The container PATH already covers /usr/local/bin.
 run() {
   docker run --rm \
     -v "$REPO:/repo:ro" \
     "${PROXY_ENV[@]}" \
-    "$IMAGE" bash -lc "$1"
+    "$IMAGE" bash -c "$1"
 }
 
 case "$TARGET" in
@@ -143,6 +148,28 @@ case "$TARGET" in
       echo "    rollback OK"
     '
     ;;
+  pins)
+    # Nothing upstream watches the pinned versions in the role defaults —
+    # dependabot has no ecosystem for them. This is what catches a tag that was
+    # yanked or an asset URL that changed shape.
+    run '
+      set -e
+      PB="sudo -E ansible-playbook /repo/playbooks/install_clis.yml -c local -i localhost,"
+      fail=0
+      for role in kubectl helm kind kwok k9s krew helmfile nerdctl crictl yq sops starship; do
+        want=$(sed -n "s/^${role}_version: *\"\?\([^\"]*\)\"\?/\1/p" \
+               /repo/playbooks/roles/$role/defaults/main.yml)
+        if $PB -e install_only=$role >/tmp/p.log 2>&1; then
+          printf "  %-9s pinned=%-10s installed\n" "$role" "$want"
+        else
+          printf "  %-9s pinned=%-10s INSTALL FAILED\n" "$role" "$want"
+          tail -12 /tmp/p.log | sed "s/^/      /"
+          fail=1
+        fi
+      done
+      exit $fail
+    '
+    ;;
   wezterm)
     # Installs wezterm, then parses the versioned config with the real binary.
     # show-keys renders the key table without needing a GUI or a display.
@@ -167,7 +194,7 @@ case "$TARGET" in
     docker run --rm -it -v "$REPO:/repo:ro" "${PROXY_ENV[@]}" "$IMAGE" bash
     ;;
   *)
-    echo "unknown target: $TARGET (expected: dotfiles | clis | rollback | wezterm | shell)" >&2
+    echo "unknown target: $TARGET (expected: dotfiles | clis | rollback | pins | wezterm | shell)" >&2
     exit 2
     ;;
 esac

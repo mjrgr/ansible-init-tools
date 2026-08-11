@@ -1,3 +1,6 @@
 ---
-# Pin to a concrete release (e.g. "v1.30.0") for a reproducible install.
-yq_version: latest
+# Pinned so two machines provisioned months apart get the same binary.
+# Set to "latest" to track upstream, or override on the command line:
+#   -e yq_version=<tag>
+# Bump deliberately, then re-run the container tests.
+yq_version: "v4.53.3"

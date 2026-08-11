@@ -98,18 +98,34 @@ Useful variables:
 
 ## Reproducibility
 
-Every tool defaults to `latest`, which is convenient and **not reproducible**: two
-machines provisioned a month apart get different versions. Pin what matters, in
-`playbooks/roles/<tool>/defaults/main.yml` or on the command line:
+Twelve tools are pinned to a concrete release in
+`playbooks/roles/<tool>/defaults/main.yml`, so two machines provisioned months apart
+get the same binary: kubectl, helm, kind, kwok, k9s, krew, helmfile, nerdctl, crictl,
+yq, sops, starship.
+
+Override per run, or edit the default to bump:
 
 ```bash
-ansible-playbook playbooks/install_clis.yml -c local -K \
-  -e kubectl_version=v1.30.0 -e helm_version=v3.15.2
+ansible-playbook playbooks/install_clis.yml -c local -K -e kubectl_version=v1.30.0
+ansible-playbook playbooks/install_clis.yml -c local -K -e kubectl_version=latest
 ```
 
-A re-run is idempotent by default: each role probes the installed version first and
-skips when it already matches. `clis_state=latest` is the explicit opt-in to upgrade —
-the same semantics as `state: present` versus `state: latest` on the apt module.
+A re-run is idempotent: each role probes the installed version first and skips when it
+already matches. Moving a pin is detected and reinstalls. `clis_state=latest` is the
+explicit opt-in to upgrade everything past its pin — the same semantics as
+`state: present` versus `state: latest` on the apt module.
+
+Not pinned, and why:
+
+| Tool | Reason |
+|---|---|
+| copilot | the vendor installer offers no version selection |
+| terraform, docker, gh, podman, jq, wezterm | installed from apt repositories; pin through `terraform_version` as an apt version string if needed |
+
+**Dependabot does not watch these pins** — no ecosystem understands versions living in
+Ansible defaults. It covers the GitHub Actions tags and the test image only. What
+guards the pins is `make test-pins`, which installs every pinned version in a
+container and fails on a yanked tag or a changed asset URL. It runs in CI.
 
 ## Bootstrap on a new machine
 
@@ -162,6 +178,8 @@ only honest way to check what happens on a machine that has never been touched:
 ```bash
 ./test/run.sh dotfiles        # full dotfiles.yml, twice, asserts idempotence
 ./test/run.sh clis [role]     # install_clis.yml, optionally a single role
+./test/run.sh rollback        # deploy then roll back, asserts the restore
+./test/run.sh pins            # every pinned tool version still installs
 ./test/run.sh wezterm         # installs wezterm and parses the versioned config
 ./test/run.sh shell           # interactive shell in the test bed
 ```
@@ -180,8 +198,14 @@ What `dotfiles` asserts:
 - the preflight refuses to run when a prerequisite is missing
 - nothing was written into the repo
 
+The container runs `bash -c`, not `bash -lc`: a login shell executes `~/.bash_logout`
+on the way out, and Ubuntu's ends with a test that returns 1 when `clear_console` is
+absent — under `set -e` that status silently overrides an explicit `exit 0` and turns a
+passing target into a failure.
+
 Caveats: daemons (docker, podman) install but do not start in a container,
-and `dotfiles_set_default_shell` is left off, so `chsh` is never exercised.
+`dotfiles_set_default_shell` is left off so `chsh` is never exercised, and the copilot
+role is not covered.
 
 ## Backups and rollback
 

@@ -60,6 +60,16 @@ jobs:
       - name: Deploy and roll back
         run: ./test/run.sh rollback
 
+  pins:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Dependabot cannot watch tool versions living in Ansible defaults, so this
+      # is the only thing standing between a yanked tag and a broken bootstrap.
+      - name: Install every pinned version
+        run: ./test/run.sh pins
+
   wezterm-config:
     runs-on: ubuntu-latest
     steps:

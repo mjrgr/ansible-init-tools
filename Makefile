@@ -40,6 +40,10 @@ test-clis: ## Run install_clis.yml in a container (ROLE=<name> for one role)
 test-rollback: ## Deploy then roll back in a container, assert the restore
 	./test/run.sh rollback
 
+.PHONY: test-pins
+test-pins: ## Check every pinned tool version still installs
+	./test/run.sh pins
+
 .PHONY: test-wezterm
 test-wezterm: ## Install wezterm in a container and parse the versioned config
 	./test/run.sh wezterm
