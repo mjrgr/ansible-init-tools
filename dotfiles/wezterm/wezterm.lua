@@ -5,6 +5,14 @@ local config = wezterm.config_builder()
 config.default_workspace = 'main'
 
 -- ============================================================
+-- Input (Linux/Wayland)
+-- ============================================================
+-- This build's native Wayland input path drops keystrokes (dead keys,
+-- accented characters) and swallows some Ctrl+key bindings (e.g. Ctrl+R).
+-- XWayland doesn't have these bugs, so force it rather than native Wayland.
+config.enable_wayland = false
+
+-- ============================================================
 -- Rendering / perf
 -- ============================================================
 config.front_end = 'OpenGL'
@@ -176,7 +184,13 @@ config.keys = {
   { key = 'LeftArrow',  mods = 'CTRL|SHIFT', action = act.MoveTabRelative(-1) },
   { key = 'RightArrow', mods = 'CTRL|SHIFT', action = act.MoveTabRelative(1) },
   { key = 'R', mods = 'CTRL|ALT', action = act.ReloadConfiguration },
-  { key = 'r', mods = 'CTRL|SHIFT', action = act.PromptInputLine {
+  -- WezTerm's own default binds plain Ctrl+R to ReloadConfiguration, silently
+  -- eating the shell's fzf history search. Free it up for the terminal app.
+  -- Case matters here: the built-in default is registered as key='R', and an
+  -- override only cancels it if declared with the exact same case.
+  { key = 'R', mods = 'CTRL', action = act.DisableDefaultAssignment },
+  -- Off the r key on purpose: Ctrl+R is the shell's fzf history search.
+  { key = 'e', mods = 'CTRL|SHIFT', action = act.PromptInputLine {
       description = 'Tab title:',
       action = wezterm.action_callback(function(window, pane, line)
         if line and line ~= '' then window:active_tab():set_title(line) end

@@ -1,0 +1,13 @@
+---
+# Pinned so two machines provisioned months apart get the same binary.
+# Set to "latest" to track upstream, or override on the command line:
+#   -e fzf_version=<tag>
+# Bump deliberately, then re-run the container tests.
+#
+# Not installed from apt: Debian/Ubuntu ship fzf several years behind, and the
+# shell integration this repo relies on (`fzf --zsh`) only exists from 0.48
+# onward. An apt fzf paired with a freshly-fetched key-bindings.zsh from
+# upstream's master branch is exactly the version-skew that broke Ctrl+R
+# history search with "not a valid integer: 20+" (--min-height 20+ is CLI
+# syntax the old binary didn't understand).
+fzf_version: "v0.74.2"

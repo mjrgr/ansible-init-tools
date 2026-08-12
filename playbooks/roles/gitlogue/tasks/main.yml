@@ -1,0 +1,27 @@
+---
+# role: gitlogue
+- name: "Decide whether gitlogue must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: gitlogue
+    clis_bin: /usr/local/bin/gitlogue
+    clis_target: "{{ gitlogue_version }}"
+
+- name: "Install gitlogue"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    VERSION="{{ gitlogue_version }}"
+    latest_tag() {
+      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+        | sed 's#.*/tag/##'
+    }
+    [ "$VERSION" = latest ] && VERSION=$(latest_tag unhappychoice/gitlogue)
+    curl -fsSL -o /tmp/gitlogue.tar.gz \
+      "https://github.com/unhappychoice/gitlogue/releases/download/${VERSION}/gitlogue-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+    tar xzf /tmp/gitlogue.tar.gz -C /tmp gitlogue
+    install -m 0755 /tmp/gitlogue /usr/local/bin/gitlogue
+    rm -f /tmp/gitlogue.tar.gz /tmp/gitlogue
+    /usr/local/bin/gitlogue --version
+  args:
+    executable: /bin/bash
+  when: clis_need_install | bool

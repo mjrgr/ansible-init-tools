@@ -27,13 +27,13 @@
       - claude
 
   tasks:
-    - name: "Refuse to run on a non-Debian family"
+    - name: "Refuse to run on a non-apt system"
       ansible.builtin.fail:
         msg: >-
           This playbook targets Debian/Ubuntu. Detected
           {{ ansible_distribution }} {{ ansible_distribution_version }}
-          (family {{ ansible_os_family }}).
-      when: ansible_os_family != 'Debian'
+          (family {{ ansible_os_family }}, pkg_mgr {{ ansible_pkg_mgr }}).
+      when: ansible_pkg_mgr != 'apt'
       tags: [always]
 
     - name: "Prepare the directory tree and backup location"

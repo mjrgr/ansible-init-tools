@@ -1,0 +1,30 @@
+---
+# role: vhs
+# Installs the vhs binary only. Recording tapes also needs ttyd and ffmpeg on
+# PATH; vhs prints which one is missing the first time you run a .tape file.
+- name: "Decide whether vhs must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: vhs
+    clis_bin: /usr/local/bin/vhs
+    clis_target: "{{ vhs_version }}"
+
+- name: "Install vhs"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    VERSION="{{ vhs_version }}"
+    latest_tag() {
+      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+        | sed 's#.*/tag/##'
+    }
+    [ "$VERSION" = latest ] && VERSION=$(latest_tag charmbracelet/vhs)
+    V="${VERSION#v}"
+    curl -fsSL -o /tmp/vhs.tar.gz \
+      "https://github.com/charmbracelet/vhs/releases/download/v${V}/vhs_${V}_Linux_x86_64.tar.gz"
+    tar xzf /tmp/vhs.tar.gz -C /tmp --strip-components=1 "vhs_${V}_Linux_x86_64/vhs"
+    install -m 0755 /tmp/vhs /usr/local/bin/vhs
+    rm -f /tmp/vhs.tar.gz /tmp/vhs
+    /usr/local/bin/vhs --version
+  args:
+    executable: /bin/bash
+  when: clis_need_install | bool

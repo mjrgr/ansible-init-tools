@@ -18,13 +18,17 @@
       - helmfile
       - nerdctl
       - crictl
-      - terraform
+      - opentofu
       - yq
       - jq
       - gh
       - sops
       - starship
       - wezterm
+      - glow
+      - vhs
+      - gitlogue
+      - fzf
 
     common_packages:
       - git
@@ -33,7 +37,6 @@
       - gnupg
       - unzip
       - zsh
-      - fzf
       - age
       - fontconfig
       - apt-transport-https
@@ -42,13 +45,33 @@
       - lsb-release
 
   tasks:
-    - name: "Refuse to run on a non-Debian family"
+    - name: "Refuse to run on a non-apt system"
       ansible.builtin.fail:
         msg: >-
           This playbook targets Debian/Ubuntu (apt). Detected
           {{ ansible_distribution }} {{ ansible_distribution_version }}
-          (family {{ ansible_os_family }}).
-      when: ansible_os_family != 'Debian'
+          (family {{ ansible_os_family }}, pkg_mgr {{ ansible_pkg_mgr }}).
+      when: ansible_pkg_mgr != 'apt'
+      tags: [always]
+
+    # The apt-based terraform role used to add this source. opentofu replaced it
+    # with a binary download, so the source is now unmanaged. On a box where a
+    # HashiCorp repo already existed under a different keyring path, apt is left
+    # with two conflicting Signed-By lines for the same URL and refuses to read
+    # the sources list at all — breaking every apt task below, not just this one.
+    - name: "Remove the now-unmanaged HashiCorp apt source"
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/hashicorp.list
+        state: absent
+      tags: [always]
+
+    - name: "Remove the HashiCorp keyring the old terraform role installed"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/keyrings/hashicorp.gpg
+        - /etc/apt/keyrings/hashicorp.gpg.armored
       tags: [always]
 
     # No cache_valid_time here: it trusts the mtime of /var/lib/apt/lists, which

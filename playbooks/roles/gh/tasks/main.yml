@@ -9,6 +9,15 @@
     dest: /etc/apt/keyrings/githubcli.gpg
     mode: "0644"
 
+# apt_repository appends rather than replaces: if this repo was ever added by
+# hand (GitHub's own docs use a different keyring filename), the old line
+# stays and apt refuses the file over the Signed-By mismatch. Starting from a
+# clean file makes this idempotent regardless of what pre-existed.
+- name: "Remove any pre-existing GitHub CLI apt source"
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/github-cli.list
+    state: absent
+
 - name: "Add the GitHub CLI apt source"
   ansible.builtin.apt_repository:
     repo: >-

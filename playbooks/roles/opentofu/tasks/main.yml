@@ -1,0 +1,33 @@
+---
+# role: opentofu
+# Binary download rather than the apt repository: apt.releases.hashicorp.com
+# collides with any stale hashicorp-archive-keyring left on the box by an
+# unrelated install, producing a Signed-By conflict apt refuses to resolve.
+# OpenTofu's own apt repo would hit the same class of issue on a dirty machine,
+# so this role sidesteps repositories entirely, same as kubectl/yq/k9s.
+- name: "Decide whether opentofu must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: opentofu
+    clis_bin: /usr/local/bin/tofu
+    clis_target: "{{ opentofu_version }}"
+
+- name: "Install opentofu"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    VERSION="{{ opentofu_version }}"
+    latest_tag() {
+      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+        | sed 's#.*/tag/##'
+    }
+    [ "$VERSION" = latest ] && VERSION=$(latest_tag opentofu/opentofu)
+    V="${VERSION#v}"
+    curl -fsSL -o /tmp/tofu.tar.gz \
+      "https://github.com/opentofu/opentofu/releases/download/v${V}/tofu_${V}_linux_amd64.tar.gz"
+    tar xzf /tmp/tofu.tar.gz -C /tmp tofu
+    install -m 0755 /tmp/tofu /usr/local/bin/tofu
+    rm -f /tmp/tofu.tar.gz /tmp/tofu
+    /usr/local/bin/tofu --version
+  args:
+    executable: /bin/bash
+  when: clis_need_install | bool

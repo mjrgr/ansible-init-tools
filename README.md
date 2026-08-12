@@ -24,7 +24,7 @@ dotfiles** on **Ubuntu / Debian**.
 ## Included CLIs / utilities
 - kubectl, helm, kind, kwok, k9s, krew, helmfile
 - docker, podman, nerdctl, crictl
-- terraform
+- opentofu
 - yq, jq
 - gh
 - sops, age
@@ -119,10 +119,10 @@ The user is resolved from `SUDO_USER`, not `ansible_user_id`: the play declares
 
 ## Reproducibility
 
-Twelve tools are pinned to a concrete release in
+Thirteen tools are pinned to a concrete release in
 `playbooks/roles/<tool>/defaults/main.yml`, so two machines provisioned months apart
 get the same binary: kubectl, helm, kind, kwok, k9s, krew, helmfile, nerdctl, crictl,
-yq, sops, starship.
+yq, sops, starship, opentofu.
 
 Override per run, or edit the default to bump:
 
@@ -140,7 +140,7 @@ Not pinned, and why:
 
 | Tool | Reason |
 |---|---|
-| terraform, docker, gh, podman, jq, wezterm | installed from apt repositories; pin through `terraform_version` as an apt version string if needed |
+| docker, gh, podman, jq, wezterm | installed from apt repositories, which track whatever apt has at install time |
 | claude | self-updating, and installed per user by the dotfiles play; pick a train with `dotfiles_claude_channel` |
 
 **Dependabot does not watch these pins** — no ecosystem understands versions living in
@@ -276,6 +276,6 @@ False positives go in `.gitleaks.toml` as a narrow rule — never by disabling t
 
 ## Notes
 - Debian/Ubuntu only. Both playbooks refuse to run elsewhere rather than failing halfway.
-- apt-based tools (docker, gh, terraform, podman, jq, wezterm) go through the `apt`
+- apt-based tools (docker, gh, podman, jq, wezterm) go through the `apt`
   module and its repositories; the rest are binary downloads gated by a version probe.
 - - Daemons install but are not started or enabled — that is left to the machine's owner.

@@ -33,14 +33,16 @@
     loop_var: dl
     label: "{{ dl.dest }}"
 
-# Previously downloaded from .zshrc on first start: a network call on the shell
-# startup path, which a proxy can truncate into an empty file that the guard then
-# accepts forever. Fetched here instead, where a failure is visible.
-- name: "Fetch the fzf key bindings"
-  ansible.builtin.get_url:
-    url: https://raw.githubusercontent.com/junegunn/fzf/master/shell/key-bindings.zsh
-    dest: "{{ dotfiles_home }}/.fzf-key-bindings.zsh"
-    mode: "0644"
+# Previously fetched from junegunn/fzf's master branch, which drifts ahead of
+# whatever fzf version is actually installed (the `fzf` role, pinned) and can
+# use CLI syntax that version doesn't support — this is exactly what broke
+# Ctrl+R history search with "not a valid integer: 20+". `fzf --zsh` in
+# .zshrc now generates the integration from the installed binary itself, so
+# it can never drift. Only cleans up a file from a previous run.
+- name: "Remove the now-unmanaged fzf key bindings file"
+  ansible.builtin.file:
+    path: "{{ dotfiles_home }}/.fzf-key-bindings.zsh"
+    state: absent
 
 - name: "Drop local override templates (never overwritten)"
   ansible.builtin.copy:

@@ -1,6 +1,7 @@
 # ╔══════════════════════════════════════════════════════════════╗
 # ║              starship.toml — DevOps Edition                  ║
 # ║   Nerd Font requis : https://www.nerdfonts.com/font-downloads ║
+# ║   Palette : Tokyo Night                                       ║
 # ╚══════════════════════════════════════════════════════════════╝
 # Placement : ~/.config/starship.toml
 
@@ -13,7 +14,7 @@ command_timeout   = 800   # ms — avoids freezes on slow modules
 # Line 1: context (os, directory, git, cloud, tools)
 # Line 2: prompt character
 format = """
-[╭─](bold #585b70)\
+[╭─](bold #3b4261)\
 $os\
 $username\
 $hostname\
@@ -21,7 +22,7 @@ $directory\
 $git_branch\
 $git_status\
 $git_metrics\
-[─](bold #585b70)\
+[─](bold #3b4261)\
 $kubernetes\
 $helm\
 $terraform\
@@ -33,14 +34,14 @@ $ansible\
 $env_var\
 $cmd_duration\
 $line_break\
-[╰─](bold #585b70)$character"""
+[╰─](bold #3b4261)$character"""
 
 right_format = """$time"""
 
 # ─── OS ──────────────────────────────────────────────────────────────────────
 [os]
 disabled = false
-style = "bold #89b4fa"
+style = "bold #7aa2f7"
 
 [os.symbols]
 Windows = " "
@@ -54,20 +55,20 @@ Unknown = " "
 # ─── USER / HOST ─────────────────────────────────────────────────────────────
 [username]
 show_always = false          # n'affiche que si root ou SSH
-style_user  = "bold #a6e3a1"
-style_root  = "bold #f38ba8"
-format      = "[$user]($style)[@](bold #585b70)"
+style_user  = "bold #9ece6a"
+style_root  = "bold #f7768e"
+format      = "[$user]($style)[@](bold #3b4261)"
 
 [hostname]
 ssh_only = true
-style    = "bold #fab387"
+style    = "bold #ff9e64"
 format   = "[$hostname]($style) "
 
 # ─── RÉPERTOIRE ──────────────────────────────────────────────────────────────
 [directory]
-style              = "bold #00ff41"
+style              = "bold #7aa2f7"
 read_only          = " 󰌾"
-read_only_style    = "bold #f38ba8"
+read_only_style    = "bold #f7768e"
 truncation_length  = 4
 truncate_to_repo   = true
 format             = "[󰉋 $path]($style)[$read_only]($read_only_style) "
@@ -81,12 +82,12 @@ format             = "[󰉋 $path]($style)[$read_only]($read_only_style) "
 # ─── GIT ─────────────────────────────────────────────────────────────────────
 [git_branch]
 symbol            = "  "          # recognizable Nerd Font branch icon
-style             = "bold #89b4fa"
+style             = "bold #7dcfff"
 truncation_length = 24
 format            = "[$symbol$branch(:$remote_branch)]($style) "
 
 [git_status]
-style      = "bold #f38ba8"
+style      = "bold #f7768e"
 format     = "([$all_status$ahead_behind]($style) )"
 conflicted = "⚡"
 ahead      = "⇡${count}"
@@ -100,8 +101,8 @@ renamed    = "»${count}"
 deleted    = "✘${count}"
 
 [git_metrics]
-added_style   = "bold #a6e3a1"
-deleted_style = "bold #f38ba8"
+added_style   = "bold #9ece6a"
+deleted_style = "bold #f7768e"
 format        = "([+$added]($added_style) [-$deleted]($deleted_style) )"
 disabled      = false
 
@@ -109,23 +110,23 @@ disabled      = false
 [kubernetes]
 disabled = false
 symbol   = "󱃾 "
-style    = "bold #89dceb"
+style    = "bold #7dcfff"
 format   = "[$symbol$context( \\[$namespace\\])]($style) "
 
 # Color-code by environment
 [[kubernetes.contexts]]
 context_pattern = ".*prod.*"
-style           = "bold #f38ba8"
+style           = "bold #f7768e"
 context_alias   = "PROD"
 
 [[kubernetes.contexts]]
 context_pattern = ".*staging.*"
-style           = "bold #fab387"
+style           = "bold #ff9e64"
 context_alias   = "staging"
 
 [[kubernetes.contexts]]
 context_pattern = ".*dev.*"
-style           = "bold #a6e3a1"
+style           = "bold #9ece6a"
 context_alias   = "dev"
 
 # ─── HELM ────────────────────────────────────────────────────────────────────
@@ -134,22 +135,24 @@ context_alias   = "dev"
 command     = "helm version --short 2>/dev/null | grep -oP 'v[0-9]+\\.[0-9]+\\.[0-9]+'"
 when        = "command -v helm"
 symbol      = "⎈ "
-style       = "bold #cba6f7"
+style       = "bold #bb9af7"
 format      = "[$symbol($output)]($style) "
 description = "Helm version"
 
-# ─── TERRAFORM ───────────────────────────────────────────────────────────────
+# ─── TERRAFORM / OPENTOFU ────────────────────────────────────────────────────
+# Starship's module is still named `terraform`; it detects *.tf / .terraform
+# regardless of which binary (terraform or tofu) manages them.
 [terraform]
 disabled    = false
 symbol      = "󱁢 "
-style       = "bold #cba6f7"
+style       = "bold #9d7cd8"
 format      = "[$symbol$workspace]($style) "
 
 # ─── DOCKER ──────────────────────────────────────────────────────────────────
 [docker_context]
 disabled = false
 symbol   = " "
-style    = "bold #89b4fa"
+style    = "bold #7aa2f7"
 format   = "[$symbol$context]($style) "
 only_with_files = false
 
@@ -158,28 +161,28 @@ only_with_files = false
 command     = "ansible --version 2>/dev/null | head -1 | awk '{print $2}' | tr -d '['"
 when        = "[[ -f ansible.cfg || -f playbook.yml || -f site.yml ]]"
 symbol      = "  "
-style       = "bold #f38ba8"
+style       = "bold #f7768e"
 format      = "[$symbol($output)]($style) "
 description = "Ansible version (si fichier présent)"
 
 # ─── GOLANG ──────────────────────────────────────────────────────────────────
 [golang]
 symbol   = " "
-style    = "bold #89dceb"
+style    = "bold #7dcfff"
 format   = "[$symbol($version)]($style) "
 disabled = false
 
 # ─── RUST ────────────────────────────────────────────────────────────────────
 [rust]
 symbol   = "🦀 "
-style    = "bold #fab387"
+style    = "bold #ff9e64"
 format   = "[$symbol($version)]($style) "
 disabled = false
 
 # ─── PYTHON ──────────────────────────────────────────────────────────────────
 [python]
 symbol          = " "
-style           = "bold #f9e2af"
+style           = "bold #e0af68"
 format          = "[$symbol$pyenv_prefix($version)(\\($virtualenv\\))]($style) "
 detect_files    = ["requirements.txt", "setup.py", "pyproject.toml", "Pipfile", ".python-version"]
 disabled        = false
@@ -187,21 +190,21 @@ disabled        = false
 # ─── DURÉE DE COMMANDE ───────────────────────────────────────────────────────
 [cmd_duration]
 min_time   = 2000          # affiche si > 2s
-style      = "bold #f9e2af"
+style      = "bold #e0af68"
 format     = "[ $duration]($style) "
 
 # ─── HEURE ───────────────────────────────────────────────────────────────────
 [time]
 disabled    = false
-style       = "bold #585b70"
+style       = "bold #565f89"
 time_format = "%H:%M"
 format      = "[$time]($style)"
 
 # ─── CARACTÈRE DE PROMPT ─────────────────────────────────────────────────────
 [character]
-success_symbol = "[❯](bold #a6e3a1)"
-error_symbol   = "[❯](bold #f38ba8)"
-vimcmd_symbol  = "[❮](bold #89b4fa)"
+success_symbol = "[❯](bold #9ece6a)"
+error_symbol   = "[❯](bold #f7768e)"
+vimcmd_symbol  = "[❮](bold #7aa2f7)"
 
 # ─── DISABLED MODULES (keeps the prompt light) ───────────────────────────────
 [package]
@@ -224,4 +227,3 @@ disabled = true
 
 [java]
 disabled = true
-

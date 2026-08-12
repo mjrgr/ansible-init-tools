@@ -1,0 +1,28 @@
+---
+# role: fzf
+- name: "Decide whether fzf must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: fzf
+    clis_bin: /usr/local/bin/fzf
+    clis_target: "{{ fzf_version }}"
+
+- name: "Install fzf"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    VERSION="{{ fzf_version }}"
+    latest_tag() {
+      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+        | sed 's#.*/tag/##'
+    }
+    [ "$VERSION" = latest ] && VERSION=$(latest_tag junegunn/fzf)
+    V="${VERSION#v}"
+    curl -fsSL -o /tmp/fzf.tar.gz \
+      "https://github.com/junegunn/fzf/releases/download/v${V}/fzf-${V}-linux_amd64.tar.gz"
+    tar xzf /tmp/fzf.tar.gz -C /tmp fzf
+    install -m 0755 /tmp/fzf /usr/local/bin/fzf
+    rm -f /tmp/fzf.tar.gz /tmp/fzf
+    /usr/local/bin/fzf --version
+  args:
+    executable: /bin/bash
+  when: clis_need_install | bool
