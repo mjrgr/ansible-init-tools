@@ -22,6 +22,14 @@
     - zsh-syntax-highlighting
     - zsh-history-substring-search
 
+- name: "Clone fzf-tab plugin"
+  ansible.builtin.git:
+    repo: "https://github.com/Aloxaf/fzf-tab"
+    dest: "{{ dotfiles_home }}/.oh-my-zsh/custom/plugins/fzf-tab"
+    depth: 1
+    version: master
+    update: false
+
 - name: "Deploy zsh symlinks"
   ansible.builtin.include_tasks: "{{ role_path }}/../dotfiles_common/tasks/link.yml"
   loop:
@@ -43,6 +51,12 @@
   ansible.builtin.file:
     path: "{{ dotfiles_home }}/.fzf-key-bindings.zsh"
     state: absent
+
+- name: "Fetch fzf-git.sh"
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/junegunn/fzf-git.sh/main/fzf-git.sh
+    dest: "{{ dotfiles_home }}/.fzf-git.sh"
+    mode: "0644"
 
 - name: "Drop local override templates (never overwritten)"
   ansible.builtin.copy:

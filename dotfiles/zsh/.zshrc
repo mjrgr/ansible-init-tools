@@ -35,6 +35,7 @@ zstyle ':omz:update' frequency 7
 # The 3 external plugins are cloned by the `dotfiles_zsh` Ansible role.
 plugins=(
   # ── Shell UX
+  fzf-tab                       # fzf-powered tab completion — load before widget-wrapping plugins
   sudo                          # ESC ESC → prepend sudo
   zsh-autosuggestions           # grey inline suggestions (→ or ↓ to accept)
   zsh-syntax-highlighting       # live syntax highlighting
@@ -73,6 +74,7 @@ source "$ZSH/oh-my-zsh.sh"
 # matches whatever CLI flags that exact version supports, so it can't drift
 # ahead of the binary the way a script fetched separately from GitHub can.
 command -v fzf &>/dev/null && eval "$(fzf --zsh)"
+[[ -s "$HOME/.fzf-git.sh" ]] && source "$HOME/.fzf-git.sh"
 
 # ─── HISTORY ─────────────────────────────────────────────────────────────────
 HISTSIZE=50000
