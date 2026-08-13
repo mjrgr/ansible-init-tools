@@ -98,7 +98,7 @@ fi
 
 zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'  # case-insensitive
-zstyle ':completion:*:descriptions' format '%F{yellow}-- %d --%f'
+zstyle ':completion:*:descriptions' format $'\e[33m-- %d --\e[0m'  # raw ANSI: fzf-tab doesn't expand %F/%f prompt escapes
 
 # ─── EDITOR / TTY ────────────────────────────────────────────────────────────
 export EDITOR="vim"
