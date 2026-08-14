@@ -25,7 +25,7 @@ export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
 export ZSH="$HOME/.oh-my-zsh"
 export ZSH_CUSTOM="${ZSH_CUSTOM:-$ZSH/custom}"
 
-ZSH_THEME="gnzh"
+ZSH_THEME=""             # Starship gère le prompt, inutile de charger un thème oh-my-zsh
 DISABLE_UNTRACKED_FILES_DIRTY="true"  # Perf: don't mark untracked files as dirty
 
 zstyle ':omz:update' mode auto

@@ -16,10 +16,14 @@ command_timeout   = 800   # ms — avoids freezes on slow modules
 format = """
 [╭─](bold #3b4261)\
 $os\
+$sudo\
 $username\
 $hostname\
+$localip\
 $directory\
 $git_branch\
+${custom.git_protected}\
+$git_state\
 $git_status\
 $git_metrics\
 [─](bold #3b4261)\
@@ -31,10 +35,11 @@ $python\
 $golang\
 $rust\
 $ansible\
-$env_var\
+$shlvl\
+$jobs\
 $cmd_duration\
 $line_break\
-[╰─](bold #3b4261)$character"""
+[╰─](bold #3b4261)$status$character"""
 
 right_format = """$time"""
 
@@ -52,6 +57,13 @@ Arch    = " "
 Macos   = " "
 Unknown = " "
 
+# ─── SUDO ────────────────────────────────────────────────────────────────────
+[sudo]
+disabled = false
+style    = "bold #565f89"
+symbol   = "🔒 "
+format   = "[$symbol]($style)"
+
 # ─── USER / HOST ─────────────────────────────────────────────────────────────
 [username]
 show_always = false          # n'affiche que si root ou SSH
@@ -64,9 +76,15 @@ ssh_only = true
 style    = "bold #ff9e64"
 format   = "[$hostname]($style) "
 
+[localip]
+ssh_only = true
+disabled = false
+style    = "bold #565f89"
+format   = "[($local_ipv4)]($style) "
+
 # ─── RÉPERTOIRE ──────────────────────────────────────────────────────────────
 [directory]
-style              = "bold #7aa2f7"
+style              = "bold #00ff41"
 read_only          = " 󰌾"
 read_only_style    = "bold #f7768e"
 truncation_length  = 4
@@ -82,7 +100,7 @@ format             = "[󰉋 $path]($style)[$read_only]($read_only_style) "
 # ─── GIT ─────────────────────────────────────────────────────────────────────
 [git_branch]
 symbol            = "  "          # recognizable Nerd Font branch icon
-style             = "bold #7dcfff"
+style             = "bold #bb9af7"
 truncation_length = 24
 format            = "[$symbol$branch(:$remote_branch)]($style) "
 
@@ -100,6 +118,17 @@ staged     = "+${count}"
 renamed    = "»${count}"
 deleted    = "✘${count}"
 
+[custom.git_protected]
+command     = "true"
+when        = "git symbolic-ref --short HEAD 2>/dev/null | grep -qE '^(main|master|production|prod)$'"
+style       = "bold #ff9e64"
+format      = "[⚠]($style) "
+description = "Alerte si branche courante = main/master/production"
+
+[git_state]
+style         = "bold #ff9e64"
+format        = "\\([$state( $progress_current/$progress_total)]($style)\\) "
+
 [git_metrics]
 added_style   = "bold #9ece6a"
 deleted_style = "bold #f7768e"
@@ -110,7 +139,7 @@ disabled      = false
 [kubernetes]
 disabled = false
 symbol   = "󱃾 "
-style    = "bold #7dcfff"
+style    = "bold italic #73daca"
 format   = "[$symbol$context( \\[$namespace\\])]($style) "
 
 # Color-code by environment
@@ -135,7 +164,7 @@ context_alias   = "dev"
 command     = "helm version --short 2>/dev/null | grep -oP 'v[0-9]+\\.[0-9]+\\.[0-9]+'"
 when        = "command -v helm"
 symbol      = "⎈ "
-style       = "bold #bb9af7"
+style       = "bold #e0af68"
 format      = "[$symbol($output)]($style) "
 description = "Helm version"
 
@@ -152,7 +181,7 @@ format      = "[$symbol$workspace]($style) "
 [docker_context]
 disabled = false
 symbol   = " "
-style    = "bold #7aa2f7"
+style    = "bold #9ece6a"
 format   = "[$symbol$context]($style) "
 only_with_files = false
 
@@ -168,7 +197,7 @@ description = "Ansible version (si fichier présent)"
 # ─── GOLANG ──────────────────────────────────────────────────────────────────
 [golang]
 symbol   = " "
-style    = "bold #7dcfff"
+style    = "bold #9d7cd8"
 format   = "[$symbol($version)]($style) "
 disabled = false
 
@@ -187,6 +216,22 @@ format          = "[$symbol$pyenv_prefix($version)(\\($virtualenv\\))]($style) "
 detect_files    = ["requirements.txt", "setup.py", "pyproject.toml", "Pipfile", ".python-version"]
 disabled        = false
 
+# ─── SHELLS IMBRIQUÉS ────────────────────────────────────────────────────────
+[shlvl]
+disabled       = false
+threshold      = 2          # n'affiche qu'à partir de 2 niveaux imbriqués
+symbol         = "↕ "
+style          = "bold #ff9e64"
+format         = "[$symbol$shlvl]($style) "
+
+# ─── JOBS EN ARRIÈRE-PLAN ────────────────────────────────────────────────────
+[jobs]
+disabled       = false
+threshold      = 1
+symbol         = "✦ "
+style          = "bold #9d7cd8"
+format         = "[$symbol$number]($style) "
+
 # ─── DURÉE DE COMMANDE ───────────────────────────────────────────────────────
 [cmd_duration]
 min_time   = 2000          # affiche si > 2s
@@ -199,6 +244,13 @@ disabled    = false
 style       = "bold #565f89"
 time_format = "%H:%M"
 format      = "[$time]($style)"
+
+# ─── CODE DE SORTIE ──────────────────────────────────────────────────────────
+[status]
+disabled      = false
+style         = "bold #f7768e"
+symbol        = "✖ "
+format        = "[$symbol$status]($style) "
 
 # ─── CARACTÈRE DE PROMPT ─────────────────────────────────────────────────────
 [character]
