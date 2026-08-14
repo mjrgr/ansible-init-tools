@@ -41,38 +41,91 @@ config.adjust_window_size_when_changing_font_size = false
 local DARK, LIGHT = 'Catppuccin Mocha', 'Catppuccin Latte'
 
 local function current_scheme()
-  -- wezterm.gui is absent in the mux server
+  -- wezterm.gui is absent in the mux server, which has no appearance to read
   if wezterm.gui and wezterm.gui.get_appearance():find 'Dark' then return DARK end
   if wezterm.gui then return LIGHT end
   return DARK
 end
 
-config.color_scheme = current_scheme()
+-- get_builtin_schemes() walks every bundled scheme. update-right-status runs once
+-- a second and format-tab-title far more often than that, so the two in use are
+-- resolved once and kept.
+local palettes = {}
+local function palette_for(scheme)
+  if not palettes[scheme] then
+    palettes[scheme] = wezterm.color.get_builtin_schemes()[scheme]
+  end
+  return palettes[scheme]
+end
 
-local palette = wezterm.color.get_builtin_schemes()[config.color_scheme]
-config.window_frame = {
-  font = wezterm.font { family = 'JetBrainsMono Nerd Font', weight = 'Bold' },
-  font_size = 11.0,
-  active_titlebar_bg = palette.background,
-  inactive_titlebar_bg = palette.background,
-}
-config.colors = {
-  tab_bar = {
-    inactive_tab_edge = palette.background,
-  },
-}
+-- Everything the scheme drives, in one place: applied to `config` at load time,
+-- re-applied as overrides when the desktop preference flips.
+local function theme(scheme)
+  local p = palette_for(scheme)
+  return {
+    color_scheme = scheme,
+    window_frame = {
+      font = wezterm.font { family = 'JetBrainsMono Nerd Font', weight = 'Bold' },
+      font_size = 11.0,
+      active_titlebar_bg = p.background,
+      inactive_titlebar_bg = p.background,
+    },
+    colors = { tab_bar = { inactive_tab_edge = p.background } },
+  }
+end
+
+local initial = theme(current_scheme())
+config.color_scheme = initial.color_scheme
+config.window_frame = initial.window_frame
+config.colors = initial.colors
+
+-- Evaluated at load time, the scheme only ever tracked the desktop at startup:
+-- switching Zorin to light left the terminal dark until an explicit reload.
+-- wezterm raises window-config-reloaded when the system appearance changes, so
+-- re-deriving here is what makes it actually follow — titlebar and tab bar
+-- included, which a bare color_scheme override would leave on the old palette.
+wezterm.on('window-config-reloaded', function(window)
+  local want = current_scheme()
+  local overrides = window:get_config_overrides() or {}
+  -- set_config_overrides re-fires this event; comparing against the scheme in
+  -- force (override first, load-time value before any flip) ends the loop and
+  -- keeps startup from applying an override it does not need.
+  if (overrides.color_scheme or config.color_scheme) == want then return end
+  local t = theme(want)
+  overrides.color_scheme = t.color_scheme
+  overrides.window_frame = t.window_frame
+  overrides.colors = t.colors
+  window:set_config_overrides(overrides)
+end)
+
+local function window_palette(window)
+  local overrides = window:get_config_overrides() or {}
+  return palette_for(overrides.color_scheme or config.color_scheme)
+end
 
 -- ============================================================
 -- Window
 -- ============================================================
-config.window_background_opacity = 0.98
+local OPACITY = 0.98
+config.window_background_opacity = OPACITY
 config.window_decorations = 'RESIZE'
 config.window_padding = { left = 8, right = 8, top = 6, bottom = 4 }
 config.window_close_confirmation = 'AlwaysPrompt'
 config.skip_close_confirmation_for_processes_named = {
   'bash', 'zsh', 'fish', 'sh',
 }
+-- Disabling the audible bell without a replacement made a bell in a background
+-- tab completely silent. The flash is on the cursor rather than the whole
+-- window: at 0.98 opacity a full-window flash reads as the desktop showing
+-- through, not as a bell.
 config.audible_bell = 'Disabled'
+config.visual_bell = {
+  fade_in_duration_ms = 75,
+  fade_in_function = 'EaseIn',
+  fade_out_duration_ms = 150,
+  fade_out_function = 'EaseOut',
+  target = 'CursorColor',
+}
 config.scrollback_lines = 50000
 
 -- ============================================================
@@ -104,6 +157,18 @@ local function tab_runs_claude(tab)
   return false
 end
 
+-- Only for tabs you are not looking at: wezterm clears the flag on the focused
+-- pane, so on the active tab this is always false and the marker would just
+-- flicker. This is what a long build or a `terraform apply` finishing in a
+-- background tab now looks like.
+local function tab_has_unseen_output(tab)
+  if tab.is_active then return false end
+  for _, p in ipairs(tab.panes or {}) do
+    if p.has_unseen_output then return true end
+  end
+  return false
+end
+
 wezterm.on('format-tab-title', function(tab, tabs, panes, cfg, hover, max_width)
   local pane = tab.active_pane
   local title = pane.title
@@ -127,6 +192,11 @@ wezterm.on('format-tab-title', function(tab, tabs, panes, cfg, hover, max_width)
     table.insert(items, { Text = ' 󰚩' })
     table.insert(items, 'ResetAttributes')
   end
+  if tab_has_unseen_output(tab) then
+    table.insert(items, { Foreground = { Color = '#ff9e64' } })
+    table.insert(items, { Text = ' ●' })
+    table.insert(items, 'ResetAttributes')
+  end
   table.insert(items, { Text = ' ' })
   return items
 end)
@@ -138,7 +208,7 @@ wezterm.on('update-right-status', function(window, pane)
   table.insert(cells, ' ' .. (pane:get_user_vars().distro or pane:get_domain_name()))
   table.insert(cells, wezterm.strftime '%H:%M')
   window:set_right_status(wezterm.format {
-    { Foreground = { Color = palette.ansi[5] } },
+    { Foreground = { Color = window_palette(window).ansi[5] } },
     { Text = ' ' .. table.concat(cells, '  ') .. ' ' },
   })
 end)
@@ -178,7 +248,7 @@ end)
 
 wezterm.on('toggle-opacity', function(window)
   local o = window:get_config_overrides() or {}
-  o.window_background_opacity = (o.window_background_opacity == 1.0) and 0.98 or 1.0
+  o.window_background_opacity = (o.window_background_opacity == 1.0) and OPACITY or 1.0
   window:set_config_overrides(o)
 end)
 

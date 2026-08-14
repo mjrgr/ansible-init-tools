@@ -27,7 +27,11 @@
 [delta]
 	navigate = true          # n / N jump between files, as in less
 	line-numbers = true
-	hyperlinks = true        # file:line targets open in $EDITOR from the terminal
+	hyperlinks = true
+	# Without this, delta emits a bare file:// URL and a click lands at line 1.
+	# The code package registers the vscode:// scheme with xdg, so wezterm needs
+	# nothing of its own — OpenLinkAtMouseCursor hands the URL to the desktop.
+	hyperlinks-file-link-format = "vscode://file/{path}:{line}"
 	syntax-theme = base16    # follows the terminal palette, like BAT_THEME in .zshrc
 
 # zdiff3 keeps the common ancestor in the conflict block; delta renders it as a

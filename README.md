@@ -70,6 +70,14 @@ The zsh and WezTerm configs work together: `~/.config/zsh/wezterm.zsh` emits OSC
 semantic zones and publishes the current kubectl context as a user var, which
 `wezterm.lua` renders in the tab title and right status bar.
 
+The color scheme follows the desktop light/dark preference *live*, not only at
+startup: `window-config-reloaded` re-derives it and pushes titlebar and tab-bar
+colors along with it, which a bare `color_scheme` override would leave behind.
+
+A background tab marks itself with an amber ● once it has produced output you have
+not looked at, and the bell — silent since `audible_bell` was disabled — now flashes
+the cursor.
+
 A tab also shows a green 󰚩 while a Claude Code session runs in any of its panes.
 That one needs no shell cooperation — it reads the pane's foreground process — but
 it only recognises the native binary, which lives at
