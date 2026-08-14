@@ -1,0 +1,34 @@
+---
+# role: eza
+# Not from apt: noble ships 0.18.2 (early 2024), which predates --git-repos and
+# several of the --icons behaviours .zshrc relies on.
+
+# `eza --version` puts a tagline on line 1 and the version on line 2, so the
+# probe's default "first line that holds a number" would never match and the
+# role would reinstall on every run.
+- name: "Decide whether eza must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: eza
+    clis_bin: /usr/local/bin/eza
+    clis_version_cmd: "/usr/local/bin/eza --version | sed -n 2p"
+    clis_target: "{{ eza_version }}"
+
+- name: "Install eza"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    VERSION="{{ eza_version }}"
+    latest_tag() {
+      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+        | sed 's#.*/tag/##'
+    }
+    [ "$VERSION" = latest ] && VERSION=$(latest_tag eza-community/eza)
+    curl -fsSL -o /tmp/eza.tar.gz \
+      "https://github.com/eza-community/eza/releases/download/${VERSION}/eza_x86_64-unknown-linux-gnu.tar.gz"
+    tar xzf /tmp/eza.tar.gz -C /tmp ./eza
+    install -m 0755 /tmp/eza /usr/local/bin/eza
+    rm -f /tmp/eza.tar.gz /tmp/eza
+    /usr/local/bin/eza --version
+  args:
+    executable: /bin/bash
+  when: clis_need_install | bool

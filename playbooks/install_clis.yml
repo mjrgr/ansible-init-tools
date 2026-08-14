@@ -30,6 +30,11 @@
       - gitlogue
       - fzf
       - btop
+      - rust_clis
+      - eza
+      - delta
+      - lazygit
+      - vscode
 
     common_packages:
       - git

@@ -1,0 +1,58 @@
+---
+# role: vscode
+# Microsoft's own apt repository — the snap and the .deb-by-hand both self-update
+# outside apt, which is exactly what this repo exists to avoid.
+
+- name: "Fetch the Microsoft signing key"
+  ansible.builtin.get_url:
+    url: https://packages.microsoft.com/keys/microsoft.asc
+    dest: /etc/apt/keyrings/microsoft.asc.armored
+    mode: "0644"
+
+- name: "Dearmor the Microsoft signing key"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    gpg --yes --dearmor -o /etc/apt/keyrings/microsoft.gpg \
+      /etc/apt/keyrings/microsoft.asc.armored
+    chmod 644 /etc/apt/keyrings/microsoft.gpg
+  args:
+    executable: /bin/bash
+    creates: /etc/apt/keyrings/microsoft.gpg
+
+# The code package's postinst installs its own copy of the repository, under its
+# own keyring path. Two Signed-By lines for the same URL and apt refuses to read
+# sources.list.d at all — breaking every later role, not just this one. The
+# package ships a debconf question precisely to opt out, so the answer is
+# preseeded before it is ever unpacked.
+- name: "Tell the code package not to add its own apt source"
+  ansible.builtin.debconf:
+    name: code
+    question: code/add-microsoft-repo
+    vtype: boolean
+    value: "false"
+
+# Microsoft's filenames, not ours: this role writes vscode-msft.list. Deleting
+# the file apt_repository is about to recreate is what made an earlier version of
+# this role report changed on every single run.
+- name: "Remove the apt source the code package manages itself"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/sources.list.d/vscode.list
+    - /etc/apt/sources.list.d/vscode.sources
+
+- name: "Add the VS Code apt source"
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ 'amd64' if ansible_architecture == 'x86_64' else ansible_architecture }}
+      signed-by=/etc/apt/keyrings/microsoft.gpg]
+      https://packages.microsoft.com/repos/code stable main
+    filename: vscode-msft
+    state: present
+
+- name: "Install code"
+  ansible.builtin.apt:
+    name: code
+    state: "{{ 'latest' if clis_state == 'latest' else 'present' }}"
+    update_cache: true

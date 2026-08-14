@@ -162,9 +162,15 @@ case "$TARGET" in
       set -e
       PB="ansible-playbook /repo/playbooks/install_clis.yml -c local -i localhost,"
       fail=0
-      for role in kubectl helm kind kwok k9s krew helmfile nerdctl crictl yq sops starship; do
-        want=$(sed -n "s/^${role}_version: *\"\?\([^\"]*\)\"\?/\1/p" \
-               /repo/playbooks/roles/$role/defaults/main.yml)
+      # Derived, not listed: a hand-maintained list silently stops covering the
+      # roles added after it was last edited, which is the one thing this target
+      # exists to prevent. Any role whose defaults pin <role>_version qualifies;
+      # dotfiles_* roles are excluded because install_clis.yml does not run them.
+      for f in /repo/playbooks/roles/*/defaults/main.yml; do
+        role=$(basename "$(dirname "$(dirname "$f")")")
+        case "$role" in dotfiles_*) continue ;; esac
+        want=$(sed -n "s/^${role}_version: *\"\?\([^\"]*\)\"\?/\1/p" "$f")
+        [ -n "$want" ] || continue
         if $PB -e install_only=$role >/tmp/p.log 2>&1; then
           printf "  %-9s pinned=%-10s installed\n" "$role" "$want"
         else

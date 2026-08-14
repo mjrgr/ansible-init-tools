@@ -1,0 +1,31 @@
+---
+# role: delta
+# Not from apt: noble ships 0.16.5, which predates the `navigate` keybindings
+# and the hunk-header styling .gitconfig configures.
+
+- name: "Decide whether delta must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: delta
+    clis_bin: /usr/local/bin/delta
+    clis_target: "{{ delta_version }}"
+
+- name: "Install delta"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    VERSION="{{ delta_version }}"
+    latest_tag() {
+      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+        | sed 's#.*/tag/##'
+    }
+    [ "$VERSION" = latest ] && VERSION=$(latest_tag dandavison/delta)
+    DIR="delta-${VERSION}-x86_64-unknown-linux-gnu"
+    curl -fsSL -o /tmp/delta.tar.gz \
+      "https://github.com/dandavison/delta/releases/download/${VERSION}/${DIR}.tar.gz"
+    tar xzf /tmp/delta.tar.gz -C /tmp --strip-components=1 "${DIR}/delta"
+    install -m 0755 /tmp/delta /usr/local/bin/delta
+    rm -f /tmp/delta.tar.gz /tmp/delta
+    /usr/local/bin/delta --version
+  args:
+    executable: /bin/bash
+  when: clis_need_install | bool

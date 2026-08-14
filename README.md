@@ -28,12 +28,23 @@ dotfiles** on **Ubuntu / Debian**.
 - yq, jq
 - gh
 - sops, age
-- starship, wezterm
-- btop
+- starship, wezterm, vscode
+- btop, lazygit
+- eza, ripgrep, fd, bat, zoxide, delta
 - git, make, curl, wget, gnupg, unzip, fontconfig
 
 WezTerm comes from the official apt repository (`apt.fury.io/wez`): the distro
-packages lag several releases behind.
+packages lag several releases behind. Same reasoning for VS Code and
+`packages.microsoft.com` — with one extra step, since the `code` package installs
+its own copy of that repository from its postinst. The role preseeds
+`code/add-microsoft-repo=false` so apt is not left with two `Signed-By` lines for
+the same URL, which makes it refuse the whole of `sources.list.d`.
+
+The Rust CLIs are split by how fast they move. `rust_clis` takes ripgrep, fd, bat
+and zoxide from apt in one batch, and shims `fdfind`/`batcat` back to `fd`/`bat` —
+Debian renames them to avoid a clash with fdclone and bacula. eza and delta get
+their own roles and pinned binaries: the apt versions are a year or more behind
+and predate options the deployed configs use.
 
 ## Managed dotfiles
 
@@ -58,6 +69,12 @@ glyphs, and without the font the prompt and the tab bar render tofu.
 The zsh and WezTerm configs work together: `~/.config/zsh/wezterm.zsh` emits OSC 133
 semantic zones and publishes the current kubectl context as a user var, which
 `wezterm.lua` renders in the tab title and right status bar.
+
+A tab also shows a green 󰚩 while a Claude Code session runs in any of its panes.
+That one needs no shell cooperation — it reads the pane's foreground process — but
+it only recognises the native binary, which lives at
+`~/.local/share/claude/versions/<semver>`. An npm install runs under `node` and
+stays invisible.
 
 ## Usage
 
@@ -121,10 +138,11 @@ The user is resolved from `SUDO_USER`, not `ansible_user_id`: the play declares
 
 ## Reproducibility
 
-Thirteen tools are pinned to a concrete release in
+Every tool installed from a release binary is pinned to a concrete version in
 `playbooks/roles/<tool>/defaults/main.yml`, so two machines provisioned months apart
-get the same binary: kubectl, helm, kind, kwok, k9s, krew, helmfile, nerdctl, crictl,
-yq, sops, starship, opentofu.
+get the same binary. The list is not repeated here, or in the test suite: both derive
+it from the `<role>_version` defaults, so a role added later is covered without
+anyone remembering to register it.
 
 Override per run, or edit the default to bump:
 
@@ -142,7 +160,7 @@ Not pinned, and why:
 
 | Tool | Reason |
 |---|---|
-| docker, gh, podman, jq, wezterm | installed from apt repositories, which track whatever apt has at install time |
+| docker, gh, podman, jq, wezterm, vscode, rust_clis | installed from apt repositories, which track whatever apt has at install time |
 | claude | self-updating, and installed per user by the dotfiles play; pick a train with `dotfiles_claude_channel` |
 
 **Dependabot does not watch these pins** — no ecosystem understands versions living in

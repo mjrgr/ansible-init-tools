@@ -140,8 +140,16 @@ proxy-on() {
 export ANSIBLE_HOST_KEY_CHECKING=False
 
 # ─── ALIASES — NAVIGATION ────────────────────────────────────────────────────
-alias ll="ls -lah --color=auto"
-alias la="ls -A --color=auto"
+# eza when the `eza` role has run, coreutils otherwise: this file is deployed by
+# dotfiles.yml, which does not depend on install_clis.yml having run first.
+if command -v eza &>/dev/null; then
+  alias ll="eza -lah --icons --group-directories-first --git"
+  alias la="eza -a  --icons --group-directories-first"
+  alias lt="eza -a  --icons --tree --level=2 --git-ignore"
+else
+  alias ll="ls -lah --color=auto"
+  alias la="ls -A --color=auto"
+fi
 
 # ─── ALIASES — KUBERNETES ────────────────────────────────────────────────────
 alias k="kubectl"
@@ -215,6 +223,26 @@ export FZF_DEFAULT_OPTS="
   --color=marker:#a6e3a1,spinner:#f5c2e7,header:#89b4fa
 "
 export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git 2>/dev/null || find . -type f"
+
+# Previews, when the tools that render them are installed. Guarded the same way
+# as the ll aliases: dotfiles.yml can run before install_clis.yml.
+if command -v bat &>/dev/null; then
+  export FZF_CTRL_T_OPTS="--preview 'bat --style=numbers --color=always --line-range :300 {} 2>/dev/null'"
+fi
+if command -v eza &>/dev/null; then
+  export FZF_ALT_C_OPTS="--preview 'eza --tree --level=2 --icons --color=always {}'"
+fi
+
+# ─── BAT ─────────────────────────────────────────────────────────────────────
+# base16 renders through the terminal's own 16 colours instead of shipping its
+# own palette, so bat follows whatever scheme wezterm.lua is on rather than
+# fighting it. Catppuccin Mocha and Latte both stay coherent.
+export BAT_THEME="base16"
+
+# ─── ZOXIDE ──────────────────────────────────────────────────────────────────
+# Adds `z` and `zi`; `cd` is deliberately left alone. Must come after compinit —
+# the init script calls compdef.
+command -v zoxide &>/dev/null && eval "$(zoxide init zsh)"
 
 # ─── AUTOSUGGESTIONS ─────────────────────────────────────────────────────────
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=#585b70,underline"

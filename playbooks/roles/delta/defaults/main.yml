@@ -1,0 +1,9 @@
+---
+# Pinned so two machines provisioned months apart get the same binary.
+# Set to "latest" to track upstream, or override on the command line:
+#   -e delta_version=<tag>
+# Bump deliberately, then re-run the container tests.
+#
+# Upstream tags delta without a leading "v" — the probe strips one if present,
+# so both forms compare correctly, but the download URL needs the tag verbatim.
+delta_version: "0.19.2"

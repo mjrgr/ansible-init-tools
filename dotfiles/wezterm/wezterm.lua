@@ -83,6 +83,27 @@ config.tab_bar_at_bottom = false
 config.hide_tab_bar_if_only_one_tab = false
 config.tab_max_width = 40
 
+-- Claude Code installs as a native ELF at ~/.local/share/claude/versions/<semver>,
+-- and what wezterm reports is /proc/<pid>/exe — so the basename is a version
+-- number, not a command name. Matching the install path is what makes this fire;
+-- matching the leaf never would. An npm-installed Claude Code runs under `node`
+-- and is invisible here, which is the accepted limit of a process-based check:
+-- nothing has to be wired into the shell, so it works in any pane, any shell.
+local function is_claude(proc)
+  if not proc or proc == '' then return false end
+  return proc:find('/claude/versions/', 1, true) ~= nil
+      or proc:match('/claude$') ~= nil
+end
+
+-- Every pane of the tab, not just the active one: a claude left running in a
+-- split, on a tab you are not looking at, is the case the indicator exists for.
+local function tab_runs_claude(tab)
+  for _, p in ipairs(tab.panes or { tab.active_pane }) do
+    if is_claude(p.foreground_process_name) then return true end
+  end
+  return false
+end
+
 wezterm.on('format-tab-title', function(tab, tabs, panes, cfg, hover, max_width)
   local pane = tab.active_pane
   local title = pane.title
@@ -96,7 +117,18 @@ wezterm.on('format-tab-title', function(tab, tabs, panes, cfg, hover, max_width)
     suffix = ' 󱃾 ' .. (ctx:len() > 16 and ctx:sub(1, 16) .. '…' or ctx)
   end
   if pane.is_zoomed then suffix = suffix .. ' ' end
-  return { { Text = string.format(' %d:%s%s ', tab.tab_index + 1, title, suffix) } }
+
+  local items = { { Text = string.format(' %d:%s%s', tab.tab_index + 1, title, suffix) } }
+  if tab_runs_claude(tab) then
+    -- Same matrix green as the directory module in starship.toml, and a literal
+    -- rather than a palette index on purpose: it must read identically whether
+    -- the desktop is on Catppuccin Mocha or Latte.
+    table.insert(items, { Foreground = { Color = '#00ff41' } })
+    table.insert(items, { Text = ' 󰚩' })
+    table.insert(items, 'ResetAttributes')
+  end
+  table.insert(items, { Text = ' ' })
+  return items
 end)
 
 wezterm.on('update-right-status', function(window, pane)

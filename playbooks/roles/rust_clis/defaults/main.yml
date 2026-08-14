@@ -1,0 +1,18 @@
+---
+# Not pinned, on purpose: these come from apt and track whatever the release
+# ships. They are stable, slow-moving tools where a minor behind costs nothing.
+# The two fast-moving ones — eza and delta — have their own roles and their own
+# pinned binaries, because the apt versions there are a year or more behind.
+rust_clis_packages:
+  - ripgrep
+  - fd-find
+  - bat
+  - zoxide
+
+# Debian renames both binaries to avoid a clash with unrelated packages: `fd`
+# belongs to fdclone, `bat` to bacula-console-qt. Everything downstream —
+# FZF_DEFAULT_COMMAND in .zshrc, the fzf previews, upstream's own docs — calls
+# them fd and bat, so the shims are what make the config portable.
+rust_clis_shims:
+  - { link: fd, target: fdfind }
+  - { link: bat, target: batcat }

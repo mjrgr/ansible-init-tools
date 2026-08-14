@@ -13,6 +13,30 @@
 [safe]
 	directory = *
 
+# ─── DELTA ───────────────────────────────────────────────────────────────────
+# The `delta` role installs it, but dotfiles.yml does not require install_clis.yml
+# to have run — and a core.pager naming a missing binary breaks every command
+# that paginates, not just diffs. Hence the guard: git hands the value to sh, so
+# an `if` is enough, and unlike `delta || less` it cannot fall through to less
+# when delta exits non-zero (quitting the pager early does exactly that).
+[core]
+	pager = "if command -v delta >/dev/null 2>&1; then delta; else less; fi"
+[interactive]
+	diffFilter = "if command -v delta >/dev/null 2>&1; then delta --color-only; else cat; fi"
+
+[delta]
+	navigate = true          # n / N jump between files, as in less
+	line-numbers = true
+	hyperlinks = true        # file:line targets open in $EDITOR from the terminal
+	syntax-theme = base16    # follows the terminal palette, like BAT_THEME in .zshrc
+
+# zdiff3 keeps the common ancestor in the conflict block; delta renders it as a
+# third pane instead of the bare <<<<<<< markers.
+[merge]
+	conflictStyle = zdiff3
+[diff]
+	colorMoved = default
+
 [filter "lfs"]
 	process = git-lfs filter-process
 	required = true

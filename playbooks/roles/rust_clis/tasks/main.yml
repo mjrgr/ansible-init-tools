@@ -1,0 +1,29 @@
+---
+# role: rust_clis — the apt-packaged Rust CLIs, installed as one batch.
+
+- name: "Install the apt-packaged Rust CLIs"
+  ansible.builtin.apt:
+    name: "{{ rust_clis_packages }}"
+    state: "{{ 'latest' if clis_state == 'latest' else 'present' }}"
+    update_cache: true
+
+# Conditional rather than unconditional: a release that stops renaming the
+# binary ships /usr/bin/bat directly, and a shim pointing at a batcat that no
+# longer exists would shadow it with a dangling link.
+- name: "Check whether apt used the renamed binary names"
+  ansible.builtin.stat:
+    path: "/usr/bin/{{ item.target }}"
+  loop: "{{ rust_clis_shims }}"
+  loop_control:
+    label: "{{ item.target }}"
+  register: rust_clis_renamed
+
+- name: "Expose the renamed binaries under their upstream names"
+  ansible.builtin.file:
+    src: "/usr/bin/{{ item.item.target }}"
+    dest: "/usr/local/bin/{{ item.item.link }}"
+    state: link
+  loop: "{{ rust_clis_renamed.results }}"
+  loop_control:
+    label: "/usr/local/bin/{{ item.item.link }} -> {{ item.item.target }}"
+  when: item.stat.exists
