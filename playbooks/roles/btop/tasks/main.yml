@@ -1,0 +1,38 @@
+---
+# role: btop
+- name: "Decide whether btop must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: btop
+    clis_bin: /usr/local/bin/btop
+    clis_target: "{{ btop_version }}"
+
+# The distro package is several minors behind (noble ships 1.3.0), and the GPU
+# panel only landed in 1.4. Upstream publishes a static musl build, so the
+# release tarball is the shorter path to a current btop.
+#
+# The themes ship in that same tarball; btop finds them under
+# <prefix>/share/btop/themes, which is why the binary goes to /usr/local/bin and
+# the themes to /usr/local/share. Moving one without the other loses the theme.
+- name: "Install btop"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    VERSION="{{ btop_version }}"
+    latest_tag() {
+      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+        | sed 's#.*/tag/##'
+    }
+    [ "$VERSION" = latest ] && VERSION=$(latest_tag aristocratos/btop)
+    rm -rf /tmp/btop-unpack
+    mkdir -p /tmp/btop-unpack
+    curl -fsSL -o /tmp/btop.tar.gz \
+      "https://github.com/aristocratos/btop/releases/download/${VERSION}/btop-x86_64-unknown-linux-musl.tar.gz"
+    tar xzf /tmp/btop.tar.gz -C /tmp/btop-unpack
+    install -m 0755 /tmp/btop-unpack/btop/bin/btop /usr/local/bin/btop
+    install -d -m 0755 /usr/local/share/btop/themes
+    install -m 0644 /tmp/btop-unpack/btop/themes/*.theme /usr/local/share/btop/themes/
+    rm -rf /tmp/btop.tar.gz /tmp/btop-unpack
+    /usr/local/bin/btop --version
+  args:
+    executable: /bin/bash
+  when: clis_need_install | bool

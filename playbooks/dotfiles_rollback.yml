@@ -17,6 +17,7 @@
       - "{{ dotfiles_home }}/.config/starship.toml"
       - "{{ dotfiles_home }}/.config/zsh/wezterm.zsh"
       - "{{ dotfiles_home }}/.config/wezterm/wezterm.lua"
+      - "{{ dotfiles_home }}/.config/btop/btop.conf"
       - "{{ dotfiles_home }}/.kube/k8s-clusters.sh"
 
   tasks:

@@ -25,6 +25,7 @@
       - wezterm
       - fonts
       - claude
+      - btop
 
   tasks:
     - name: "Refuse to run on a non-apt system"

@@ -29,6 +29,7 @@
       - vhs
       - gitlogue
       - fzf
+      - btop
 
     common_packages:
       - git

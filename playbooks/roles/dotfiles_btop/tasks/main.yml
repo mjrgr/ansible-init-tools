@@ -1,0 +1,10 @@
+---
+# role: dotfiles_btop — btop config (the binary and the themes come from the `btop` role)
+
+- name: "Deploy the btop config"
+  ansible.builtin.include_tasks: "{{ role_path }}/../dotfiles_common/tasks/link.yml"
+  loop:
+    - { src: "{{ dotfiles_src }}/btop/btop.conf", dest: "{{ dotfiles_home }}/.config/btop/btop.conf" }
+  loop_control:
+    loop_var: dl
+    label: "{{ dl.dest }}"

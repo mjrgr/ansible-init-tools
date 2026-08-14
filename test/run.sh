@@ -65,7 +65,8 @@ case "$TARGET" in
       echo "==> deployed layout"
       for f in ~/.zshrc ~/.zshenv ~/.tmux.conf ~/.gitconfig \
                ~/.config/starship.toml ~/.config/zsh/wezterm.zsh \
-               ~/.config/wezterm/wezterm.lua ~/.kube/k8s-clusters.sh \
+               ~/.config/wezterm/wezterm.lua ~/.config/btop/btop.conf \
+               ~/.kube/k8s-clusters.sh \
                ~/.zshenv.local ~/.zshrc.local ~/.gitconfig.local; do
         printf "    %-30s %s\n" "${f#$HOME/}" "$(readlink -f "$f" 2>/dev/null || echo MISSING)"
       done

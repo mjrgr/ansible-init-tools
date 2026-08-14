@@ -29,6 +29,7 @@ dotfiles** on **Ubuntu / Debian**.
 - gh
 - sops, age
 - starship, wezterm
+- btop
 - git, make, curl, wget, gnupg, unzip, fontconfig
 
 WezTerm comes from the official apt repository (`apt.fury.io/wez`): the distro
@@ -45,6 +46,7 @@ packages lag several releases behind.
 | `tmux` | `~/.tmux.conf` |
 | `git` | `~/.gitconfig` |
 | `wezterm` | `~/.config/wezterm/wezterm.lua` |
+| `btop` | `~/.config/btop/btop.conf` |
 
 Each one is a symlink into `dotfiles/` in this repo, so an edit made in `$HOME` shows
 up in `git status` with no copy-back step. The `fonts` group is the exception — a font
