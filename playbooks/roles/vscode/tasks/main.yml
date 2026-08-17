@@ -3,11 +3,21 @@
 # Microsoft's own apt repository — the snap and the .deb-by-hand both self-update
 # outside apt, which is exactly what this repo exists to avoid.
 
+- name: "Check for an already dearmored Microsoft key"
+  ansible.builtin.stat:
+    path: /etc/apt/keyrings/microsoft.gpg
+  register: vscode_keyring
+
 - name: "Fetch the Microsoft signing key"
   ansible.builtin.get_url:
     url: https://packages.microsoft.com/keys/microsoft.asc
     dest: /etc/apt/keyrings/microsoft.asc.armored
     mode: "0644"
+  register: vscode_key_fetch
+  retries: 3
+  delay: 5
+  until: vscode_key_fetch is succeeded
+  when: not vscode_keyring.stat.exists
 
 - name: "Dearmor the Microsoft signing key"
   ansible.builtin.shell: |

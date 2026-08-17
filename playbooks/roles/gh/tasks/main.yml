@@ -3,11 +3,21 @@
 # Upstream ships an already-dearmored keyring, so it drops straight into
 # /etc/apt/keyrings with no gpg --dearmor step.
 
+- name: "Check for an already installed GitHub CLI keyring"
+  ansible.builtin.stat:
+    path: /etc/apt/keyrings/githubcli.gpg
+  register: gh_keyring
+
 - name: "Fetch the GitHub CLI keyring"
   ansible.builtin.get_url:
     url: https://cli.github.com/packages/githubcli-archive-keyring.gpg
     dest: /etc/apt/keyrings/githubcli.gpg
     mode: "0644"
+  register: gh_keyring_fetch
+  retries: 3
+  delay: 5
+  until: gh_keyring_fetch is succeeded
+  when: not gh_keyring.stat.exists
 
 # apt_repository appends rather than replaces: if this repo was ever added by
 # hand (GitHub's own docs use a different keyring filename), the old line

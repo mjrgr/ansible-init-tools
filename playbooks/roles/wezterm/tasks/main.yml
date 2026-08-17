@@ -2,11 +2,21 @@
 # role: wezterm
 # Official apt repository — the distro packages lag several releases behind.
 
+- name: "Check for an already dearmored WezTerm key"
+  ansible.builtin.stat:
+    path: /etc/apt/keyrings/wezterm-fury.gpg
+  register: wezterm_keyring
+
 - name: "Fetch the WezTerm signing key"
   ansible.builtin.get_url:
     url: https://apt.fury.io/wez/gpg.key
     dest: /etc/apt/keyrings/wezterm-fury.gpg.armored
     mode: "0644"
+  register: wezterm_key_fetch
+  retries: 3
+  delay: 5
+  until: wezterm_key_fetch is succeeded
+  when: not wezterm_keyring.stat.exists
 
 - name: "Dearmor the WezTerm signing key"
   ansible.builtin.shell: |

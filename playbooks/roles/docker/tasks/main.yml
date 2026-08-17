@@ -3,11 +3,21 @@
 # docker-ce does not exist in the Ubuntu/Debian archives — the repository below is
 # what makes the package resolvable at all.
 
+- name: "Check for an already dearmored Docker key"
+  ansible.builtin.stat:
+    path: /etc/apt/keyrings/docker.gpg
+  register: docker_keyring
+
 - name: "Fetch the Docker signing key"
   ansible.builtin.get_url:
     url: https://download.docker.com/linux/ubuntu/gpg
     dest: /etc/apt/keyrings/docker.gpg.armored
     mode: "0644"
+  register: docker_key_fetch
+  retries: 3
+  delay: 5
+  until: docker_key_fetch is succeeded
+  when: not docker_keyring.stat.exists
 
 - name: "Dearmor the Docker signing key"
   ansible.builtin.shell: |
