@@ -23,12 +23,12 @@
     set -euo pipefail
     VERSION="{{ lazygit_version }}"
     latest_tag() {
-      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+      curl -fsSLI --retry 3 --retry-all-errors --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
         | sed 's#.*/tag/##'
     }
     [ "$VERSION" = latest ] && VERSION=$(latest_tag jesseduffield/lazygit)
     V="${VERSION#v}"
-    curl -fsSL -o /tmp/lazygit.tar.gz \
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /tmp/lazygit.tar.gz \
       "https://github.com/jesseduffield/lazygit/releases/download/${VERSION}/lazygit_${V}_linux_x86_64.tar.gz"
     tar xzf /tmp/lazygit.tar.gz -C /tmp lazygit
     install -m 0755 /tmp/lazygit /usr/local/bin/lazygit

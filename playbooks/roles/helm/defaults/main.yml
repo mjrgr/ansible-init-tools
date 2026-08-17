@@ -3,4 +3,4 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e helm_version=<tag>
 # Bump deliberately, then re-run the container tests.
-helm_version: "v4.2.3"
+helm_version: "v4.2.4"

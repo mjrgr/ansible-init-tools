@@ -14,11 +14,11 @@
     # api.github.com allows 60 unauthenticated calls per hour per IP, which a
     # shared egress address burns through; the release redirect has no such limit.
     latest_tag() {
-      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+      curl -fsSLI --retry 3 --retry-all-errors --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
         | sed 's#.*/tag/##'
     }
     [ "$VERSION" = latest ] && VERSION=$(latest_tag getsops/sops)
-    curl -fsSL -o /usr/local/bin/sops \
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /usr/local/bin/sops \
       "https://github.com/getsops/sops/releases/download/${VERSION}/sops-${VERSION}.linux.amd64"
     chmod +x /usr/local/bin/sops
     /usr/local/bin/sops --version

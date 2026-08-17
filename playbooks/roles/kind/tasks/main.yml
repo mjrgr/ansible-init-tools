@@ -11,7 +11,7 @@
   ansible.builtin.shell: |
     set -euo pipefail
     VERSION="{{ kind_version }}"
-    curl -fsSL -o /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/${VERSION}/kind-linux-amd64"
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/${VERSION}/kind-linux-amd64"
     chmod +x /usr/local/bin/kind
     /usr/local/bin/kind --version
   args:

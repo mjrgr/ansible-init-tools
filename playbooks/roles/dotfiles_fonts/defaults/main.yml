@@ -1,6 +1,6 @@
 ---
 dotfiles_fonts_name: JetBrainsMono
-dotfiles_fonts_version: v3.2.1
+dotfiles_fonts_version: v3.5.0
 dotfiles_fonts_url: "https://github.com/ryanoasis/nerd-fonts/releases/download/{{ dotfiles_fonts_version }}/{{ dotfiles_fonts_name }}.zip"
 
 # The archive carries every weight and style; only what the configs ask for is kept.

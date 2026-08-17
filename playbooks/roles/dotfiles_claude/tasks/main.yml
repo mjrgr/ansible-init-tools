@@ -13,7 +13,7 @@
 - name: "Install Claude Code"
   ansible.builtin.shell: |
     set -euo pipefail
-    curl -fsSL https://claude.ai/install.sh | bash -s -- "{{ dotfiles_claude_channel }}"
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 https://claude.ai/install.sh | bash -s -- "{{ dotfiles_claude_channel }}"
   args:
     executable: /bin/bash
     creates: "{{ dotfiles_home }}/.local/bin/claude"

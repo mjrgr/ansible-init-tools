@@ -17,12 +17,12 @@
     set -euo pipefail
     VERSION="{{ opentofu_version }}"
     latest_tag() {
-      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+      curl -fsSLI --retry 3 --retry-all-errors --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
         | sed 's#.*/tag/##'
     }
     [ "$VERSION" = latest ] && VERSION=$(latest_tag opentofu/opentofu)
     V="${VERSION#v}"
-    curl -fsSL -o /tmp/tofu.tar.gz \
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /tmp/tofu.tar.gz \
       "https://github.com/opentofu/opentofu/releases/download/v${V}/tofu_${V}_linux_amd64.tar.gz"
     tar xzf /tmp/tofu.tar.gz -C /tmp tofu
     install -m 0755 /tmp/tofu /usr/local/bin/tofu

@@ -12,7 +12,7 @@
   ansible.builtin.shell: |
     set -euo pipefail
     VERSION="{{ helm_version }}"
-    curl -fsSL -o /tmp/get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /tmp/get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
     chmod +x /tmp/get_helm.sh
     if [ "$VERSION" = latest ]; then /tmp/get_helm.sh; else /tmp/get_helm.sh --version "$VERSION"; fi
     rm -f /tmp/get_helm.sh

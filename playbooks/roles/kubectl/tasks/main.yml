@@ -12,8 +12,8 @@
   ansible.builtin.shell: |
     set -euo pipefail
     VERSION="{{ kubectl_version }}"
-    [ "$VERSION" = latest ] && VERSION=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
-    curl -fsSL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/${VERSION}/bin/linux/amd64/kubectl"
+    [ "$VERSION" = latest ] && VERSION=$(curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 https://dl.k8s.io/release/stable.txt)
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /usr/local/bin/kubectl "https://dl.k8s.io/release/${VERSION}/bin/linux/amd64/kubectl"
     chmod +x /usr/local/bin/kubectl
     /usr/local/bin/kubectl version --client
   args:

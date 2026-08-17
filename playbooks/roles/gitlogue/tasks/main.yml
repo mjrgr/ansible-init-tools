@@ -12,11 +12,11 @@
     set -euo pipefail
     VERSION="{{ gitlogue_version }}"
     latest_tag() {
-      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+      curl -fsSLI --retry 3 --retry-all-errors --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
         | sed 's#.*/tag/##'
     }
     [ "$VERSION" = latest ] && VERSION=$(latest_tag unhappychoice/gitlogue)
-    curl -fsSL -o /tmp/gitlogue.tar.gz \
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /tmp/gitlogue.tar.gz \
       "https://github.com/unhappychoice/gitlogue/releases/download/${VERSION}/gitlogue-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
     tar xzf /tmp/gitlogue.tar.gz -C /tmp gitlogue
     install -m 0755 /tmp/gitlogue /usr/local/bin/gitlogue

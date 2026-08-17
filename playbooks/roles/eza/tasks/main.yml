@@ -19,11 +19,11 @@
     set -euo pipefail
     VERSION="{{ eza_version }}"
     latest_tag() {
-      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+      curl -fsSLI --retry 3 --retry-all-errors --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
         | sed 's#.*/tag/##'
     }
     [ "$VERSION" = latest ] && VERSION=$(latest_tag eza-community/eza)
-    curl -fsSL -o /tmp/eza.tar.gz \
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /tmp/eza.tar.gz \
       "https://github.com/eza-community/eza/releases/download/${VERSION}/eza_x86_64-unknown-linux-gnu.tar.gz"
     tar xzf /tmp/eza.tar.gz -C /tmp ./eza
     install -m 0755 /tmp/eza /usr/local/bin/eza

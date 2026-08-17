@@ -1,6 +1,14 @@
 - name: Install CLIs on localhost
   hosts: localhost
   become: true
+  # sudo strips proxy env — without this, root downloads bypass the corporate proxy and hang.
+  environment:
+    HTTP_PROXY: "{{ lookup('env', 'HTTP_PROXY') }}"
+    HTTPS_PROXY: "{{ lookup('env', 'HTTPS_PROXY') }}"
+    NO_PROXY: "{{ lookup('env', 'NO_PROXY') }}"
+    http_proxy: "{{ lookup('env', 'http_proxy') }}"
+    https_proxy: "{{ lookup('env', 'https_proxy') }}"
+    no_proxy: "{{ lookup('env', 'no_proxy') }}"
   vars:
     # present = install only what is missing (default)
     # latest  = re-run every installer and upgrade in place

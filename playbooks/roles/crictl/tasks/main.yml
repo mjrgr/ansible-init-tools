@@ -14,11 +14,11 @@
     # api.github.com allows 60 unauthenticated calls per hour per IP, which a
     # shared egress address burns through; the release redirect has no such limit.
     latest_tag() {
-      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+      curl -fsSLI --retry 3 --retry-all-errors --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
         | sed 's#.*/tag/##'
     }
     [ "$VERSION" = latest ] && VERSION=$(latest_tag kubernetes-sigs/cri-tools)
-    curl -fsSL -o /tmp/crictl.tgz \
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /tmp/crictl.tgz \
       "https://github.com/kubernetes-sigs/cri-tools/releases/download/${VERSION}/crictl-${VERSION}-linux-amd64.tar.gz"
     tar xzf /tmp/crictl.tgz -C /usr/local/bin crictl
     chmod +x /usr/local/bin/crictl

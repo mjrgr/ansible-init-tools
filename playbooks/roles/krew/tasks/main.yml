@@ -20,7 +20,7 @@
     if [ "$VERSION" = latest ]; then BASE=https://github.com/kubernetes-sigs/krew/releases/latest/download
     else BASE="https://github.com/kubernetes-sigs/krew/releases/download/${VERSION}"; fi
     TMP="$(mktemp -d)"
-    curl -fsSL -o "${TMP}/${KREW}.tar.gz" "${BASE}/${KREW}.tar.gz"
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o "${TMP}/${KREW}.tar.gz" "${BASE}/${KREW}.tar.gz"
     tar zxf "${TMP}/${KREW}.tar.gz" -C "$TMP"
     install -m 0755 "${TMP}/${KREW}" /usr/local/bin/kubectl-krew
     rm -rf "$TMP"

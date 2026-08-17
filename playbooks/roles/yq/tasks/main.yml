@@ -16,7 +16,7 @@
     else
       URL="https://github.com/mikefarah/yq/releases/download/${VERSION}/yq_linux_amd64"
     fi
-    curl -fsSL -o /usr/local/bin/yq "$URL"
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /usr/local/bin/yq "$URL"
     chmod +x /usr/local/bin/yq
     /usr/local/bin/yq --version
   args:

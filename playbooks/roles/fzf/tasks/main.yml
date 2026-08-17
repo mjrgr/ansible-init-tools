@@ -12,12 +12,12 @@
     set -euo pipefail
     VERSION="{{ fzf_version }}"
     latest_tag() {
-      curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+      curl -fsSLI --retry 3 --retry-all-errors --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
         | sed 's#.*/tag/##'
     }
     [ "$VERSION" = latest ] && VERSION=$(latest_tag junegunn/fzf)
     V="${VERSION#v}"
-    curl -fsSL -o /tmp/fzf.tar.gz \
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /tmp/fzf.tar.gz \
       "https://github.com/junegunn/fzf/releases/download/v${V}/fzf-${V}-linux_amd64.tar.gz"
     tar xzf /tmp/fzf.tar.gz -C /tmp fzf
     install -m 0755 /tmp/fzf /usr/local/bin/fzf

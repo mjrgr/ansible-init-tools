@@ -10,4 +10,4 @@
 # upstream's master branch is exactly the version-skew that broke Ctrl+R
 # history search with "not a valid integer: 20+" (--min-height 20+ is CLI
 # syntax the old binary didn't understand).
-fzf_version: "v0.74.2"
+fzf_version: "v0.74.3"

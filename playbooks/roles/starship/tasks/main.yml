@@ -12,9 +12,9 @@
     set -euo pipefail
     VERSION="{{ starship_version }}"
     if [ "$VERSION" = latest ]; then
-      curl -fsSL https://starship.rs/install.sh | sh -s -- --yes --bin-dir /usr/local/bin
+      curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 https://starship.rs/install.sh | sh -s -- --yes --bin-dir /usr/local/bin
     else
-      curl -fsSL https://starship.rs/install.sh | sh -s -- --yes --bin-dir /usr/local/bin --version "$VERSION"
+      curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 https://starship.rs/install.sh | sh -s -- --yes --bin-dir /usr/local/bin --version "$VERSION"
     fi
     /usr/local/bin/starship --version
   args:

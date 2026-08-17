@@ -13,8 +13,8 @@
     VERSION="{{ kwok_version }}"
     if [ "$VERSION" = latest ]; then BASE=https://github.com/kubernetes-sigs/kwok/releases/latest/download
     else BASE="https://github.com/kubernetes-sigs/kwok/releases/download/${VERSION}"; fi
-    curl -fsSL -o /usr/local/bin/kwok   "${BASE}/kwok-linux-amd64"
-    curl -fsSL -o /usr/local/bin/kwokctl "${BASE}/kwokctl-linux-amd64"
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /usr/local/bin/kwok   "${BASE}/kwok-linux-amd64"
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /usr/local/bin/kwokctl "${BASE}/kwokctl-linux-amd64"
     chmod +x /usr/local/bin/kwok /usr/local/bin/kwokctl
     /usr/local/bin/kwok --version
   args:

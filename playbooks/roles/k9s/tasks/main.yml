@@ -17,7 +17,7 @@
     else
       URL="https://github.com/derailed/k9s/releases/download/${VERSION}/k9s_Linux_amd64.tar.gz"
     fi
-    curl -fsSL -o /tmp/k9s.tar.gz "$URL"
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /tmp/k9s.tar.gz "$URL"
     tar xzf /tmp/k9s.tar.gz -C /tmp k9s
     install -m 0755 /tmp/k9s /usr/local/bin/k9s
     rm -f /tmp/k9s.tar.gz /tmp/k9s
