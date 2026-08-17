@@ -79,10 +79,34 @@ not looked at, and the bell — silent since `audible_bell` was disabled — now
 the cursor.
 
 A tab also shows a green 󰚩 while a Claude Code session runs in any of its panes.
-That one needs no shell cooperation — it reads the pane's foreground process — but
-it only recognises the native binary, which lives at
-`~/.local/share/claude/versions/<semver>`. An npm install runs under `node` and
-stays invisible.
+Detection is two-layered: reading the pane's foreground process needs no shell
+cooperation, but only recognises the native binary at
+`~/.local/share/claude/versions/<semver>` (an npm install runs under `node` and
+stays invisible), and it cannot see into a pane at all when the WezTerm GUI and
+the pane's shell are on opposite sides of a WSL boundary — see below. The
+`claude` zsh wrapper (`~/.zshrc`) backs it up by setting a `claude_active` user
+var over OSC 1337, which rides the terminal byte stream instead of the process
+tree and works in both cases.
+
+### Windows + WSL
+
+`dotfiles/wezterm/wezterm.lua` drives both a native Linux desktop and a
+Windows+WSL laptop from one file, branching on `wezterm.target_triple` for the
+handful of settings that only make sense on one side (`wsl_domains`,
+`default_prog`, `enable_wayland`). On Windows, `wezterm-gui.exe` reads its
+config from the Windows profile (`%USERPROFILE%\.wezterm.lua`), never from
+WSL's `$HOME` — this repo's ansible roles have no reach there. Point it at the
+repo file once, from an elevated-or-Developer-Mode PowerShell/cmd so `mklink`
+doesn't need admin:
+
+```
+mklink C:\Users\<you>\.wezterm.lua \\wsl.localhost\<Distro>\home\<you>\workspace\...\ansible-init-tools\dotfiles\wezterm\wezterm.lua
+```
+
+Building that command from a WSL bash one-liner is a known trap: double-quoted
+bash strings collapse `\\` to `\`, silently turning the UNC path into a bogus
+`C:\wsl.localhost\...`. Use single quotes for the argument, or type it directly
+in PowerShell.
 
 ## Usage
 
