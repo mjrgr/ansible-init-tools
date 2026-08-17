@@ -305,7 +305,15 @@ claude() {
   # Pre-launch: the SessionStart hook runs after plugin enumeration, so it can only
   # fix the current session. Here the current session loads clean.
   node ~/.claude/hooks/plugin-drift-check.mjs --heal >/dev/null 2>&1
+  # WezTerm's tab-title process check reads /proc via the GUI process, which on a
+  # WSL setup is the Windows-side wezterm-gui.exe — it cannot see into the WSL
+  # PID namespace, so the tab indicator never fires from process detection alone.
+  # A user-var travels in the terminal byte stream instead, crossing that boundary.
+  (( $+functions[_wt_user_var] )) && _wt_user_var claude_active 1
   command claude "$@"
+  local rc=$?
+  (( $+functions[_wt_user_var] )) && _wt_user_var claude_active ''
+  return $rc
 }
 
 # ─── LOCAL OVERRIDES (not versioned) ─────────────────────────────────────────

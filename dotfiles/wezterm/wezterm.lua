@@ -5,12 +5,36 @@ local config = wezterm.config_builder()
 config.default_workspace = 'main'
 
 -- ============================================================
--- Input (Linux/Wayland)
+-- Platform branch
 -- ============================================================
--- This build's native Wayland input path drops keystrokes (dead keys,
--- accented characters) and swallows some Ctrl+key bindings (e.g. Ctrl+R).
--- XWayland doesn't have these bugs, so force it rather than native Wayland.
-config.enable_wayland = false
+-- Same file drives the native Linux box (Zorin) and the Windows+WSL laptop —
+-- wezterm-gui.exe on Windows reads this file too. One source of truth is what
+-- stops the two setups drifting apart the way they did before.
+local IS_WINDOWS = wezterm.target_triple:find('windows') ~= nil
+
+if IS_WINDOWS then
+  -- One domain per distro: does not depend on wsl.exe's default distro.
+  config.wsl_domains = {
+    { name = 'WSL:22.04', distribution = 'Ubuntu-22.04', default_cwd = '~' },
+    { name = 'WSL:24.04', distribution = 'Ubuntu-24.04', default_cwd = '~' },
+  }
+  config.default_domain = 'WSL:22.04'
+  -- Shell for the 'local' domain: avoids falling back to cmd.exe.
+  config.default_prog = { 'pwsh.exe', '-NoLogo' }
+  config.launch_menu = {
+    { label = 'Ubuntu 22.04', domain = { DomainName = 'WSL:22.04' } },
+    { label = 'Ubuntu 24.04', domain = { DomainName = 'WSL:24.04' } },
+    { label = 'PowerShell',   args = { 'pwsh.exe', '-NoLogo' }, domain = { DomainName = 'local' } },
+  }
+else
+  -- ============================================================
+  -- Input (Linux/Wayland)
+  -- ============================================================
+  -- This build's native Wayland input path drops keystrokes (dead keys,
+  -- accented characters) and swallows some Ctrl+key bindings (e.g. Ctrl+R).
+  -- XWayland doesn't have these bugs, so force it rather than native Wayland.
+  config.enable_wayland = false
+end
 
 -- ============================================================
 -- Rendering / perf
@@ -25,7 +49,7 @@ config.status_update_interval = 1000
 -- ============================================================
 config.font = wezterm.font_with_fallback {
   'JetBrainsMono Nerd Font',
-  'Noto Color Emoji',
+  IS_WINDOWS and 'Segoe UI Emoji' or 'Noto Color Emoji',
 }
 config.font_size = 12.0
 -- Grayscale AA is forced by window_background_opacity < 1: LCD subpixel
@@ -112,7 +136,7 @@ config.window_decorations = 'RESIZE'
 config.window_padding = { left = 8, right = 8, top = 6, bottom = 4 }
 config.window_close_confirmation = 'AlwaysPrompt'
 config.skip_close_confirmation_for_processes_named = {
-  'bash', 'zsh', 'fish', 'sh',
+  'bash', 'zsh', 'fish', 'sh', 'cmd.exe', 'pwsh.exe', 'powershell.exe',
 }
 -- Disabling the audible bell without a replacement made a bell in a background
 -- tab completely silent. The flash is on the cursor rather than the whole
@@ -150,9 +174,15 @@ end
 
 -- Every pane of the tab, not just the active one: a claude left running in a
 -- split, on a tab you are not looking at, is the case the indicator exists for.
+-- Process detection alone misses a WSL setup where the GUI is the Windows-side
+-- wezterm-gui.exe: it cannot read /proc inside the WSL PID namespace, so
+-- foreground_process_name is never populated there. claude_active is a user
+-- var set via OSC 1337 by the `claude` zsh wrapper (~/.zshrc) — it rides the
+-- terminal byte stream instead, so it survives that boundary.
 local function tab_runs_claude(tab)
   for _, p in ipairs(tab.panes or { tab.active_pane }) do
     if is_claude(p.foreground_process_name) then return true end
+    if p.user_vars and p.user_vars.claude_active == '1' then return true end
   end
   return false
 end
