@@ -213,21 +213,24 @@ wezterm.on('format-tab-title', function(tab, tabs, panes, cfg, hover, max_width)
   end
   if pane.is_zoomed then suffix = suffix .. ' ' end
 
-  local items = { { Text = string.format(' %d:%s%s', tab.tab_index + 1, title, suffix) } }
+  -- Icons go first, right after the leading space: the fancy tab bar draws its
+  -- hover close button over the tab's right edge, which is exactly where a
+  -- trailing icon would sit — leading them keeps both always visible.
+  local items = { { Text = ' ' } }
   if tab_runs_claude(tab) then
     -- Same matrix green as the directory module in starship.toml, and a literal
     -- rather than a palette index on purpose: it must read identically whether
     -- the desktop is on Catppuccin Mocha or Latte.
     table.insert(items, { Foreground = { Color = '#00ff41' } })
-    table.insert(items, { Text = ' 󰚩' })
+    table.insert(items, { Text = '󰚩 ' })
     table.insert(items, 'ResetAttributes')
   end
   if tab_has_unseen_output(tab) then
     table.insert(items, { Foreground = { Color = '#ff9e64' } })
-    table.insert(items, { Text = ' ●' })
+    table.insert(items, { Text = '● ' })
     table.insert(items, 'ResetAttributes')
   end
-  table.insert(items, { Text = ' ' })
+  table.insert(items, { Text = string.format('%d:%s%s ', tab.tab_index + 1, title, suffix) })
   return items
 end)
 
