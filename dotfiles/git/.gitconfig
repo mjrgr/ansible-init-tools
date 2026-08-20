@@ -21,6 +21,7 @@
 # when delta exits non-zero (quitting the pager early does exactly that).
 [core]
 	pager = "if command -v delta >/dev/null 2>&1; then delta; else less; fi"
+	editor = code --wait
 [interactive]
 	diffFilter = "if command -v delta >/dev/null 2>&1; then delta --color-only; else cat; fi"
 
@@ -46,3 +47,5 @@
 	required = true
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
+[sequence]
+	editor = code --wait
