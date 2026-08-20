@@ -187,14 +187,27 @@ local function tab_runs_claude(tab)
   return false
 end
 
--- Only for tabs you are not looking at: wezterm clears the flag on the focused
--- pane, so on the active tab this is always false and the marker would just
--- flicker. This is what a long build or a `terraform apply` finishing in a
--- background tab now looks like.
-local function tab_has_unseen_output(tab)
+-- Same WSL blind spot as claude, so same two-track detection — plus a third that
+-- needs nothing at all: k9s sets the pane title to `k9s`, and a title rides the
+-- byte stream, so it crosses the WSL boundary even from a shell with no wrapper.
+local function tab_runs_k9s(tab)
+  for _, p in ipairs(tab.panes or { tab.active_pane }) do
+    local proc = p.foreground_process_name
+    if proc and proc:match('/k9s$') then return true end
+    if p.user_vars and p.user_vars.k9s_active == '1' then return true end
+    if p.title and p.title:match('^k9s') then return true end
+  end
+  return false
+end
+
+-- Not has_unseen_output: that flag means "bytes arrived since you last focused
+-- this pane" and an invisible OSC 133 or a background redraw sets it, so it
+-- stays lit on idle tabs. busy is set by the zsh preexec/precmd pair, so it
+-- answers the question actually worth an indicator: is a command running there.
+local function tab_is_busy(tab)
   if tab.is_active then return false end
-  for _, p in ipairs(tab.panes or {}) do
-    if p.has_unseen_output then return true end
+  for _, p in ipairs(tab.panes or { tab.active_pane }) do
+    if p.user_vars and p.user_vars.busy == '1' then return true end
   end
   return false
 end
@@ -207,11 +220,12 @@ wezterm.on('format-tab-title', function(tab, tabs, panes, cfg, hover, max_width)
   end
   -- kube_ctx comes from the zsh precmd hook: visible even on an inactive tab
   local ctx = pane.user_vars.kube_ctx
-  local suffix = ''
+  local in_k9s = tab_runs_k9s(tab)
+  local ctx_text = ''
   if ctx and ctx ~= '' then
-    suffix = ' 󱃾 ' .. (ctx:len() > 16 and ctx:sub(1, 16) .. '…' or ctx)
+    -- Drop the glyph when the leading k9s icon already carries it
+    ctx_text = (in_k9s and ' ' or ' 󱃾 ') .. (ctx:len() > 16 and ctx:sub(1, 16) .. '…' or ctx)
   end
-  if pane.is_zoomed then suffix = suffix .. ' ' end
 
   -- Icons go first, right after the leading space: the fancy tab bar draws its
   -- hover close button over the tab's right edge, which is exactly where a
@@ -225,12 +239,27 @@ wezterm.on('format-tab-title', function(tab, tabs, panes, cfg, hover, max_width)
     table.insert(items, { Text = '󰚩 ' })
     table.insert(items, 'ResetAttributes')
   end
-  if tab_has_unseen_output(tab) then
+  if in_k9s then
+    table.insert(items, { Foreground = { Color = '#326ce5' } })
+    table.insert(items, { Text = '󱃾 ' })
+    table.insert(items, 'ResetAttributes')
+  end
+  -- The claude and k9s icons already say "a long-running command owns this tab"
+  if tab_is_busy(tab) and not tab_runs_claude(tab) and not in_k9s then
     table.insert(items, { Foreground = { Color = '#ff9e64' } })
     table.insert(items, { Text = '● ' })
     table.insert(items, 'ResetAttributes')
   end
-  table.insert(items, { Text = string.format('%d:%s%s ', tab.tab_index + 1, title, suffix) })
+  table.insert(items, { Text = string.format('%d:%s', tab.tab_index + 1, title) })
+  -- Matrix green only while k9s is up: the color means "you are pointed at this
+  -- cluster right now", not merely "this is what kubectl would target"
+  if ctx_text ~= '' then
+    if in_k9s then table.insert(items, { Foreground = { Color = '#00ff41' } }) end
+    table.insert(items, { Text = ctx_text })
+    if in_k9s then table.insert(items, 'ResetAttributes') end
+  end
+  if pane.is_zoomed then table.insert(items, { Text = ' ' }) end
+  table.insert(items, { Text = ' ' })
   return items
 end)
 
@@ -318,7 +347,10 @@ config.keys = {
   { key = 'T', mods = 'CTRL|ALT',   action = act.ShowLauncherArgs { flags = 'LAUNCH_MENU_ITEMS|DOMAINS|FUZZY' } },
   { key = 'LeftArrow',  mods = 'CTRL|SHIFT', action = act.MoveTabRelative(-1) },
   { key = 'RightArrow', mods = 'CTRL|SHIFT', action = act.MoveTabRelative(1) },
+  -- Both, because on a Windows FR layout Ctrl+Alt is AltGr: the combo arrives as
+  -- text input and the CTRL|ALT binding never fires there.
   { key = 'R', mods = 'CTRL|ALT', action = act.ReloadConfiguration },
+  { key = 'r', mods = 'CTRL|SHIFT', action = act.ReloadConfiguration },
   -- WezTerm's own default binds plain Ctrl+R to ReloadConfiguration, silently
   -- eating the shell's fzf history search. Free it up for the terminal app.
   -- Case matters here: the built-in default is registered as key='R', and an

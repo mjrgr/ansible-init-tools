@@ -28,14 +28,21 @@ _wt_kube_context() {
 _wt_distro="$(sed -n 's/^ID=//p' /etc/os-release 2>/dev/null | tr -d '"' | head -1)"
 : "${_wt_distro:=linux}"
 
+# Base64 hardcoded: this runs on every command, and _wt_user_var would fork base64
+_wt_busy() { printf '\033]1337;SetUserVar=busy=%s\007' "$1" }
+
 _wt_precmd() {
   local rc=$?
   printf '\033]133;D;%s\007\033]133;A\007' "$rc"
+  _wt_busy ''
   _wt_user_var kube_ctx "$(_wt_kube_context)"
   _wt_user_var distro "$_wt_distro"
 }
 
-_wt_preexec() { printf '\033]133;C\007' }
+_wt_preexec() {
+  printf '\033]133;C\007'
+  _wt_busy MQ==
+}
 
 add-zsh-hook precmd _wt_precmd
 add-zsh-hook preexec _wt_preexec

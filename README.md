@@ -68,7 +68,9 @@ glyphs, and without the font the prompt and the tab bar render tofu.
 
 The zsh and WezTerm configs work together: `~/.config/zsh/wezterm.zsh` emits OSC 133
 semantic zones and publishes the current kubectl context as a user var, which
-`wezterm.lua` renders in the tab title and right status bar.
+`wezterm.lua` renders in the tab title and right status bar. In the tab title it turns
+matrix green while `k9s` is running, so the color means "pointed at this cluster
+right now" rather than just "what kubectl would target".
 
 The color scheme follows the desktop light/dark preference *live*, not only at
 startup: `window-config-reloaded` re-derives it and pushes titlebar and tab-bar
@@ -87,6 +89,28 @@ the pane's shell are on opposite sides of a WSL boundary — see below. The
 `claude` zsh wrapper (`~/.zshrc`) backs it up by setting a `claude_active` user
 var over OSC 1337, which rides the terminal byte stream instead of the process
 tree and works in both cases.
+
+A blue 󱃾 marks a tab running `k9s`. The process check is blind under WSL for the
+same reason, so the fallback here is the pane title: oh-my-zsh's `termsupport`
+sets it to the running command, and a title crosses the WSL boundary because it
+travels in the byte stream. No shell wrapper needed. The kube-context suffix
+drops its own glyph while that icon shows, so the tab never carries the same
+symbol twice.
+
+An orange ● marks a tab where a command is running. WezTerm's own
+`has_unseen_output` looks like the obvious source and is not: it means "bytes
+arrived since you last focused this pane", and an invisible OSC 133 sequence or
+a background redraw sets it just as well as real work does, so it stays lit on
+idle tabs until you visit them. A `busy` user var set in `preexec` and cleared
+in `precmd` tracks the shell instead of the byte stream. The dot is hidden when
+the claude or k9s icon already shows — those say the same thing — and on the
+active tab, where the command is in front of you. A pane with no zsh prompt (an
+ssh session, a `docker exec`) never lights it.
+
+The Windows GUI reads its config over `\\wsl.localhost`, which WezTerm does not
+watch — config edits do **not** auto-reload there. `Ctrl+Shift+R` forces it
+(`Ctrl+Alt+R` is bound too, but Ctrl+Alt is AltGr on a FR layout and never
+reaches the binding).
 
 ### Windows + WSL
 
