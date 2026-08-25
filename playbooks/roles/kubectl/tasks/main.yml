@@ -13,8 +13,14 @@
     set -euo pipefail
     VERSION="{{ kubectl_version }}"
     [ "$VERSION" = latest ] && VERSION=$(curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 https://dl.k8s.io/release/stable.txt)
-    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /usr/local/bin/kubectl "https://dl.k8s.io/release/${VERSION}/bin/linux/amd64/kubectl"
-    chmod +x /usr/local/bin/kubectl
+    # /usr/local/bin/kubectl may be a symlink into another tool's binary (e.g. k3s,
+    # which multiplexes kubectl/crictl/ctr through one file). Downloading with
+    # `curl -o` follows that symlink and overwrites whatever it points to. `mv`
+    # replaces the path's inode outright, symlink or not, so it's safe here.
+    TMP="$(mktemp)"
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o "${TMP}" "https://dl.k8s.io/release/${VERSION}/bin/linux/amd64/kubectl"
+    chmod +x "${TMP}"
+    mv -f "${TMP}" /usr/local/bin/kubectl
     /usr/local/bin/kubectl version --client
   args:
     executable: /bin/bash
