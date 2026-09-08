@@ -87,7 +87,8 @@ A background tab marks itself with an amber ● once it has produced output you 
 not looked at, and the bell — silent since `audible_bell` was disabled — now flashes
 the cursor.
 
-A tab also shows a green 󰚩 while a Claude Code session runs in any of its panes.
+A tab also shows a 󰚩 in Claude's own coral (`#DE7356`) while a Claude Code
+session runs in any of its panes.
 Detection is two-layered: reading the pane's foreground process needs no shell
 cooperation, but only recognises the native binary at
 `~/.local/share/claude/versions/<semver>` (an npm install runs under `node` and
@@ -96,6 +97,21 @@ the pane's shell are on opposite sides of a WSL boundary — see below. The
 `claude` zsh wrapper (`~/.zshrc`) backs it up by setting a `claude_active` user
 var over OSC 1337, which rides the terminal byte stream instead of the process
 tree and works in both cases.
+
+A monochrome 󰧑 marks a tab running the OpenAI Codex CLI — white on Mocha,
+Latte's ink (`#4c4f69`) once the desktop flips to light, since white on a `#eff1f5`
+titlebar is not there. That is the one icon colour that cannot be a fixed literal,
+so the scheme in force is kept in a local rather than read back from the handler's
+`config` argument, which is the load-time one and does not carry the overrides
+`window-config-reloaded` applies. The glyph, not the colour, is what separates it
+from the claude icon.
+
+Unlike claude the binary is a plain `/usr/local/bin/codex`, so the process check
+recognises it by leaf name. There is no title fallback here the way `k9s` has one:
+codex overwrites the pane title with the cwd basename once its TUI is up, so
+matching the title lit the tab for the second or two before that and then dropped
+it — and it would have fired in any directory named `codex`. A `codex` zsh wrapper
+sets a `codex_active` user var instead, same mechanism as `claude`.
 
 A blue 󱃾 marks a tab running `k9s`. The process check is blind under WSL for the
 same reason, so the fallback here is the pane title: oh-my-zsh's `termsupport`

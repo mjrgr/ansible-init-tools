@@ -316,6 +316,18 @@ claude() {
   return $rc
 }
 
+# Same WSL blind spot as the claude wrapper above, with no title fallback to lean
+# on: codex sets the pane title to the cwd basename once its TUI is up, so the tab
+# indicator lit only for the second or two before that. The user var is what makes
+# it hold for the whole session.
+codex() {
+  (( $+functions[_wt_user_var] )) && _wt_user_var codex_active 1
+  command codex "$@"
+  local rc=$?
+  (( $+functions[_wt_user_var] )) && _wt_user_var codex_active ''
+  return $rc
+}
+
 # ─── LOCAL OVERRIDES (not versioned) ─────────────────────────────────────────
 # Interactive aliases and overrides specific to this machine.
 # Secrets/tokens go in ~/.zshenv.local (loaded earlier, available non-interactively).

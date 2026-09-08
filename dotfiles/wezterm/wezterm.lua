@@ -71,6 +71,11 @@ local function current_scheme()
   return DARK
 end
 
+-- The scheme actually in force. format-tab-title needs it to choose a readable
+-- monochrome, and its own `config` argument is the load-time one — it does not
+-- carry the overrides that window-config-reloaded applies on an appearance flip.
+local active_scheme = current_scheme()
+
 -- get_builtin_schemes() walks every bundled scheme. update-right-status runs once
 -- a second and format-tab-title far more often than that, so the two in use are
 -- resolved once and kept.
@@ -110,6 +115,7 @@ config.colors = initial.colors
 -- included, which a bare color_scheme override would leave on the old palette.
 wezterm.on('window-config-reloaded', function(window)
   local want = current_scheme()
+  active_scheme = want
   local overrides = window:get_config_overrides() or {}
   -- set_config_overrides re-fires this event; comparing against the scheme in
   -- force (override first, load-time value before any flip) ends the loop and
@@ -187,6 +193,22 @@ local function tab_runs_claude(tab)
   return false
 end
 
+-- Codex CLI is a static musl binary at /usr/local/bin/codex, so unlike claude the
+-- leaf name is the command name and matching it is enough — where the process is
+-- visible at all. Same WSL blind spot, and no title fallback to lean on the way
+-- k9s has one: codex overwrites the title with the cwd basename a few seconds in,
+-- so matching it lit the tab only until the TUI came up, and would have fired in
+-- any directory named `codex`. The codex_active user var from the `codex` zsh
+-- wrapper (~/.zshrc) is what actually carries this across the WSL boundary.
+local function tab_runs_codex(tab)
+  for _, p in ipairs(tab.panes or { tab.active_pane }) do
+    local proc = p.foreground_process_name
+    if proc and proc:match('/codex$') then return true end
+    if p.user_vars and p.user_vars.codex_active == '1' then return true end
+  end
+  return false
+end
+
 -- Same WSL blind spot as claude, so same two-track detection — plus a third that
 -- needs nothing at all: k9s sets the pane title to `k9s`, and a title rides the
 -- byte stream, so it crosses the WSL boundary even from a shell with no wrapper.
@@ -221,6 +243,7 @@ wezterm.on('format-tab-title', function(tab, tabs, panes, cfg, hover, max_width)
   -- kube_ctx comes from the zsh precmd hook: visible even on an inactive tab
   local ctx = pane.user_vars.kube_ctx
   local in_k9s = tab_runs_k9s(tab)
+  local in_codex = tab_runs_codex(tab)
   local ctx_text = ''
   if ctx and ctx ~= '' then
     -- Drop the glyph when the leading k9s icon already carries it
@@ -232,11 +255,20 @@ wezterm.on('format-tab-title', function(tab, tabs, panes, cfg, hover, max_width)
   -- trailing icon would sit — leading them keeps both always visible.
   local items = { { Text = ' ' } }
   if tab_runs_claude(tab) then
-    -- Same matrix green as the directory module in starship.toml, and a literal
-    -- rather than a palette index on purpose: it must read identically whether
-    -- the desktop is on Catppuccin Mocha or Latte.
-    table.insert(items, { Foreground = { Color = '#00ff41' } })
+    -- Claude's own brand colour, and a literal rather than a palette index on
+    -- purpose: it must read identically whether the desktop is on Catppuccin
+    -- Mocha or Latte.
+    table.insert(items, { Foreground = { Color = '#DE7356' } })
     table.insert(items, { Text = '󰚩 ' })
+    table.insert(items, 'ResetAttributes')
+  end
+  if in_codex then
+    -- OpenAI brands Codex monochrome, which cannot be a single literal here: white
+    -- vanishes on Latte's #eff1f5 titlebar. Flipped with the desktop instead, so
+    -- it stays the darkest/lightest ink either way; the glyph is what separates it
+    -- from the claude icon above, not the colour.
+    table.insert(items, { Foreground = { Color = active_scheme == LIGHT and '#4c4f69' or '#ffffff' } })
+    table.insert(items, { Text = '󰧑 ' })
     table.insert(items, 'ResetAttributes')
   end
   if in_k9s then
@@ -244,8 +276,8 @@ wezterm.on('format-tab-title', function(tab, tabs, panes, cfg, hover, max_width)
     table.insert(items, { Text = '󱃾 ' })
     table.insert(items, 'ResetAttributes')
   end
-  -- The claude and k9s icons already say "a long-running command owns this tab"
-  if tab_is_busy(tab) and not tab_runs_claude(tab) and not in_k9s then
+  -- The agent and k9s icons already say "a long-running command owns this tab"
+  if tab_is_busy(tab) and not tab_runs_claude(tab) and not in_codex and not in_k9s then
     table.insert(items, { Foreground = { Color = '#ff9e64' } })
     table.insert(items, { Text = '● ' })
     table.insert(items, 'ResetAttributes')
