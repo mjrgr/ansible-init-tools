@@ -1,0 +1,10 @@
+---
+# Pinned so two machines provisioned months apart get the same binary.
+# Set to "latest" to track upstream, or override on the command line:
+#   -e codex_version=<x.y.z>
+# Bump deliberately, then re-run the container tests.
+#
+# Plain semver here, not the tag: upstream tags the CLI `rust-v<x.y.z>` in a
+# monorepo that also ships other crates, and the probe compares against what
+# `codex --version` prints.
+codex_version: "0.153.4"

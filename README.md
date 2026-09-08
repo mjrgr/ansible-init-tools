@@ -30,6 +30,7 @@ dotfiles** on **Ubuntu / Debian**.
 - sops, age
 - starship, wezterm, vscode
 - btop, lazygit
+- codex (OpenAI Codex CLI)
 - eza, ripgrep, fd, bat, zoxide, delta
 - git, make, curl, wget, gnupg, unzip, fontconfig
 
@@ -39,6 +40,12 @@ packages lag several releases behind. Same reasoning for VS Code and
 its own copy of that repository from its postinst. The role preseeds
 `code/add-microsoft-repo=false` so apt is not left with two `Signed-By` lines for
 the same URL, which makes it refuse the whole of `sources.list.d`.
+
+Codex CLI is installed from the GitHub release asset rather than `npm i -g
+@openai/codex`: the npm and pip packages only wrap the same static binary, and
+neither node nor python is otherwise a dependency here. It is a ~250 MB binary —
+it embeds its sandbox helpers and its own ripgrep. Unlike Claude Code it does not
+self-update, so `codex_version` is pinned like every other binary role.
 
 The Rust CLIs are split by how fast they move. `rust_clis` takes ripgrep, fd, bat
 and zoxide from apt in one batch, and shims `fdfind`/`batcat` back to `fd`/`bat` —

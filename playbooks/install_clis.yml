@@ -43,6 +43,7 @@
       - delta
       - lazygit
       - vscode
+      - codex
 
     common_packages:
       - git

@@ -1,0 +1,38 @@
+---
+# role: codex
+# OpenAI Codex CLI — the ChatGPT coding agent. The npm and pip packages are only
+# wrappers around the same static binary, and neither node nor python is a
+# dependency of this box, so the release asset is taken directly.
+#
+# `codex --version` prints "codex-cli <x.y.z>"; the probe's default pattern picks
+# the version out of it unaided.
+- name: "Decide whether codex must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: codex
+    clis_bin: /usr/local/bin/codex
+    clis_target: "{{ codex_version }}"
+
+# ~250 MB unpacked — the Rust binary embeds the sandbox helpers and its own
+# ripgrep. /tmp needs the room for the archive on top of that.
+- name: "Install codex"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    VERSION="{{ codex_version }}"
+    latest_tag() {
+      curl -fsSLI --retry 3 --retry-all-errors --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+        | sed 's#.*/tag/##'
+    }
+    [ "$VERSION" = latest ] && VERSION=$(latest_tag openai/codex)
+    # Accepts a bare version, or the upstream tag verbatim if one is passed in.
+    V="${VERSION#rust-v}"
+    ASSET="codex-x86_64-unknown-linux-musl"
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /tmp/codex.tar.gz \
+      "https://github.com/openai/codex/releases/download/rust-v${V}/${ASSET}.tar.gz"
+    tar xzf /tmp/codex.tar.gz -C /tmp "${ASSET}"
+    install -m 0755 "/tmp/${ASSET}" /usr/local/bin/codex
+    rm -f /tmp/codex.tar.gz "/tmp/${ASSET}"
+    /usr/local/bin/codex --version
+  args:
+    executable: /bin/bash
+  when: clis_need_install | bool
