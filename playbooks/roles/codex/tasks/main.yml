@@ -4,6 +4,11 @@
 # wrappers around the same static binary, and neither node nor python is a
 # dependency of this box, so the release asset is taken directly.
 #
+# Two binaries, not one: `codex-code-mode-host` backs the code_mode_host feature,
+# which ships enabled ("stable" in `codex features list`) and fails at runtime
+# when the helper is absent. Upstream's install.sh puts it beside the codex
+# binary, so /usr/local/bin is where it goes here too.
+#
 # `codex --version` prints "codex-cli <x.y.z>"; the probe's default pattern picks
 # the version out of it unaided.
 - name: "Decide whether codex must be installed"
@@ -36,3 +41,33 @@
   args:
     executable: /bin/bash
   when: clis_need_install | bool
+
+# The helper carries no --version of its own, so it cannot go through the probe.
+# Checked separately because the two can drift: a box provisioned before this task
+# existed has codex at the pinned version and no helper at all, which leaves the
+# probe reporting "skip".
+- name: "Check whether the codex code-mode host is present"
+  ansible.builtin.stat:
+    path: /usr/local/bin/codex-code-mode-host
+  register: codex_host_bin
+
+- name: "Install the codex code-mode host"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    VERSION="{{ codex_version }}"
+    latest_tag() {
+      curl -fsSLI --retry 3 --retry-all-errors --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+        | sed 's#.*/tag/##'
+    }
+    [ "$VERSION" = latest ] && VERSION=$(latest_tag openai/codex)
+    V="${VERSION#rust-v}"
+    ASSET="codex-code-mode-host-x86_64-unknown-linux-musl"
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /tmp/codex-host.tar.gz \
+      "https://github.com/openai/codex/releases/download/rust-v${V}/${ASSET}.tar.gz"
+    tar xzf /tmp/codex-host.tar.gz -C /tmp "${ASSET}"
+    install -m 0755 "/tmp/${ASSET}" /usr/local/bin/codex-code-mode-host
+    rm -f /tmp/codex-host.tar.gz "/tmp/${ASSET}"
+    /usr/local/bin/codex-code-mode-host --help >/dev/null
+  args:
+    executable: /bin/bash
+  when: clis_need_install | bool or not codex_host_bin.stat.exists

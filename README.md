@@ -47,6 +47,16 @@ neither node nor python is otherwise a dependency here. It is a ~250 MB binary �
 it embeds its sandbox helpers and its own ripgrep. Unlike Claude Code it does not
 self-update, so `codex_version` is pinned like every other binary role.
 
+The role installs a second binary next to it, `codex-code-mode-host` (~69 MB).
+It is not optional in practice: `codex features list` reports `code_mode_host` as
+stable and enabled, and the feature fails at runtime with *install
+`codex-code-mode-host`* when the helper is missing — which is what a bare
+`codex` binary leaves you with. Upstream's `install.sh` places it beside the codex
+binary, so `/usr/local/bin` is where it goes here. It carries no `--version`, so
+it is checked for existence rather than through the version probe: a box
+provisioned before this task existed has codex at the pinned version and no helper,
+a state the probe alone reports as up to date.
+
 The Rust CLIs are split by how fast they move. `rust_clis` takes ripgrep, fd, bat
 and zoxide from apt in one batch, and shims `fdfind`/`batcat` back to `fd`/`bat` —
 Debian renames them to avoid a clash with fdclone and bacula. eza and delta get
