@@ -86,8 +86,8 @@ glyphs, and without the font the prompt and the tab bar render tofu.
 The zsh and WezTerm configs work together: `~/.config/zsh/wezterm.zsh` emits OSC 133
 semantic zones and publishes the current kubectl context as a user var, which
 `wezterm.lua` renders in the tab title and right status bar. In the tab title it turns
-matrix green while `k9s` is running, so the color means "pointed at this cluster
-right now" rather than just "what kubectl would target".
+matrix green while `k9s` or `sofka` is running, so the color means "pointed at this
+cluster right now" rather than just "what kubectl would target".
 
 The color scheme follows the desktop light/dark preference *live*, not only at
 startup: `window-config-reloaded` re-derives it and pushes titlebar and tab-bar
@@ -130,13 +130,24 @@ travels in the byte stream. No shell wrapper needed. The kube-context suffix
 drops its own glyph while that icon shows, so the tab never carries the same
 symbol twice.
 
+A grey-blue 󰄛 marks a tab running `sofka`. It is a cat rather than a second kube
+glyph on purpose: sofka and k9s do the same job, and two icons that differ only
+by colour are indistinguishable at tab-bar size. Detection is the same two
+tracks, with a sturdier title than k9s's — sofka writes `sofka: <context>/<namespace>`
+on every change and clears the title on exit (`terminal_title`, on by default),
+so no shell wrapper is needed and the tab never stays lit after the TUI is gone.
+The match keeps the colon: a bare `^sofka` also fires on a shell sitting in a
+directory named `sofka`, which is where this config gets edited. The kube-context
+suffix keeps its 󱃾 here, unlike under k9s — the cat does not carry that meaning —
+and turns matrix green, which reads "you are pointed at this cluster right now".
+
 An orange ● marks a tab where a command is running. WezTerm's own
 `has_unseen_output` looks like the obvious source and is not: it means "bytes
 arrived since you last focused this pane", and an invisible OSC 133 sequence or
 a background redraw sets it just as well as real work does, so it stays lit on
 idle tabs until you visit them. A `busy` user var set in `preexec` and cleared
 in `precmd` tracks the shell instead of the byte stream. The dot is hidden when
-the claude or k9s icon already shows — those say the same thing — and on the
+an agent, k9s or sofka icon already shows — those say the same thing — and on the
 active tab, where the command is in front of you. A pane with no zsh prompt (an
 ssh session, a `docker exec`) never lights it.
 

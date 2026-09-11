@@ -222,6 +222,20 @@ local function tab_runs_k9s(tab)
   return false
 end
 
+-- Sturdier than k9s's title track, so no zsh wrapper and no user var: sofka
+-- writes `sofka: <context>/<namespace>` (terminal_title, on by default) and
+-- clears it on exit, so the tab never stays lit after the TUI is gone. The
+-- colon is load-bearing — a bare `^sofka` also matches a shell sitting in a
+-- directory named sofka, which is where this config is edited.
+local function tab_runs_sofka(tab)
+  for _, p in ipairs(tab.panes or { tab.active_pane }) do
+    local proc = p.foreground_process_name
+    if proc and proc:match('/sofka$') then return true end
+    if p.title and p.title:match('^sofka: ') then return true end
+  end
+  return false
+end
+
 -- Not has_unseen_output: that flag means "bytes arrived since you last focused
 -- this pane" and an invisible OSC 133 or a background redraw sets it, so it
 -- stays lit on idle tabs. busy is set by the zsh preexec/precmd pair, so it
@@ -244,6 +258,7 @@ wezterm.on('format-tab-title', function(tab, tabs, panes, cfg, hover, max_width)
   local ctx = pane.user_vars.kube_ctx
   local in_k9s = tab_runs_k9s(tab)
   local in_codex = tab_runs_codex(tab)
+  local in_sofka = tab_runs_sofka(tab)
   local ctx_text = ''
   if ctx and ctx ~= '' then
     -- Drop the glyph when the leading k9s icon already carries it
@@ -276,19 +291,28 @@ wezterm.on('format-tab-title', function(tab, tabs, panes, cfg, hover, max_width)
     table.insert(items, { Text = '󱃾 ' })
     table.insert(items, 'ResetAttributes')
   end
-  -- The agent and k9s icons already say "a long-running command owns this tab"
-  if tab_is_busy(tab) and not tab_runs_claude(tab) and not in_codex and not in_k9s then
+  if in_sofka then
+    -- Upstream's cat, not a second kube glyph: two icons differing only by
+    -- colour are indistinguishable at tab-bar size. Grey-blue clears 3:1 on
+    -- both Latte and Mocha titlebars, so unlike codex it needs no flip.
+    table.insert(items, { Foreground = { Color = '#5a7d99' } })
+    table.insert(items, { Text = '󰄛 ' })
+    table.insert(items, 'ResetAttributes')
+  end
+  -- The agent and cluster-TUI icons already say "a long-running command owns this tab"
+  if tab_is_busy(tab) and not tab_runs_claude(tab) and not in_codex and not in_k9s
+     and not in_sofka then
     table.insert(items, { Foreground = { Color = '#ff9e64' } })
     table.insert(items, { Text = '● ' })
     table.insert(items, 'ResetAttributes')
   end
   table.insert(items, { Text = string.format('%d:%s', tab.tab_index + 1, title) })
-  -- Matrix green only while k9s is up: the color means "you are pointed at this
-  -- cluster right now", not merely "this is what kubectl would target"
+  -- Matrix green only while a cluster TUI is up: the color means "you are pointed
+  -- at this cluster right now", not merely "this is what kubectl would target"
   if ctx_text ~= '' then
-    if in_k9s then table.insert(items, { Foreground = { Color = '#00ff41' } }) end
+    if in_k9s or in_sofka then table.insert(items, { Foreground = { Color = '#00ff41' } }) end
     table.insert(items, { Text = ctx_text })
-    if in_k9s then table.insert(items, 'ResetAttributes') end
+    if in_k9s or in_sofka then table.insert(items, 'ResetAttributes') end
   end
   if pane.is_zoomed then table.insert(items, { Text = ' ' }) end
   table.insert(items, { Text = ' ' })
