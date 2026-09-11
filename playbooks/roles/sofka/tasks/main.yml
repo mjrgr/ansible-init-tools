@@ -1,0 +1,27 @@
+---
+# role: sofka
+- name: "Decide whether sofka must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: sofka
+    clis_bin: /usr/local/bin/sofka
+    clis_target: "{{ sofka_version }}"
+
+- name: "Install sofka"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    VERSION="{{ sofka_version }}"
+    latest_tag() {
+      curl -fsSLI --retry 3 --retry-all-errors --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+        | sed 's#.*/tag/##'
+    }
+    [ "$VERSION" = latest ] && VERSION=$(latest_tag nklmilojevic/sofka)
+    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /tmp/sofka.tar.gz \
+      "https://github.com/nklmilojevic/sofka/releases/download/${VERSION}/sofka-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+    tar xzf /tmp/sofka.tar.gz -C /tmp sofka
+    install -m 0755 /tmp/sofka /usr/local/bin/sofka
+    rm -f /tmp/sofka.tar.gz /tmp/sofka
+    /usr/local/bin/sofka --version
+  args:
+    executable: /bin/bash
+  when: clis_need_install | bool

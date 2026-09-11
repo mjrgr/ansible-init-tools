@@ -22,7 +22,7 @@ dotfiles** on **Ubuntu / Debian**.
 | Purpose | system-wide tooling | per-user configuration |
 
 ## Included CLIs / utilities
-- kubectl, helm, kind, kwok, k9s, krew, helmfile
+- kubectl, helm, kind, kwok, k9s, sofka, krew, helmfile
 - docker, podman, nerdctl, crictl
 - opentofu
 - yq, jq
