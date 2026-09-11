@@ -90,15 +90,38 @@
         - /etc/apt/keyrings/hashicorp.gpg.armored
       tags: [always]
 
-    # No cache_valid_time here: it trusts the mtime of /var/lib/apt/lists, which
-    # is recent but empty on an image that purged the lists after building. Ansible
-    # then skips the update and the install fails on packages it cannot see.
-    - name: "Install common tools/dependencies"
-      ansible.builtin.apt:
-        name: "{{ common_packages }}"
-        state: present
-        update_cache: true
+    # python-apt's cache.update() raises on ANY failed fetch, and the apt module
+    # renders that as "Failed to update apt cache: unknown reason" — so one
+    # third-party source going bad (an upstream signing-key rotation is the usual
+    # cause) fails the whole run with nothing to act on. The rescue re-runs the
+    # command form to recover the message apt would have printed.
+    - name: "Install the common tools, and report what apt says if the cache fails"
       tags: [common]
+      block:
+        # No cache_valid_time here: it trusts the mtime of /var/lib/apt/lists, which
+        # is recent but empty on an image that purged the lists after building. Ansible
+        # then skips the update and the install fails on packages it cannot see.
+        - name: "Install common tools/dependencies"
+          ansible.builtin.apt:
+            name: "{{ common_packages }}"
+            state: present
+            update_cache: true
+      rescue:
+        # apt-get exits 0 on a fetch or signature failure, so the diagnosis is in
+        # the output, not in the return code.
+        - name: "Collect what apt reports about the cache"
+          ansible.builtin.shell:
+            cmd: "set -o pipefail; apt-get update 2>&1 | grep -E '^(E|W|N|Err)' || true"
+            executable: /bin/bash
+          register: clis_apt_diag
+          changed_when: false
+
+        - name: "Fail with the real apt error rather than 'unknown reason'"
+          ansible.builtin.fail:
+            msg: |-
+              apt cache update failed. What apt reports:
+
+              {{ clis_apt_diag.stdout | trim | default('(apt-get update printed no diagnostic — run it by hand)', true) }}
 
     - name: "Ensure the apt keyring directory exists"
       ansible.builtin.file:
