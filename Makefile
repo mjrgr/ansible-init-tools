@@ -1,5 +1,6 @@
 ANSIBLE ?= ansible-playbook
 LOCAL   := -c local -i localhost,
+BECOME  ?= --ask-become-pass
 
 .DEFAULT_GOAL := help
 
@@ -12,15 +13,15 @@ help: ## Show this help
 
 .PHONY: install
 install: ## Install the CLI tools (sudo; only what is missing)
-	$(ANSIBLE) playbooks/install_clis.yml $(LOCAL) --ask-become-pass
+	$(ANSIBLE) playbooks/install_clis.yml $(LOCAL) $(BECOME)
 
 .PHONY: upgrade
 upgrade: ## Upgrade every CLI tool in place (sudo)
-	$(ANSIBLE) playbooks/install_clis.yml $(LOCAL) --ask-become-pass -e clis_state=latest
+	$(ANSIBLE) playbooks/install_clis.yml $(LOCAL) $(BECOME) -e clis_state=latest
 
 .PHONY: dotfiles
-dotfiles: ## Deploy the dotfiles (no sudo)
-	$(ANSIBLE) playbooks/dotfiles.yml $(LOCAL)
+dotfiles: ## Deploy the dotfiles (sudo only to chsh to zsh, once)
+	$(ANSIBLE) playbooks/dotfiles.yml $(LOCAL) $(BECOME)
 
 .PHONY: rollback
 rollback: ## Remove the dotfiles symlinks and restore the backups

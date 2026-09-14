@@ -70,9 +70,18 @@
   loop_control:
     label: "{{ item.dest }}"
 
+- name: "Read the login shell from passwd"
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ ansible_user_id }}"
+  when: dotfiles_set_default_shell | bool
+
+# Guarded on the current shell so an already-migrated host never escalates.
 - name: "Set zsh as the login shell"
   ansible.builtin.user:
     name: "{{ ansible_user_id }}"
     shell: /bin/zsh
   become: true
-  when: dotfiles_set_default_shell | bool
+  when:
+    - dotfiles_set_default_shell | bool
+    - ansible_facts.getent_passwd[ansible_user_id][5] != '/bin/zsh'

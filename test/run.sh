@@ -82,6 +82,12 @@ case "$TARGET" in
       " 2>&1 | grep -v "can.t change option"
 
       echo
+      echo "==> zsh is the login shell"
+      sh=$(getent passwd "$(id -un)" | cut -d: -f7)
+      echo "    passwd shell: $sh"
+      [ "$sh" = /bin/zsh ] || { echo "    chsh did not happen — failed"; exit 1; }
+
+      echo
       echo "==> the Nerd Font is installed and visible to fontconfig"
       n=$(ls ~/.local/share/fonts/JetBrainsMono*.ttf 2>/dev/null | wc -l)
       echo "    font files: $n"

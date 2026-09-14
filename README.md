@@ -17,7 +17,7 @@ dotfiles** on **Ubuntu / Debian**.
 
 | | `install_clis.yml` | `dotfiles.yml` |
 |---|---|---|
-| Privileges | `become: true` (sudo) | `become: false` |
+| Privileges | `become: true` (sudo) | `become: false`, except the one-off `chsh` |
 | Writes to | `/usr/local/bin`, `/etc/apt` | `$HOME`, `$HOME/.config` |
 | Purpose | system-wide tooling | per-user configuration |
 
@@ -209,7 +209,7 @@ The underlying commands, when you need finer control:
 
 ```bash
 ansible-playbook playbooks/install_clis.yml -c local --ask-become-pass
-ansible-playbook playbooks/dotfiles.yml -c local
+ansible-playbook playbooks/dotfiles.yml -c local --ask-become-pass
 ```
 
 ### Ubuntu 26.04: sudo-rs breaks `--ask-become-pass`
@@ -256,7 +256,7 @@ Useful variables:
 | `install_only` | *(unset)* | install a single tool |
 | `docker_add_user_to_group` | `true` | add the invoking user to the `docker` group |
 | `dotfiles_only` | *(unset)* | deploy a single group |
-| `dotfiles_set_default_shell` | `false` | `chsh` to zsh — needs `--ask-become-pass` |
+| `dotfiles_set_default_shell` | `true` | `chsh` to zsh — needs `--ask-become-pass`, on that run only |
 
 ## The docker group
 
@@ -318,8 +318,7 @@ git clone <this-repo> && cd ansible-init-tools
 ansible-playbook playbooks/install_clis.yml -c local --ask-become-pass
 
 # 2. Dotfiles + set zsh as the login shell
-ansible-playbook playbooks/dotfiles.yml -c local \
-  -e dotfiles_set_default_shell=true --ask-become-pass
+ansible-playbook playbooks/dotfiles.yml -c local --ask-become-pass
 
 # 3. Fill in the local, non-versioned files
 $EDITOR ~/.zshenv.local     # secrets, tokens, proxy (mode 0600)
@@ -401,8 +400,10 @@ on the way out, and Ubuntu's ends with a test that returns 1 when `clear_console
 absent — under `set -e` that status silently overrides an explicit `exit 0` and turns a
 passing target into a failure.
 
-Caveats: daemons (docker, podman) install but do not start in a container,
-and `dotfiles_set_default_shell` is left off so `chsh` is never exercised.
+Caveat: daemons (docker, podman) install but do not start in a container. The
+`chsh` does run — the test user holds a `NOPASSWD` sudoers entry — and it is part
+of what the second run proves, since a task that re-applied it would show up as
+`changed=1`.
 
 ## Backups and rollback
 
@@ -419,6 +420,9 @@ make rollback
 It removes only the symlinks that point into this repo — anything else in those paths
 predates the deploy and is left alone — then restores the most recent backup of each
 file. The backups stay on disk, and the three `*.local` files are never touched.
+
+The login shell is **not** reverted: `chsh` overwrote the previous value rather than
+saving it, so `chsh -s /bin/bash` is the manual step if you want it back.
 
 ## Secret scanning
 

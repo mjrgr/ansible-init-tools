@@ -6,9 +6,9 @@
     dotfiles_home: "{{ ansible_env.HOME }}"
     dotfiles_backup_dir: "{{ ansible_env.HOME }}/.dotfiles-backup"
     dotfiles_stamp: "{{ ansible_date_time.iso8601_basic_short }}"
-    # Off by default so the whole play stays unprivileged.
-    # Fresh machine: -e dotfiles_set_default_shell=true --ask-become-pass
-    dotfiles_set_default_shell: false
+    # Needs sudo, and only on the run that flips the shell: the task is skipped
+    # once passwd already says zsh, so a re-run stays unprivileged.
+    dotfiles_set_default_shell: true
 
     # Provided by install_clis.yml; checked before anything is written.
     dotfiles_requirements:
