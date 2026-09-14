@@ -3,4 +3,4 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e gitlogue_version=<tag>
 # Bump deliberately, then re-run the container tests.
-gitlogue_version: "v0.10.0"
+gitlogue_version: "v0.11.0"

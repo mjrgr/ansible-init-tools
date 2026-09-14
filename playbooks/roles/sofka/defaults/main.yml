@@ -3,4 +3,4 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e sofka_version=<tag>
 # Bump deliberately, then re-run the container tests.
-sofka_version: "v0.25.3"
+sofka_version: "v0.27.2"

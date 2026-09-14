@@ -3,4 +3,4 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e kubectl_version=<tag>
 # Bump deliberately, then re-run the container tests.
-kubectl_version: "v1.36.3"
+kubectl_version: "v1.37.0"

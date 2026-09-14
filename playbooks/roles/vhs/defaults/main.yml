@@ -3,4 +3,4 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e vhs_version=<tag>
 # Bump deliberately, then re-run the container tests.
-vhs_version: "v0.11.0"
+vhs_version: "v0.12.0"

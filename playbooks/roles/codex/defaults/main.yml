@@ -7,4 +7,4 @@
 # Plain semver here, not the tag: upstream tags the CLI `rust-v<x.y.z>` in a
 # monorepo that also ships other crates, and the probe compares against what
 # `codex --version` prints.
-codex_version: "0.153.4"
+codex_version: "0.154.0"

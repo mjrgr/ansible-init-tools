@@ -3,4 +3,4 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e yq_version=<tag>
 # Bump deliberately, then re-run the container tests.
-yq_version: "v4.53.3"
+yq_version: "v4.53.6"
