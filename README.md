@@ -176,6 +176,20 @@ bash strings collapse `\\` to `\`, silently turning the UNC path into a bogus
 `C:\wsl.localhost\...`. Use single quotes for the argument, or type it directly
 in PowerShell.
 
+The distro name is baked into that UNC path, so renaming or removing the distro
+breaks the link and WezTerm silently falls back to its built-in defaults — no
+error, just a terminal that lost its config. Check the target and re-create it:
+
+```powershell
+(Get-Item C:\Users\<you>\.wezterm.lua).Target     # dangling if the distro was renamed
+Remove-Item C:\Users\<you>\.wezterm.lua -Force
+New-Item -ItemType SymbolicLink -Path C:\Users\<you>\.wezterm.lua `
+  -Target '\\wsl.localhost\<Distro>\home\<you>\workspace\...\ansible-init-tools\dotfiles\wezterm\wezterm.lua'
+```
+
+From WSL, `ls -la /mnt/c/Users/<you>/.wezterm.lua` reports `Input/output error`
+on the symlink when the target distro no longer exists.
+
 ## Usage
 
 `make help` lists everything. The common paths:
