@@ -31,16 +31,23 @@
       ansible-playbook playbooks/install_clis.yml -c local --ask-become-pass
   when: dotfiles_reqs.results | selectattr('rc', 'ne', 0) | list | length > 0
 
-- name: "Create target directories"
-  ansible.builtin.file:
+- name: "Inspect the target directories"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.stat:
     path: "{{ item }}"
+  loop: "{{ dotfiles_common_dirs }}"
+  register: dotfiles_dirs
+
+# mode is applied only to the directories this task actually creates. Under WSL
+# ~/.kube is often a symlink onto the Windows drive, and a drvfs/9p mount carries
+# no Linux metadata (uid=0, gid=0, everything 0777): chmod there always returns
+# EPERM. Re-asserting 0755 on a directory that already exists and works would
+# fail the whole play for nothing.
+- name: "Create the missing target directories"
+  ansible.builtin.file:
+    path: "{{ item.item }}"
     state: directory
     mode: "0755"
-  loop:
-    - "{{ dotfiles_home }}/.config"
-    - "{{ dotfiles_home }}/.config/zsh"
-    - "{{ dotfiles_home }}/.config/wezterm"
-    - "{{ dotfiles_home }}/.config/btop"
-    - "{{ dotfiles_home }}/.kube"
-    - "{{ dotfiles_home }}/.local/bin"
-    - "{{ dotfiles_backup_dir }}"
+  loop: "{{ dotfiles_dirs.results }}"
+  when: not item.stat.exists
+  loop_control:
+    label: "{{ item.item }}"
