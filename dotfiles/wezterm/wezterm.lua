@@ -15,15 +15,13 @@ local IS_WINDOWS = wezterm.target_triple:find('windows') ~= nil
 if IS_WINDOWS then
   -- One domain per distro: does not depend on wsl.exe's default distro.
   config.wsl_domains = {
-    { name = 'WSL:22.04', distribution = 'Ubuntu-22.04', default_cwd = '~' },
-    { name = 'WSL:24.04', distribution = 'Ubuntu-24.04', default_cwd = '~' },
+    { name = 'WSL:Ubuntu', distribution = 'Ubuntu', default_cwd = '~' },
   }
-  config.default_domain = 'WSL:22.04'
+  config.default_domain = 'WSL:Ubuntu'
   -- Shell for the 'local' domain: avoids falling back to cmd.exe.
   config.default_prog = { 'pwsh.exe', '-NoLogo' }
   config.launch_menu = {
-    { label = 'Ubuntu 22.04', domain = { DomainName = 'WSL:22.04' } },
-    { label = 'Ubuntu 24.04', domain = { DomainName = 'WSL:24.04' } },
+    { label = 'Ubuntu', domain = { DomainName = 'WSL:Ubuntu' } },
     { label = 'PowerShell',   args = { 'pwsh.exe', '-NoLogo' }, domain = { DomainName = 'local' } },
   }
 else
