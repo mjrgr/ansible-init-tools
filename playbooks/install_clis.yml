@@ -21,6 +21,7 @@
       - kwok
       - k9s
       - sofka
+      - argo9s
       - docker
       - podman
       - krew

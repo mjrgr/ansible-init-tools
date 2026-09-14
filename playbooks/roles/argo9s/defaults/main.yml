@@ -1,0 +1,6 @@
+---
+# Pinned so two machines provisioned months apart get the same binary.
+# Set to "latest" to track upstream, or override on the command line:
+#   -e argo9s_version=<tag>
+# Bump deliberately, then re-run the container tests.
+argo9s_version: "v0.1.0"
