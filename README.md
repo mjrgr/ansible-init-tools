@@ -212,6 +212,33 @@ ansible-playbook playbooks/install_clis.yml -c local --ask-become-pass
 ansible-playbook playbooks/dotfiles.yml -c local
 ```
 
+### Ubuntu 26.04: sudo-rs breaks `--ask-become-pass`
+
+Ubuntu 25.10 and later ship `sudo-rs` as `/usr/bin/sudo`. Ansible's `sudo` become
+plugin hands the password to the child on stdin, which sudo-rs does not take the way
+`sudo -S` does — it re-prints a prompt of its own and keeps waiting, so every play
+dies on the first task:
+
+```
+[ERROR]: Task failed: Timed out waiting for become success or become password prompt.
+>>> Standard Error
+[sudo: [sudo via ansible, key=...] password:] Password:
+```
+
+`sudo --version` tells them apart — `sudo-rs 0.2.x` versus `Sudo version 1.9.x`.
+Having the `sudo` package installed proves nothing: sudo-rs owns the path either way.
+Swap it back, and keep a root shell open in a second terminal until the new binary
+answers, since the removal takes away the `sudo` in use:
+
+```bash
+sudo apt-get install --reinstall -y sudo
+sudo apt-get remove -y sudo-rs
+sudo --version | head -1
+```
+
+A `NOPASSWD` drop-in in `/etc/sudoers.d` is the other way out — sudo-rs reads it — but
+it trades one interactive password for permanent passwordless root on the account.
+
 One tool or one group, either by variable or by tag:
 
 ```bash
