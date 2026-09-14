@@ -12,12 +12,12 @@
     set -euo pipefail
     VERSION="{{ argo9s_version }}"
     latest_tag() {
-      curl -fsSLI --retry 3 --retry-all-errors --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+      curl -fsSLI --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
         | sed 's#.*/tag/##'
     }
     [ "$VERSION" = latest ] && VERSION=$(latest_tag vvrnv/argo9s)
     # The asset name carries the bare version, the tag carries the v.
-    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /tmp/argo9s.tar.gz \
+    curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /tmp/argo9s.tar.gz \
       "https://github.com/vvrnv/argo9s/releases/download/${VERSION}/argo9s_${VERSION#v}_linux_amd64.tar.gz"
     tar xzf /tmp/argo9s.tar.gz -C /tmp argo9s
     install -m 0755 /tmp/argo9s /usr/local/bin/argo9s

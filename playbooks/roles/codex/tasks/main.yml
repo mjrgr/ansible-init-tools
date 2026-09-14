@@ -25,14 +25,14 @@
     set -euo pipefail
     VERSION="{{ codex_version }}"
     latest_tag() {
-      curl -fsSLI --retry 3 --retry-all-errors --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+      curl -fsSLI --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
         | sed 's#.*/tag/##'
     }
     [ "$VERSION" = latest ] && VERSION=$(latest_tag openai/codex)
     # Accepts a bare version, or the upstream tag verbatim if one is passed in.
     V="${VERSION#rust-v}"
     ASSET="codex-x86_64-unknown-linux-musl"
-    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /tmp/codex.tar.gz \
+    curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /tmp/codex.tar.gz \
       "https://github.com/openai/codex/releases/download/rust-v${V}/${ASSET}.tar.gz"
     tar xzf /tmp/codex.tar.gz -C /tmp "${ASSET}"
     install -m 0755 "/tmp/${ASSET}" /usr/local/bin/codex
@@ -56,13 +56,13 @@
     set -euo pipefail
     VERSION="{{ codex_version }}"
     latest_tag() {
-      curl -fsSLI --retry 3 --retry-all-errors --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+      curl -fsSLI --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
         | sed 's#.*/tag/##'
     }
     [ "$VERSION" = latest ] && VERSION=$(latest_tag openai/codex)
     V="${VERSION#rust-v}"
     ASSET="codex-code-mode-host-x86_64-unknown-linux-musl"
-    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o /tmp/codex-host.tar.gz \
+    curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /tmp/codex-host.tar.gz \
       "https://github.com/openai/codex/releases/download/rust-v${V}/${ASSET}.tar.gz"
     tar xzf /tmp/codex-host.tar.gz -C /tmp "${ASSET}"
     install -m 0755 "/tmp/${ASSET}" /usr/local/bin/codex-code-mode-host

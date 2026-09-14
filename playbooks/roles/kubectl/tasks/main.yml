@@ -12,10 +12,10 @@
   ansible.builtin.shell: |
     set -euo pipefail
     VERSION="{{ kubectl_version }}"
-    [ "$VERSION" = latest ] && VERSION=$(curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 https://dl.k8s.io/release/stable.txt)
+    [ "$VERSION" = latest ] && VERSION=$(curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 https://dl.k8s.io/release/stable.txt)
     # curl -o follows a symlinked kubectl (k3s multiplexes its binaries) and clobbers the target; mv replaces the inode
     TMP="$(mktemp)"
-    curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 -o "${TMP}" "https://dl.k8s.io/release/${VERSION}/bin/linux/amd64/kubectl"
+    curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o "${TMP}" "https://dl.k8s.io/release/${VERSION}/bin/linux/amd64/kubectl"
     chmod +x "${TMP}"
     mv -f "${TMP}" /usr/local/bin/kubectl
     /usr/local/bin/kubectl version --client
