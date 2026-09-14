@@ -13,17 +13,41 @@ config.default_workspace = 'main'
 local IS_WINDOWS = wezterm.target_triple:find('windows') ~= nil
 
 if IS_WINDOWS then
-  -- One domain per distro: does not depend on wsl.exe's default distro.
-  config.wsl_domains = {
-    { name = 'WSL:Ubuntu', distribution = 'Ubuntu', default_cwd = '~' },
-  }
-  config.default_domain = 'WSL:Ubuntu'
+  -- Derived from `wsl -l -v` at config load, so renaming or adding a distro
+  -- costs a Ctrl+Shift+R instead of an edit here.
+  local wsl_domains = wezterm.default_wsl_domains()
+  for _, dom in ipairs(wsl_domains) do
+    dom.default_cwd = '~'
+  end
+  config.wsl_domains = wsl_domains
+
+  local PREFERRED_DISTRO = 'Ubuntu'
+  for _, dom in ipairs(wsl_domains) do
+    if dom.distribution == PREFERRED_DISTRO then
+      config.default_domain = dom.name
+    end
+  end
+  -- A default_domain naming a distro that no longer exists is a hard config
+  -- error, so fall back rather than lose the terminal over a rename.
+  if not config.default_domain and wsl_domains[1] then
+    config.default_domain = wsl_domains[1].name
+  end
+
   -- Shell for the 'local' domain: avoids falling back to cmd.exe.
   config.default_prog = { 'pwsh.exe', '-NoLogo' }
-  config.launch_menu = {
-    { label = 'Ubuntu', domain = { DomainName = 'WSL:Ubuntu' } },
-    { label = 'PowerShell',   args = { 'pwsh.exe', '-NoLogo' }, domain = { DomainName = 'local' } },
-  }
+
+  config.launch_menu = {}
+  for _, dom in ipairs(wsl_domains) do
+    table.insert(config.launch_menu, {
+      label = dom.distribution,
+      domain = { DomainName = dom.name },
+    })
+  end
+  table.insert(config.launch_menu, {
+    label = 'PowerShell',
+    args = { 'pwsh.exe', '-NoLogo' },
+    domain = { DomainName = 'local' },
+  })
 else
   -- ============================================================
   -- Input (Linux/Wayland)
