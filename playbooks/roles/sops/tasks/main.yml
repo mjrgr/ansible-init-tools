@@ -14,7 +14,8 @@
     # api.github.com allows 60 unauthenticated calls per hour per IP, which a
     # shared egress address burns through; the release redirect has no such limit.
     latest_tag() {
-      curl -fsSLI --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+      curl -fsSLI --retry 5 --retry-all-errors \
+        --retry-max-time 120 --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
         | sed 's#.*/tag/##'
     }
     [ "$VERSION" = latest ] && VERSION=$(latest_tag getsops/sops)

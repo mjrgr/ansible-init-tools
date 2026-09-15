@@ -23,7 +23,8 @@
     set -euo pipefail
     VERSION="{{ lazygit_version }}"
     latest_tag() {
-      curl -fsSLI --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
+      curl -fsSLI --retry 5 --retry-all-errors \
+        --retry-max-time 120 --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
         | sed 's#.*/tag/##'
     }
     [ "$VERSION" = latest ] && VERSION=$(latest_tag jesseduffield/lazygit)
