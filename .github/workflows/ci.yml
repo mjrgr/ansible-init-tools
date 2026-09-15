@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * 1'
 
 permissions:
   contents: read
@@ -99,3 +101,50 @@ jobs:
       # Parses the versioned wezterm.lua with the real binary.
       - name: Parse wezterm.lua
         run: ./test/run.sh wezterm
+
+  # Not part of the CI gate: it reports what upstream has moved on to, on a
+  # schedule, because nothing else watches versions that live in Ansible defaults.
+  pin-drift:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare the pins against upstream
+        id: drift
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./test/pin-drift.sh > /tmp/drift.md && status=0 || status=$?
+          cat /tmp/drift.md >> "$GITHUB_STEP_SUMMARY"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+      # One issue, edited in place. A weekly comment on the same issue would bury
+      # the current state under a history nobody reads.
+      - name: Open or update the drift issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: Pinned CLI versions are behind upstream
+        run: |
+          set -euo pipefail
+          gh label create pin-drift --color ededed --description "Pinned tool versions lag upstream" --force
+          existing=$(gh issue list --label pin-drift --state open --json number --jq '.[0].number // empty')
+          if [ "${{ steps.drift.outputs.status }}" = 0 ]; then
+            [ -n "$existing" ] && gh issue close "$existing" --comment "Every pin matches upstream again." || true
+            exit 0
+          fi
+          {
+            echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo
+            cat /tmp/drift.md
+            echo
+            echo "Bump the \`<role>_version\` defaults, then \`make test-pins\`."
+          } > /tmp/issue.md
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --body-file /tmp/issue.md
+          else
+            gh issue create --title "$TITLE" --label pin-drift --body-file /tmp/issue.md
+          fi

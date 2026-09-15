@@ -309,6 +309,16 @@ Ansible defaults. It covers the GitHub Actions tags and the test image only. Wha
 guards the pins is `make test-pins`, which installs every pinned version in a
 container and fails on a yanked tag or a changed asset URL. It runs in CI.
 
+`make test-pins` answers "does this pin still install", not "is this pin current" —
+a tool can sit three minors behind and stay green forever. `make drift` answers the
+second question: it reads the latest release of each tool and prints what has moved
+on. CI runs it every Monday and keeps a single `pin-drift` issue in sync with the
+result — opened when something lags, edited on later runs, closed when everything
+matches again. The upstream repo is read out of each role's own download URL, so a
+new role is covered without registering it anywhere; the three tools that do not
+download from GitHub (kubectl, helm, starship) are named in the script, and a role
+with neither is reported as unknown rather than quietly skipped.
+
 ## Bootstrap on a new machine
 
 ```bash

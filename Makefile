@@ -45,6 +45,10 @@ test-rollback: ## Deploy then roll back in a container, assert the restore
 test-pins: ## Check every pinned tool version still installs
 	./test/run.sh pins
 
+.PHONY: drift
+drift: ## Report which pinned versions upstream has moved past (needs gh)
+	./test/pin-drift.sh
+
 .PHONY: test-wezterm
 test-wezterm: ## Install wezterm in a container and parse the versioned config
 	./test/run.sh wezterm
