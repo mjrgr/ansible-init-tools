@@ -4,3 +4,17 @@
 #   -e eza_version=<tag>
 # Bump deliberately, then re-run the container tests.
 eza_version: "v0.23.5"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+eza_arch:
+  amd64: "x86_64-unknown-linux-gnu"
+  arm64: "aarch64-unknown-linux-gnu"
+
+eza_url: "https://github.com/eza-community/eza/releases/download/{version}/eza_{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+eza_sha256:
+  amd64: "35c70c5c43c29108075e58b893234c67ef585f0b53a7eaf8e9e7d4eec9f339b4"
+  arm64: "40b87ae8628aa2ff0f0d2dc24ab52f689631366385c3da630bae745671fd71ec"

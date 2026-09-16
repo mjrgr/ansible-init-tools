@@ -4,3 +4,17 @@
 #   -e glow_version=<tag>
 # Bump deliberately, then re-run the container tests.
 glow_version: "v3.0.0"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+glow_arch:
+  amd64: "x86_64"
+  arm64: "arm64"
+
+glow_url: "https://github.com/charmbracelet/glow/releases/download/v{version_nov}/glow_{version_nov}_Linux_{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+glow_sha256:
+  amd64: "13e05e4b2acc18d2aee44291aefe6325b077ec321b631a0cfa780e8e3bc33f78"
+  arm64: "810c39f4691feb75e675a5f5f54b9fa091354e7599d9cf9c9fc9b97e47a99759"

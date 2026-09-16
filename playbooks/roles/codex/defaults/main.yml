@@ -6,5 +6,25 @@
 #
 # Plain semver here, not the tag: upstream tags the CLI `rust-v<x.y.z>` in a
 # monorepo that also ships other crates, and the probe compares against what
-# `codex --version` prints.
+# `codex --version` prints. resolve.yml strips the prefix back off when the pin
+# is "latest".
 codex_version: "0.154.0"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+codex_arch:
+  amd64: "x86_64"
+  arm64: "aarch64"
+
+codex_url: "https://github.com/openai/codex/releases/download/rust-v{version}/codex-{arch}-unknown-linux-musl.tar.gz"
+codex_host_url: "https://github.com/openai/codex/releases/download/rust-v{version}/codex-code-mode-host-{arch}-unknown-linux-musl.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+codex_sha256:
+  amd64: "d7e18b2597ae8f242f5f31ee9e90deef48dbc9edd634d9868fb6435d08c07f02"
+  arm64: "583b48df32804213bdcd338c2e5adb06b34340821fa757a726cc0a524fa33c27"
+
+codex_host_sha256:
+  amd64: "a68df7cca23c6da7cde175677df7de61c73a234add1333a1254b86d641af01f7"
+  arm64: "20aefa302c2022b496e32911bf954a5f76c7fd749c6bdb9fbd711e32b66dcbfa"

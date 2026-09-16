@@ -1,5 +1,13 @@
 ---
 # role: nerdctl
+
+- name: "Resolve the nerdctl version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: nerdctl
+    clis_repo: containerd/nerdctl
+    clis_target: "{{ nerdctl_version }}"
+
 - name: "Decide whether nerdctl must be installed"
   ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
   vars:
@@ -8,24 +16,12 @@
     clis_target: "{{ nerdctl_version }}"
 
 - name: "Install nerdctl"
-  ansible.builtin.shell: |
-    set -euo pipefail
-    VERSION="{{ nerdctl_version }}"
-    # api.github.com allows 60 unauthenticated calls per hour per IP, which a
-    # shared egress address burns through; the release redirect has no such limit.
-    latest_tag() {
-      curl -fsSLI --retry 5 --retry-all-errors \
-        --retry-max-time 120 --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
-        | sed 's#.*/tag/##'
-    }
-    [ "$VERSION" = latest ] && VERSION=$(latest_tag containerd/nerdctl)
-    V="${VERSION#v}"
-    curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /tmp/nerdctl.tar.gz \
-      "https://github.com/containerd/nerdctl/releases/download/v${V}/nerdctl-${V}-linux-amd64.tar.gz"
-    tar xzf /tmp/nerdctl.tar.gz -C /tmp nerdctl
-    install -m 0755 /tmp/nerdctl /usr/local/bin/nerdctl
-    rm -f /tmp/nerdctl.tar.gz /tmp/nerdctl
-    /usr/local/bin/nerdctl --version
-  args:
-    executable: /bin/bash
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: nerdctl
+    clis_url: "{{ nerdctl_url }}"
+    clis_arch_map: "{{ nerdctl_arch }}"
+    clis_sha256: "{{ nerdctl_sha256[clis_arch] }}"
+    clis_files:
+      - {src: "nerdctl", dest: "/usr/local/bin/nerdctl"}
   when: clis_need_install | bool

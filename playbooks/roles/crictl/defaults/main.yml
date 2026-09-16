@@ -4,3 +4,17 @@
 #   -e crictl_version=<tag>
 # Bump deliberately, then re-run the container tests.
 crictl_version: "v1.37.0"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+crictl_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+crictl_url: "https://github.com/kubernetes-sigs/cri-tools/releases/download/{version}/crictl-{version}-linux-{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+crictl_sha256:
+  amd64: "67c983ee8a6bbce73d39a186e633c5fe4f8a70e62171ac3bd92a9c1b2c601670"
+  arm64: "c9dfdf9ebc353a0027c88622206a5e90ee6f0e78cfabf1a9ef4dc575298fd555"

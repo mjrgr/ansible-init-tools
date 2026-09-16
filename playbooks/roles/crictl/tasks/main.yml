@@ -1,5 +1,13 @@
 ---
 # role: crictl
+
+- name: "Resolve the crictl version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: crictl
+    clis_repo: kubernetes-sigs/cri-tools
+    clis_target: "{{ crictl_version }}"
+
 - name: "Decide whether crictl must be installed"
   ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
   vars:
@@ -8,23 +16,12 @@
     clis_target: "{{ crictl_version }}"
 
 - name: "Install crictl"
-  ansible.builtin.shell: |
-    set -euo pipefail
-    VERSION="{{ crictl_version }}"
-    # api.github.com allows 60 unauthenticated calls per hour per IP, which a
-    # shared egress address burns through; the release redirect has no such limit.
-    latest_tag() {
-      curl -fsSLI --retry 5 --retry-all-errors \
-        --retry-max-time 120 --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
-        | sed 's#.*/tag/##'
-    }
-    [ "$VERSION" = latest ] && VERSION=$(latest_tag kubernetes-sigs/cri-tools)
-    curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /tmp/crictl.tgz \
-      "https://github.com/kubernetes-sigs/cri-tools/releases/download/${VERSION}/crictl-${VERSION}-linux-amd64.tar.gz"
-    tar xzf /tmp/crictl.tgz -C /usr/local/bin crictl
-    chmod +x /usr/local/bin/crictl
-    rm -f /tmp/crictl.tgz
-    /usr/local/bin/crictl --version
-  args:
-    executable: /bin/bash
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: crictl
+    clis_url: "{{ crictl_url }}"
+    clis_arch_map: "{{ crictl_arch }}"
+    clis_sha256: "{{ crictl_sha256[clis_arch] }}"
+    clis_files:
+      - {src: "crictl", dest: "/usr/local/bin/crictl"}
   when: clis_need_install | bool

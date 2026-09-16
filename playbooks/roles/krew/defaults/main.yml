@@ -4,3 +4,17 @@
 #   -e krew_version=<tag>
 # Bump deliberately, then re-run the container tests.
 krew_version: "v0.5.0"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+krew_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+krew_url: "https://github.com/kubernetes-sigs/krew/releases/download/{version}/krew-linux_{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+krew_sha256:
+  amd64: "5d5a221fffdf331d1c5c68d9917530ecd102e0def5b5a6d62eeed1c404efb28a"
+  arm64: "ab7a98b992424e76b6c162f8b67fb76c4b1e243598aa2807bdf226752f964548"

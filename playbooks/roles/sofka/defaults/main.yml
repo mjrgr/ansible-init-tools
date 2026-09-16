@@ -4,3 +4,17 @@
 #   -e sofka_version=<tag>
 # Bump deliberately, then re-run the container tests.
 sofka_version: "v0.27.2"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+sofka_arch:
+  amd64: "x86_64-unknown-linux-gnu"
+  arm64: "aarch64-unknown-linux-gnu"
+
+sofka_url: "https://github.com/nklmilojevic/sofka/releases/download/{version}/sofka-{version}-{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+sofka_sha256:
+  amd64: "9b02d5e840b1195d9166390c3b1b0db03642a0809df8ac0f91a5306af58a82ae"
+  arm64: "9e00aedda9c35d2f172c4a4903d406693a98080650f2cc9181c79a5bde400a2d"

@@ -4,8 +4,9 @@ exclude_paths:
   - .github/
 
 skip_list:
-  # Vendor installers are shell one-shots by nature; the probe task in
-  # clis_common is what provides idempotence, not a native module.
+  # What is left on shell is a version probe and three gpg --dearmor calls, both
+  # of which report their own idempotence: the probe through changed_when: false,
+  # the dearmors through creates:. Binary installs go through get_url/unarchive.
   - command-instead-of-shell
   - no-changed-when
 

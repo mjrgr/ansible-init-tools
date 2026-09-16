@@ -4,3 +4,22 @@
 #   -e kwok_version=<tag>
 # Bump deliberately, then re-run the container tests.
 kwok_version: "v0.8.0"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+kwok_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+kwok_url: "https://github.com/kubernetes-sigs/kwok/releases/download/{version}/kwok-linux-{arch}"
+kwokctl_url: "https://github.com/kubernetes-sigs/kwok/releases/download/{version}/kwokctl-linux-{arch}"  # noqa: var-naming[no-role-prefix]
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+kwok_sha256:
+  amd64: "f5a4385a2ae1b9dd7f8acae18e002a75c0ebba124ae9d7259aa8dadb50711f46"
+  arm64: "628f7d277860f524a2a775c217adcc58828e7b59ab0933680315784f1b8b0e37"
+
+kwokctl_sha256:  # noqa: var-naming[no-role-prefix]
+  amd64: "d5743166c657283d6e827c7c4c20cacfd9009fd94830f06718ca7b2c7099461f"
+  arm64: "5a642b27d3e975f36040d215640cd90fb4a63cb6fca0ad5865a61bcd9c81051b"

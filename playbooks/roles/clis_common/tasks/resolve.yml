@@ -1,0 +1,55 @@
+---
+# Resolves the two things every binary-download role needs before it can build a
+# URL: the CPU architecture slug, and a concrete tag when the pin says "latest".
+#
+# Inputs:
+#   clis_name     display name, used in task labels and in the guard below
+#   clis_repo     owner/name on GitHub, only needed when clis_target is "latest"
+#   clis_target   wanted version, "latest" or a concrete tag
+#   clis_tag_strip  optional regex stripped off a resolved tag, for a monorepo
+#                   that prefixes its tags (codex tags the CLI "rust-v<x.y.z>")
+#
+# Sets:
+#   clis_arch     "amd64" or "arm64"
+#   clis_version  the tag to download, never "latest"
+#
+# Roles map clis_arch onto whatever slug their upstream uses; the names are not
+# consistent across projects (linux-amd64, x86_64-unknown-linux-gnu, Linux_x86_64).
+
+- name: "Refuse an unsupported architecture for {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.fail:
+    msg: >-
+      {{ clis_name }} is published for x86_64 and aarch64 only; this host reports
+      {{ ansible_architecture }}. Install it by hand, or drop it from install_list.
+  when: ansible_architecture not in ['x86_64', 'aarch64']
+
+- name: "Select the architecture slug for {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    clis_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}"
+    # Read back by install_binary/install_archive: a role that forgets to include
+    # this file would otherwise silently reuse the previous role's resolved tag.
+    clis_resolved_for: "{{ clis_name }}"
+
+# api.github.com allows 60 unauthenticated calls per hour per IP, which a shared
+# egress address burns through; the release redirect has no such limit.
+- name: "Resolve the latest upstream tag for {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.uri:
+    url: "https://github.com/{{ clis_repo }}/releases/latest"
+    method: HEAD
+    follow_redirects: none
+    status_code: [302]
+  register: clis_latest
+  retries: 5
+  delay: 3
+  until: clis_latest is succeeded
+  when:
+    - clis_target | default('latest') == 'latest'
+    - clis_repo is defined
+
+- name: "Record the tag to fetch for {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    clis_version: >-
+      {{ ((clis_latest.location | regex_replace('^.*/tag/', ''))
+          if (clis_target | default('latest') == 'latest' and clis_repo is defined)
+          else clis_target)
+         | regex_replace(clis_tag_strip | default('^$'), '') }}

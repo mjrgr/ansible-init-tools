@@ -4,3 +4,17 @@
 #   -e btop_version=<tag>
 # Bump deliberately, then re-run the container tests.
 btop_version: "v1.4.7"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+btop_arch:
+  amd64: "x86_64"
+  arm64: "aarch64"
+
+btop_url: "https://github.com/aristocratos/btop/releases/download/{version}/btop-{arch}-unknown-linux-musl.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+btop_sha256:
+  amd64: "5099054dd6a101bd12eb6ff3702a9a6a3f57aaa27923a0da478ae5b517faf335"
+  arm64: "6270de0ef4c84cf0eea61cb148b3ad9ae91a11e9c3309867ffc6b3751024c252"

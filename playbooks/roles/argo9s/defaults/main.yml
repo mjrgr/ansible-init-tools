@@ -4,3 +4,18 @@
 #   -e argo9s_version=<tag>
 # Bump deliberately, then re-run the container tests.
 argo9s_version: "v0.1.0"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+argo9s_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+# The asset name carries the bare version, the tag carries the v.
+argo9s_url: "https://github.com/vvrnv/argo9s/releases/download/{version}/argo9s_{version_nov}_linux_{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+argo9s_sha256:
+  amd64: "560bc0e4bb8f26c5dc8f9b8d95a3323b398f0340ae5d01c5bed400abd9712e7d"
+  arm64: "fc6af9ddf588c9b2093cd4e35be5c786cf657035e0b51efc959bc208d63dfc89"

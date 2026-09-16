@@ -4,3 +4,17 @@
 #   -e starship_version=<tag>
 # Bump deliberately, then re-run the container tests.
 starship_version: "v1.26.0"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+starship_arch:
+  amd64: "x86_64-unknown-linux-gnu"
+  arm64: "aarch64-unknown-linux-musl"
+
+starship_url: "https://github.com/starship/starship/releases/download/{version}/starship-{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+starship_sha256:
+  amd64: "321f0dd7af8340a5f2e6a8fec6538a04f617486f9ec70d878f91c09cd8deef22"
+  arm64: "dc30189378d2f2e287384e8a692d3f95ad1df64cf0e8c36aa9201516028aed6b"

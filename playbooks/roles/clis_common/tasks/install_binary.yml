@@ -1,0 +1,51 @@
+---
+# Downloads a single unpacked binary, verifies it against the pinned sha256, and
+# installs it. Include resolve.yml first.
+#
+# Inputs:
+#   clis_name      display name, used in task labels
+#   clis_url       URL template holding {version}, {version_nov} and {arch}
+#   clis_arch_map  {amd64: <upstream slug>, arm64: <upstream slug>}
+#   clis_sha256    expected sha256, or "" when the pin is "latest"
+#   clis_dest      absolute path to install to
+#   clis_mode      file mode (default: 0755)
+#   clis_verify_cmd  command proving the result runs (default: <dest> --version)
+
+- name: "Guard: resolve.yml ran for {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.assert:
+    that: clis_resolved_for | default('') == clis_name
+    fail_msg: >-
+      {{ clis_name }} did not include clis_common/tasks/resolve.yml, so clis_arch
+      and clis_version still hold the previous role's values.
+    quiet: true
+
+# get_url writes to a temporary file and renames it over the destination, so a
+# dest that is a symlink (k3s multiplexes its binaries through one) is replaced
+# rather than followed and clobbered.
+#
+# force is what makes an upgrade actually download: without a checksum, get_url
+# leaves an existing dest alone, and a bumped pin would keep the old binary.
+# With a checksum it compares the file on disk and refetches only on a mismatch.
+- name: "Download and place {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.get_url:
+    url: >-
+      {{ clis_url
+         | replace('{version_nov}', clis_version | regex_replace('^v', ''))
+         | replace('{version}', clis_version)
+         | replace('{arch}', clis_arch_map[clis_arch]) }}
+    dest: "{{ clis_dest }}"
+    mode: "{{ clis_mode | default('0755') }}"
+    checksum: "{{ ('sha256:' ~ clis_sha256) if (clis_sha256 | default('') | length > 0) else omit }}"
+    force: "{{ clis_sha256 | default('') | length == 0 }}"
+  register: clis_download
+  retries: 5
+  delay: 3
+  until: clis_download is succeeded
+
+# The checksum proves the bytes are the ones upstream published; it says nothing
+# about whether they run here. A musl build on a host that needs glibc, or the
+# wrong architecture slug in a map, both download perfectly and then fail on
+# first use — which is a worse place to find out.
+- name: "Check that the installed binary runs: {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.command: "{{ clis_verify_cmd | default(clis_dest ~ ' --version') }}"
+  changed_when: false

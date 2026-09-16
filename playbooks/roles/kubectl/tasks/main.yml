@@ -1,24 +1,42 @@
 ---
 # role: kubectl
+# The one tool whose "latest" does not come from a GitHub release: Kubernetes
+# publishes the current stable tag as a one-line text file, so the lookup happens
+# here and resolve.yml is handed a concrete version.
+
+- name: "Ask upstream which kubectl release is current"
+  ansible.builtin.uri:
+    url: https://dl.k8s.io/release/stable.txt
+    return_content: true
+  register: kubectl_stable
+  when: kubectl_version == "latest"
+
+- name: "Pick the kubectl version to install"
+  ansible.builtin.set_fact:
+    kubectl_target: >-
+      {{ kubectl_stable.content | trim if kubectl_version == "latest" else kubectl_version }}
+
+- name: "Resolve the kubectl version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: kubectl
+    clis_target: "{{ kubectl_target }}"
+
 - name: "Decide whether kubectl must be installed"
   ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
   vars:
     clis_name: kubectl
     clis_bin: /usr/local/bin/kubectl
-    clis_target: "{{ kubectl_version }}"
     clis_version_cmd: "/usr/local/bin/kubectl version --client"
+    clis_target: "{{ kubectl_target }}"
 
 - name: "Install kubectl"
-  ansible.builtin.shell: |
-    set -euo pipefail
-    VERSION="{{ kubectl_version }}"
-    [ "$VERSION" = latest ] && VERSION=$(curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 https://dl.k8s.io/release/stable.txt)
-    # curl -o follows a symlinked kubectl (k3s multiplexes its binaries) and clobbers the target; mv replaces the inode
-    TMP="$(mktemp)"
-    curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o "${TMP}" "https://dl.k8s.io/release/${VERSION}/bin/linux/amd64/kubectl"
-    chmod +x "${TMP}"
-    mv -f "${TMP}" /usr/local/bin/kubectl
-    /usr/local/bin/kubectl version --client
-  args:
-    executable: /bin/bash
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_binary.yml"
+  vars:
+    clis_name: kubectl
+    clis_url: "{{ kubectl_url }}"
+    clis_arch_map: "{{ kubectl_arch }}"
+    clis_sha256: "{{ kubectl_sha256[clis_arch] }}"
+    clis_verify_cmd: "/usr/local/bin/kubectl version --client"
+    clis_dest: /usr/local/bin/kubectl
   when: clis_need_install | bool

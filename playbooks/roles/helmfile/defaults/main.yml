@@ -4,3 +4,17 @@
 #   -e helmfile_version=<tag>
 # Bump deliberately, then re-run the container tests.
 helmfile_version: "v1.8.0"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+helmfile_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+helmfile_url: "https://github.com/helmfile/helmfile/releases/download/v{version_nov}/helmfile_{version_nov}_linux_{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+helmfile_sha256:
+  amd64: "35d5d39fc608342b23fc7ce1dd0c3bf0c96cc07ec3796507ab6894a5d172bf20"
+  arm64: "01037dc187840a778ec65eae66b549b63d619a853540c8983f90d73ccbce5033"

@@ -1,5 +1,13 @@
 ---
 # role: glow
+
+- name: "Resolve the glow version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: glow
+    clis_repo: charmbracelet/glow
+    clis_target: "{{ glow_version }}"
+
 - name: "Decide whether glow must be installed"
   ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
   vars:
@@ -8,22 +16,12 @@
     clis_target: "{{ glow_version }}"
 
 - name: "Install glow"
-  ansible.builtin.shell: |
-    set -euo pipefail
-    VERSION="{{ glow_version }}"
-    latest_tag() {
-      curl -fsSLI --retry 5 --retry-all-errors \
-        --retry-max-time 120 --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
-        | sed 's#.*/tag/##'
-    }
-    [ "$VERSION" = latest ] && VERSION=$(latest_tag charmbracelet/glow)
-    V="${VERSION#v}"
-    curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /tmp/glow.tar.gz \
-      "https://github.com/charmbracelet/glow/releases/download/v${V}/glow_${V}_Linux_x86_64.tar.gz"
-    tar xzf /tmp/glow.tar.gz -C /tmp --strip-components=1 "glow_${V}_Linux_x86_64/glow"
-    install -m 0755 /tmp/glow /usr/local/bin/glow
-    rm -f /tmp/glow.tar.gz /tmp/glow
-    /usr/local/bin/glow --version
-  args:
-    executable: /bin/bash
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: glow
+    clis_url: "{{ glow_url }}"
+    clis_arch_map: "{{ glow_arch }}"
+    clis_sha256: "{{ glow_sha256[clis_arch] }}"
+    clis_files:
+      - {src: "glow_{{ clis_version | regex_replace('^v', '') }}_Linux_{{ glow_arch[clis_arch] }}/glow", dest: "/usr/local/bin/glow"}
   when: clis_need_install | bool

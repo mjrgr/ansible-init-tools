@@ -3,6 +3,11 @@ dotfiles_fonts_name: JetBrainsMono
 dotfiles_fonts_version: v3.5.0
 dotfiles_fonts_url: "https://github.com/ryanoasis/nerd-fonts/releases/download/{{ dotfiles_fonts_version }}/{{ dotfiles_fonts_name }}.zip"
 
+# Verified on download, like every pinned binary. One digest, not one per
+# architecture: a font archive is the same bytes everywhere.
+# Regenerate with `make checksums` after bumping the version above.
+dotfiles_fonts_sha256: "9577de1ae84ec523df16fc69bac5338b89497a5b4fb91489e2dcb79dc06ac2b5"
+
 # The archive carries every weight and style; only what the configs ask for is kept.
 dotfiles_fonts_faces:
   - JetBrainsMonoNerdFont-Regular.ttf

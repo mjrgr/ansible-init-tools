@@ -1,27 +1,29 @@
 ---
 # role: k9s
+
+- name: "Resolve the k9s version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: k9s
+    clis_repo: derailed/k9s
+    clis_target: "{{ k9s_version }}"
+
 - name: "Decide whether k9s must be installed"
   ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
   vars:
     clis_name: k9s
     clis_bin: /usr/local/bin/k9s
-    clis_target: "{{ k9s_version }}"
     clis_version_cmd: "/usr/local/bin/k9s version -s"
+    clis_target: "{{ k9s_version }}"
 
 - name: "Install k9s"
-  ansible.builtin.shell: |
-    set -euo pipefail
-    VERSION="{{ k9s_version }}"
-    if [ "$VERSION" = latest ]; then
-      URL=https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_amd64.tar.gz
-    else
-      URL="https://github.com/derailed/k9s/releases/download/${VERSION}/k9s_Linux_amd64.tar.gz"
-    fi
-    curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /tmp/k9s.tar.gz "$URL"
-    tar xzf /tmp/k9s.tar.gz -C /tmp k9s
-    install -m 0755 /tmp/k9s /usr/local/bin/k9s
-    rm -f /tmp/k9s.tar.gz /tmp/k9s
-    /usr/local/bin/k9s version -s
-  args:
-    executable: /bin/bash
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: k9s
+    clis_url: "{{ k9s_url }}"
+    clis_arch_map: "{{ k9s_arch }}"
+    clis_sha256: "{{ k9s_sha256[clis_arch] }}"
+    clis_verify_cmd: "/usr/local/bin/k9s version -s"
+    clis_files:
+      - {src: "k9s", dest: "/usr/local/bin/k9s"}
   when: clis_need_install | bool

@@ -3,6 +3,13 @@
 # Not from apt: noble ships 0.16.5, which predates the `navigate` keybindings
 # and the hunk-header styling .gitconfig configures.
 
+- name: "Resolve the delta version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: delta
+    clis_repo: dandavison/delta
+    clis_target: "{{ delta_version }}"
+
 - name: "Decide whether delta must be installed"
   ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
   vars:
@@ -11,22 +18,12 @@
     clis_target: "{{ delta_version }}"
 
 - name: "Install delta"
-  ansible.builtin.shell: |
-    set -euo pipefail
-    VERSION="{{ delta_version }}"
-    latest_tag() {
-      curl -fsSLI --retry 5 --retry-all-errors \
-        --retry-max-time 120 --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
-        | sed 's#.*/tag/##'
-    }
-    [ "$VERSION" = latest ] && VERSION=$(latest_tag dandavison/delta)
-    DIR="delta-${VERSION}-x86_64-unknown-linux-gnu"
-    curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /tmp/delta.tar.gz \
-      "https://github.com/dandavison/delta/releases/download/${VERSION}/${DIR}.tar.gz"
-    tar xzf /tmp/delta.tar.gz -C /tmp --strip-components=1 "${DIR}/delta"
-    install -m 0755 /tmp/delta /usr/local/bin/delta
-    rm -f /tmp/delta.tar.gz /tmp/delta
-    /usr/local/bin/delta --version
-  args:
-    executable: /bin/bash
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: delta
+    clis_url: "{{ delta_url }}"
+    clis_arch_map: "{{ delta_arch }}"
+    clis_sha256: "{{ delta_sha256[clis_arch] }}"
+    clis_files:
+      - {src: "delta-{{ clis_version }}-{{ delta_arch[clis_arch] }}/delta", dest: "/usr/local/bin/delta"}
   when: clis_need_install | bool

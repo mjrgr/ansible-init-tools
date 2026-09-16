@@ -4,3 +4,17 @@
 #   -e opentofu_version=<tag>
 # Bump deliberately, then re-run the container tests.
 opentofu_version: "v1.12.6"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+opentofu_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+opentofu_url: "https://github.com/opentofu/opentofu/releases/download/v{version_nov}/tofu_{version_nov}_linux_{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+opentofu_sha256:
+  amd64: "50a6106fa4de523d09c87af85f3db1dd47535fc005727fdca6852146476b88ec"
+  arm64: "9bd0228a81bcd0c88f7045c74378f45a815779f19897191dff7d9efba9976b9e"

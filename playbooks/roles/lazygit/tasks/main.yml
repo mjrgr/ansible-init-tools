@@ -3,6 +3,13 @@
 # .zshrc has aliased `lg` to lazygit for a while with nothing installing it.
 # Go, not Rust, but it lands in the same pass as the rest of the git tooling.
 
+- name: "Resolve the lazygit version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: lazygit
+    clis_repo: jesseduffield/lazygit
+    clis_target: "{{ lazygit_version }}"
+
 # `lazygit --version` prints one line of key=value pairs — commit hash, build
 # date, version, arch, and a trailing `git version=`. The probe's default
 # pattern would take the first thing shaped like a number, so the field is
@@ -19,22 +26,12 @@
     clis_target: "{{ lazygit_version }}"
 
 - name: "Install lazygit"
-  ansible.builtin.shell: |
-    set -euo pipefail
-    VERSION="{{ lazygit_version }}"
-    latest_tag() {
-      curl -fsSLI --retry 5 --retry-all-errors \
-        --retry-max-time 120 --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
-        | sed 's#.*/tag/##'
-    }
-    [ "$VERSION" = latest ] && VERSION=$(latest_tag jesseduffield/lazygit)
-    V="${VERSION#v}"
-    curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /tmp/lazygit.tar.gz \
-      "https://github.com/jesseduffield/lazygit/releases/download/${VERSION}/lazygit_${V}_linux_x86_64.tar.gz"
-    tar xzf /tmp/lazygit.tar.gz -C /tmp lazygit
-    install -m 0755 /tmp/lazygit /usr/local/bin/lazygit
-    rm -f /tmp/lazygit.tar.gz /tmp/lazygit
-    /usr/local/bin/lazygit --version
-  args:
-    executable: /bin/bash
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: lazygit
+    clis_url: "{{ lazygit_url }}"
+    clis_arch_map: "{{ lazygit_arch }}"
+    clis_sha256: "{{ lazygit_sha256[clis_arch] }}"
+    clis_files:
+      - {src: "lazygit", dest: "/usr/local/bin/lazygit"}
   when: clis_need_install | bool

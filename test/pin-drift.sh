@@ -5,10 +5,11 @@
 # <role>_version is covered the day it lands, which is the same reason
 # test/run.sh derives its pins target the same way.
 #
-# The upstream repo is read out of the role's own download URL. Roles that do not
-# download from github.com need an entry in UPSTREAM below, and a role that has
-# neither is reported as unknown rather than skipped — a silent skip is how a
-# pin stops being watched without anyone noticing.
+# The upstream repo is read out of the role's own download URL in defaults, or
+# out of the clis_repo it passes to resolve.yml. Roles that download from
+# somewhere other than github.com need an entry in UPSTREAM below, and a role
+# that has neither is reported as unknown rather than skipped — a silent skip is
+# how a pin stops being watched without anyone noticing.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -40,7 +41,12 @@ for f in playbooks/roles/*/defaults/main.yml; do
   [ -n "$pinned" ] || continue
   [ "$pinned" = latest ] && continue
 
-  src="${UPSTREAM[$role]:-$(grep -oE 'github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' "playbooks/roles/$role/tasks/main.yml" | head -1 | cut -d/ -f2-3)}"
+  src="${UPSTREAM[$role]:-$(
+    grep -hoE 'github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' "$f" | head -1 | cut -d/ -f2-3
+  )}"
+  # Roles whose asset lives off github (helm) still name the repo they take their
+  # tag from, so fall back to that before declaring the pin unwatched.
+  [ -n "$src" ] || src=$(sed -n 's/^ *clis_repo: *//p' "playbooks/roles/$role/tasks/main.yml" | head -1)
   case "$src" in
     https://*) upstream=$(curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 "$src" || true) ;;
     */*)       upstream=$(latest_tag "$src") ;;

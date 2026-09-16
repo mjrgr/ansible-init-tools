@@ -62,6 +62,14 @@
       - lsb-release
 
   tasks:
+    - name: "Refuse to run on an unsupported architecture"
+      ansible.builtin.fail:
+        msg: >-
+          These roles install x86_64 and aarch64 binaries only; this host reports
+          {{ ansible_architecture }}.
+      when: ansible_architecture not in ['x86_64', 'aarch64']
+      tags: [always]
+
     - name: "Refuse to run on a non-apt system"
       ansible.builtin.fail:
         msg: >-

@@ -1,5 +1,18 @@
 ---
 # role: starship
+# The release tarball rather than starship.rs/install.sh: that installer is an
+# unpinned `curl | sh` that picks its own version and target triple.
+#
+# The two targets are not symmetric — upstream publishes a gnu build for x86_64
+# and only a musl one for aarch64.
+
+- name: "Resolve the starship version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: starship
+    clis_repo: starship/starship
+    clis_target: "{{ starship_version }}"
+
 - name: "Decide whether starship must be installed"
   ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
   vars:
@@ -8,16 +21,12 @@
     clis_target: "{{ starship_version }}"
 
 - name: "Install starship"
-  ansible.builtin.shell: |
-    set -euo pipefail
-    VERSION="{{ starship_version }}"
-    if [ "$VERSION" = latest ]; then
-      curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 https://starship.rs/install.sh | sh -s -- --yes --bin-dir /usr/local/bin
-    else
-      curl -fsSL --retry 5 --retry-all-errors \
-        --retry-max-time 120 --connect-timeout 15 https://starship.rs/install.sh | sh -s -- --yes --bin-dir /usr/local/bin --version "$VERSION"
-    fi
-    /usr/local/bin/starship --version
-  args:
-    executable: /bin/bash
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: starship
+    clis_url: "{{ starship_url }}"
+    clis_arch_map: "{{ starship_arch }}"
+    clis_sha256: "{{ starship_sha256[clis_arch] }}"
+    clis_files:
+      - {src: "starship", dest: "/usr/local/bin/starship"}
   when: clis_need_install | bool

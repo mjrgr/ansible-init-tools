@@ -1,5 +1,13 @@
 ---
 # role: kind
+
+- name: "Resolve the kind version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: kind
+    clis_repo: kubernetes-sigs/kind
+    clis_target: "{{ kind_version }}"
+
 - name: "Decide whether kind must be installed"
   ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
   vars:
@@ -8,17 +16,11 @@
     clis_target: "{{ kind_version }}"
 
 - name: "Install kind"
-  ansible.builtin.shell: |
-    set -euo pipefail
-    VERSION="{{ kind_version }}"
-    # The documented kind.sigs.k8s.io/dl redirector fronts this same asset, and
-    # answered 500 on a release it serves fine directly.
-    if [ "$VERSION" = latest ]; then BASE=https://github.com/kubernetes-sigs/kind/releases/latest/download
-    else BASE="https://github.com/kubernetes-sigs/kind/releases/download/${VERSION}"; fi
-    curl -fsSL --retry 5 --retry-all-errors \
-      --retry-max-time 120 --connect-timeout 15 -o /usr/local/bin/kind "${BASE}/kind-linux-amd64"
-    chmod +x /usr/local/bin/kind
-    /usr/local/bin/kind --version
-  args:
-    executable: /bin/bash
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_binary.yml"
+  vars:
+    clis_name: kind
+    clis_url: "{{ kind_url }}"
+    clis_arch_map: "{{ kind_arch }}"
+    clis_sha256: "{{ kind_sha256[clis_arch] }}"
+    clis_dest: /usr/local/bin/kind
   when: clis_need_install | bool

@@ -1,5 +1,16 @@
 ---
 # role: kwok
+# Two binaries from one release: kwok is the node simulator, kwokctl the cluster
+# wrapper that drives it. Only kwok carries --version, so kwokctl rides on the
+# same install decision rather than being probed separately.
+
+- name: "Resolve the kwok version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: kwok
+    clis_repo: kubernetes-sigs/kwok
+    clis_target: "{{ kwok_version }}"
+
 - name: "Decide whether kwok must be installed"
   ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
   vars:
@@ -8,15 +19,21 @@
     clis_target: "{{ kwok_version }}"
 
 - name: "Install kwok"
-  ansible.builtin.shell: |
-    set -euo pipefail
-    VERSION="{{ kwok_version }}"
-    if [ "$VERSION" = latest ]; then BASE=https://github.com/kubernetes-sigs/kwok/releases/latest/download
-    else BASE="https://github.com/kubernetes-sigs/kwok/releases/download/${VERSION}"; fi
-    curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /usr/local/bin/kwok   "${BASE}/kwok-linux-amd64"
-    curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /usr/local/bin/kwokctl "${BASE}/kwokctl-linux-amd64"
-    chmod +x /usr/local/bin/kwok /usr/local/bin/kwokctl
-    /usr/local/bin/kwok --version
-  args:
-    executable: /bin/bash
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_binary.yml"
+  vars:
+    clis_name: kwok
+    clis_url: "{{ kwok_url }}"
+    clis_arch_map: "{{ kwok_arch }}"
+    clis_sha256: "{{ kwok_sha256[clis_arch] }}"
+    clis_dest: /usr/local/bin/kwok
+  when: clis_need_install | bool
+
+- name: "Install kwokctl"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_binary.yml"
+  vars:
+    clis_name: kwok
+    clis_url: "{{ kwokctl_url }}"
+    clis_arch_map: "{{ kwok_arch }}"
+    clis_sha256: "{{ kwokctl_sha256[clis_arch] }}"
+    clis_dest: /usr/local/bin/kwokctl
   when: clis_need_install | bool

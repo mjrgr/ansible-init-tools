@@ -4,3 +4,19 @@
 #   -e kind_version=<tag>
 # Bump deliberately, then re-run the container tests.
 kind_version: "v0.33.0"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+kind_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+# The documented kind.sigs.k8s.io/dl redirector fronts this same asset, and
+# answered 500 on a release it serves fine directly.
+kind_url: "https://github.com/kubernetes-sigs/kind/releases/download/{version}/kind-linux-{arch}"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+kind_sha256:
+  amd64: "aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d"
+  arm64: "20022bee6cfcd5086cb7234d218e3454e6090022f2a8f55d1fa7fcf42c3867a2"

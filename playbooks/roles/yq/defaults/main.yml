@@ -4,3 +4,17 @@
 #   -e yq_version=<tag>
 # Bump deliberately, then re-run the container tests.
 yq_version: "v4.53.6"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+yq_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+yq_url: "https://github.com/mikefarah/yq/releases/download/{version}/yq_linux_{arch}"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+yq_sha256:
+  amd64: "c5f056448f973ae7d39b5401949648a78f2dc1947d6a8eb65be60d5c504b9385"
+  arm64: "88a1016bc1d657375a35864e4f44b6f333df8ff97b559f51bba0adcb2169df09"

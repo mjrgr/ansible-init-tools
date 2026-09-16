@@ -4,3 +4,17 @@
 #   -e lazygit_version=<tag>
 # Bump deliberately, then re-run the container tests.
 lazygit_version: "v0.65.1"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+lazygit_arch:
+  amd64: "x86_64"
+  arm64: "arm64"
+
+lazygit_url: "https://github.com/jesseduffield/lazygit/releases/download/{version}/lazygit_{version_nov}_linux_{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+lazygit_sha256:
+  amd64: "02beacbcda0fa342e50ae3480ba8147307353af3fb28e1d5f790e02329c201a6"
+  arm64: "49abecdf6adf4f2dfdb11bf7b9bfada267ea523612ed809d1c6d87f6c04000a7"

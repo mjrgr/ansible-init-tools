@@ -4,3 +4,17 @@
 #   -e gitlogue_version=<tag>
 # Bump deliberately, then re-run the container tests.
 gitlogue_version: "v0.11.0"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+gitlogue_arch:
+  amd64: "x86_64-unknown-linux-gnu"
+  arm64: "aarch64-unknown-linux-gnu"
+
+gitlogue_url: "https://github.com/unhappychoice/gitlogue/releases/download/{version}/gitlogue-{version}-{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+gitlogue_sha256:
+  amd64: "ff58adcdbbd5474d5bcabe8194313574aab967a60bfc1757070ba025ff9379c4"
+  arm64: "7f3810486d771d7e61e185cee69e10af55e53538f25ab0ebd4b515809ef39a70"

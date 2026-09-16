@@ -4,3 +4,17 @@
 #   -e nerdctl_version=<tag>
 # Bump deliberately, then re-run the container tests.
 nerdctl_version: "v2.3.5"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+nerdctl_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+nerdctl_url: "https://github.com/containerd/nerdctl/releases/download/v{version_nov}/nerdctl-{version_nov}-linux-{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+nerdctl_sha256:
+  amd64: "de3206aeb7cbd5f20f5fb1f55c1e3bf2db1be567812a8a3f5e65eba2488347ee"
+  arm64: "76ced9bd0d03f6140f9cf7b927958b654cb8d5ecd3c58af585d096c8bdf9d6c2"

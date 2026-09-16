@@ -11,3 +11,17 @@
 # history search with "not a valid integer: 20+" (--min-height 20+ is CLI
 # syntax the old binary didn't understand).
 fzf_version: "v0.74.4"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+fzf_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+fzf_url: "https://github.com/junegunn/fzf/releases/download/v{version_nov}/fzf-{version_nov}-linux_{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+fzf_sha256:
+  amd64: "05e6813a337cc722c3ed07e54a764b75cc5d671e2e60459db0ba696ee5fa7504"
+  arm64: "5d673b849f494f0d64ec471d8640b153ca8849e3846a31da17abdcfce8df6b46"

@@ -1,23 +1,36 @@
 ---
 # role: helm
+# get.helm.sh rather than upstream's get-helm-3 script: that script is a
+# `curl | bash` whose content is not pinned, and it resolves its own version and
+# architecture. The tarball it ends up fetching is the one below, minus the
+# unpinned intermediary.
+#
+# The tag still comes from the GitHub release: get.helm.sh publishes no "latest"
+# pointer of its own.
+
+- name: "Resolve the helm version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: helm
+    clis_repo: helm/helm
+    clis_target: "{{ helm_version }}"
+
 - name: "Decide whether helm must be installed"
   ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
   vars:
     clis_name: helm
     clis_bin: helm
-    clis_target: "{{ helm_version }}"
     clis_version_cmd: "helm version --short"
+    clis_target: "{{ helm_version }}"
 
 - name: "Install helm"
-  ansible.builtin.shell: |
-    set -euo pipefail
-    VERSION="{{ helm_version }}"
-    curl -fsSL --retry 5 --retry-all-errors \
-      --retry-max-time 120 --connect-timeout 15 -o /tmp/get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-    chmod +x /tmp/get_helm.sh
-    if [ "$VERSION" = latest ]; then /tmp/get_helm.sh; else /tmp/get_helm.sh --version "$VERSION"; fi
-    rm -f /tmp/get_helm.sh
-    helm version --short
-  args:
-    executable: /bin/bash
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: helm
+    clis_url: "{{ helm_url }}"
+    clis_arch_map: "{{ helm_arch }}"
+    clis_sha256: "{{ helm_sha256[clis_arch] }}"
+    clis_verify_cmd: "/usr/local/bin/helm version --short"
+    clis_files:
+      - {src: "linux-{{ helm_arch[clis_arch] }}/helm", dest: "/usr/local/bin/helm"}
   when: clis_need_install | bool

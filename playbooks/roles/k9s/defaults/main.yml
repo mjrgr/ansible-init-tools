@@ -4,3 +4,17 @@
 #   -e k9s_version=<tag>
 # Bump deliberately, then re-run the container tests.
 k9s_version: "v0.51.0"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+k9s_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+k9s_url: "https://github.com/derailed/k9s/releases/download/{version}/k9s_Linux_{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+k9s_sha256:
+  amd64: "c3752ad51a5a4015a113819c4eeb6e55a4d0e4b8e652494797532f6fc8161dd7"
+  arm64: "3ee05c82e5f9198928a4e86133608ba6a2c10a2244d6a7789e820f78319d640c"

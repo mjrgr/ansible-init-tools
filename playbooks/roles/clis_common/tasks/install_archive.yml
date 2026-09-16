@@ -1,0 +1,103 @@
+---
+# Downloads a release archive, verifies it against the pinned sha256, unpacks it
+# in a scratch directory and installs the files that matter. Include resolve.yml
+# first.
+#
+# Inputs:
+#   clis_name      display name, used in task labels
+#   clis_url       URL template holding {version}, {version_nov} and {arch}
+#   clis_arch_map  {amd64: <upstream slug>, arm64: <upstream slug>}
+#   clis_sha256    expected sha256, or "" when the pin is "latest"
+#   clis_files     [{src: path/inside/archive, dest: /abs/path, mode: "0755"}]
+#   clis_trees     optional [{src: dir/inside/archive, dest: /abs/dir}]
+#   clis_verify_cmd  command proving the result runs
+#                    (default: the first clis_files entry, --version)
+#
+# clis_files carries the full path inside the archive rather than relying on
+# --strip-components: upstreams disagree on whether they wrap the binary in a
+# versioned directory, and spelling it out makes each role say which it is.
+
+- name: "Guard: resolve.yml ran for {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.assert:
+    that: clis_resolved_for | default('') == clis_name
+    fail_msg: >-
+      {{ clis_name }} did not include clis_common/tasks/resolve.yml, so clis_arch
+      and clis_version still hold the previous role's values.
+    quiet: true
+
+- name: "Download and place {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+  block:
+    - name: "Create a scratch directory for {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: "-{{ clis_name }}"
+      register: clis_scratch
+
+    # unarchive sniffs the format from the content, not the file name, which is
+    # why this lands under a name with no extension.
+    - name: "Download the release archive for {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+      ansible.builtin.get_url:
+        url: >-
+          {{ clis_url
+             | replace('{version_nov}', clis_version | regex_replace('^v', ''))
+             | replace('{version}', clis_version)
+             | replace('{arch}', clis_arch_map[clis_arch]) }}
+        dest: "{{ clis_scratch.path }}/archive"
+        mode: "0644"
+        checksum: "{{ ('sha256:' ~ clis_sha256) if (clis_sha256 | default('') | length > 0) else omit }}"
+      register: clis_download
+      retries: 5
+      delay: 3
+      until: clis_download is succeeded
+
+    - name: "Unpack the release archive for {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+      ansible.builtin.unarchive:
+        src: "{{ clis_scratch.path }}/archive"
+        dest: "{{ clis_scratch.path }}"
+        remote_src: true
+
+    - name: "Install the binaries for {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+      ansible.builtin.copy:
+        src: "{{ clis_scratch.path }}/{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "{{ item.mode | default('0755') }}"
+        remote_src: true
+      loop: "{{ clis_files }}"
+      loop_control:
+        label: "{{ item.dest }}"
+
+    # copy creates the leaf directory but not the path to it, and fails outright
+    # when the parent is missing.
+    - name: "Create the support directories for {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+      ansible.builtin.file:
+        path: "{{ item.dest }}"
+        state: directory
+        mode: "0755"
+      loop: "{{ clis_trees | default([]) }}"
+      loop_control:
+        label: "{{ item.dest }}"
+
+    - name: "Install the support files for {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+      ansible.builtin.copy:
+        src: "{{ clis_scratch.path }}/{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "{{ item.mode | default('0644') }}"
+        directory_mode: "0755"
+        remote_src: true
+      loop: "{{ clis_trees | default([]) }}"
+      loop_control:
+        label: "{{ item.dest }}"
+  always:
+    - name: "Drop the scratch directory for {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+      ansible.builtin.file:
+        path: "{{ clis_scratch.path }}"
+        state: absent
+      when: clis_scratch.path is defined
+
+# The checksum proves the bytes are the ones upstream published; it says nothing
+# about whether they run here. A musl build on a host that needs glibc, or the
+# wrong architecture slug in a map, both download perfectly and then fail on
+# first use — which is a worse place to find out.
+- name: "Check that the installed binary runs: {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.command: "{{ clis_verify_cmd | default(clis_files[0].dest ~ ' --version') }}"
+  changed_when: false

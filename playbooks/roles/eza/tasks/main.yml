@@ -3,6 +3,13 @@
 # Not from apt: noble ships 0.18.2 (early 2024), which predates --git-repos and
 # several of the --icons behaviours .zshrc relies on.
 
+- name: "Resolve the eza version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: eza
+    clis_repo: eza-community/eza
+    clis_target: "{{ eza_version }}"
+
 # `eza --version` puts a tagline on line 1 and the version on line 2, so the
 # probe's default "first line that holds a number" would never match and the
 # role would reinstall on every run.
@@ -15,21 +22,12 @@
     clis_target: "{{ eza_version }}"
 
 - name: "Install eza"
-  ansible.builtin.shell: |
-    set -euo pipefail
-    VERSION="{{ eza_version }}"
-    latest_tag() {
-      curl -fsSLI --retry 5 --retry-all-errors \
-        --retry-max-time 120 --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
-        | sed 's#.*/tag/##'
-    }
-    [ "$VERSION" = latest ] && VERSION=$(latest_tag eza-community/eza)
-    curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /tmp/eza.tar.gz \
-      "https://github.com/eza-community/eza/releases/download/${VERSION}/eza_x86_64-unknown-linux-gnu.tar.gz"
-    tar xzf /tmp/eza.tar.gz -C /tmp ./eza
-    install -m 0755 /tmp/eza /usr/local/bin/eza
-    rm -f /tmp/eza.tar.gz /tmp/eza
-    /usr/local/bin/eza --version
-  args:
-    executable: /bin/bash
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: eza
+    clis_url: "{{ eza_url }}"
+    clis_arch_map: "{{ eza_arch }}"
+    clis_sha256: "{{ eza_sha256[clis_arch] }}"
+    clis_files:
+      - {src: "eza", dest: "/usr/local/bin/eza"}
   when: clis_need_install | bool

@@ -5,6 +5,14 @@
 # unrelated install, producing a Signed-By conflict apt refuses to resolve.
 # OpenTofu's own apt repo would hit the same class of issue on a dirty machine,
 # so this role sidesteps repositories entirely, same as kubectl/yq/k9s.
+
+- name: "Resolve the opentofu version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: opentofu
+    clis_repo: opentofu/opentofu
+    clis_target: "{{ opentofu_version }}"
+
 - name: "Decide whether opentofu must be installed"
   ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
   vars:
@@ -13,22 +21,12 @@
     clis_target: "{{ opentofu_version }}"
 
 - name: "Install opentofu"
-  ansible.builtin.shell: |
-    set -euo pipefail
-    VERSION="{{ opentofu_version }}"
-    latest_tag() {
-      curl -fsSLI --retry 5 --retry-all-errors \
-        --retry-max-time 120 --connect-timeout 15 -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" \
-        | sed 's#.*/tag/##'
-    }
-    [ "$VERSION" = latest ] && VERSION=$(latest_tag opentofu/opentofu)
-    V="${VERSION#v}"
-    curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 -o /tmp/tofu.tar.gz \
-      "https://github.com/opentofu/opentofu/releases/download/v${V}/tofu_${V}_linux_amd64.tar.gz"
-    tar xzf /tmp/tofu.tar.gz -C /tmp tofu
-    install -m 0755 /tmp/tofu /usr/local/bin/tofu
-    rm -f /tmp/tofu.tar.gz /tmp/tofu
-    /usr/local/bin/tofu --version
-  args:
-    executable: /bin/bash
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: opentofu
+    clis_url: "{{ opentofu_url }}"
+    clis_arch_map: "{{ opentofu_arch }}"
+    clis_sha256: "{{ opentofu_sha256[clis_arch] }}"
+    clis_files:
+      - {src: "tofu", dest: "/usr/local/bin/tofu"}
   when: clis_need_install | bool
