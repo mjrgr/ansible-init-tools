@@ -1,0 +1,19 @@
+---
+# Turns a malformed override into a named failure at include time, rather
+# than a 404 halfway through a download.
+argument_specs:
+  main:
+    short_description: Install docker
+    options:
+      docker_packages:
+        type: list
+        required: true
+        description: Packages pulled from the Docker apt repository.
+      docker_add_user_to_group:
+        type: bool
+        required: true
+        description: Add the invoking user to the docker group, which is equivalent to root on the host.
+      docker_group_user:
+        type: str
+        required: true
+        description: Account added to the docker group; SUDO_USER, since facts under become say root.

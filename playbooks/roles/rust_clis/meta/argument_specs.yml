@@ -1,0 +1,15 @@
+---
+# Turns a malformed override into a named failure at include time, rather
+# than a 404 halfway through a download.
+argument_specs:
+  main:
+    short_description: Install the apt-packaged Rust CLIs
+    options:
+      rust_clis_packages:
+        type: list
+        required: true
+        description: The apt-packaged Rust CLIs installed as one batch.
+      rust_clis_shims:
+        type: list
+        required: true
+        description: Binaries Debian renames, and the upstream name each is exposed under.

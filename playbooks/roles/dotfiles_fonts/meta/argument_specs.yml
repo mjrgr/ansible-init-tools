@@ -1,0 +1,23 @@
+---
+# Turns a malformed override into a named failure at include time, rather
+# than a 404 halfway through a download.
+argument_specs:
+  main:
+    short_description: Install the Nerd Font the configs reference
+    options:
+      dotfiles_fonts_name:
+        type: str
+        required: true
+        description: Nerd Font family the configs reference.
+      dotfiles_fonts_version:
+        type: str
+        required: true
+        description: nerd-fonts release the archive is taken from.
+      dotfiles_fonts_url:
+        type: str
+        required: true
+        description: Archive URL, built from the name and version above.
+      dotfiles_fonts_faces:
+        type: list
+        required: true
+        description: Faces kept out of the archive; it carries every weight and style.

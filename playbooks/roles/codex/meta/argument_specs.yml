@@ -1,0 +1,31 @@
+---
+# Turns a malformed override into a named failure at include time, rather
+# than a 404 halfway through a download.
+argument_specs:
+  main:
+    short_description: Install codex
+    options:
+      codex_version:
+        type: str
+        required: true
+        description: Release tag to install, or "latest" to track upstream.
+      codex_arch:
+        type: dict
+        required: true
+        description: Upstream's own spelling of each target architecture.
+      codex_url:
+        type: str
+        required: true
+        description: Download template; {version}, {version_nov} and {arch} are substituted.
+      codex_host_url:
+        type: str
+        required: true
+        description: Download template; {version}, {version_nov} and {arch} are substituted.
+      codex_sha256:
+        type: dict
+        required: true
+        description: Expected digest per architecture. Empty means the download is unverified.
+      codex_host_sha256:
+        type: dict
+        required: true
+        description: Expected digest per architecture. Empty means the download is unverified.

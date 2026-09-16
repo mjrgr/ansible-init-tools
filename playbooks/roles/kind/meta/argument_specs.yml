@@ -1,0 +1,23 @@
+---
+# Turns a malformed override into a named failure at include time, rather
+# than a 404 halfway through a download.
+argument_specs:
+  main:
+    short_description: Install kind
+    options:
+      kind_version:
+        type: str
+        required: true
+        description: Release tag to install, or "latest" to track upstream.
+      kind_arch:
+        type: dict
+        required: true
+        description: Upstream's own spelling of each target architecture.
+      kind_url:
+        type: str
+        required: true
+        description: Download template; {version}, {version_nov} and {arch} are substituted.
+      kind_sha256:
+        type: dict
+        required: true
+        description: Expected digest per architecture. Empty means the download is unverified.
