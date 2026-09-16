@@ -2,7 +2,7 @@
 # Run the playbooks against a throwaway Ubuntu container.
 #
 #   ./test/run.sh dotfiles        # full dotfiles.yml, twice, asserts idempotence
-#   ./test/run.sh clis [role]     # install_clis.yml, optionally a single role
+#   ./test/run.sh clis [role]     # install_clis.yml twice, asserts nothing refetches
 #   ./test/run.sh rollback        # deploy then roll back, asserts the restore
 #   ./test/run.sh pins            # every pinned tool version still installs
 #   ./test/run.sh wezterm         # installs wezterm and parses the versioned config
@@ -111,11 +111,42 @@ case "$TARGET" in
     ;;
   clis)
     ROLE="${2:-}"
-    ONLY=""
-    [[ -n "$ROLE" ]] && ONLY="-e install_only=$ROLE"
-    echo "==> install_clis.yml ${ROLE:+(role: $ROLE)}"
-    echo "    Note: daemons (docker, podman) install but do not start in a container."
-    run "ansible-playbook /repo/playbooks/install_clis.yml -c local -i localhost, $ONLY 2>&1 | tail -30"
+    if [[ -n "$ROLE" ]]; then
+      echo "==> install_clis.yml (role: $ROLE)"
+      echo "    Note: daemons (docker, podman) install but do not start in a container."
+      run "ansible-playbook /repo/playbooks/install_clis.yml -c local -i localhost, -e install_only=$ROLE 2>&1 | tail -30"
+      exit 0
+    fi
+
+    # Both runs in the SAME container, for the same reason as the dotfiles target.
+    #
+    # changed=0 is the wrong assertion here: docker, gh, vscode and wezterm delete
+    # their apt source before apt_repository recreates it, so the play reports
+    # changed on every run by design. What must hold is that no tool is fetched
+    # twice — which is exactly what each role probe decides and prints.
+    run '
+      set -e
+      PB="ansible-playbook /repo/playbooks/install_clis.yml -c local -i localhost,"
+
+      echo "==> run 1 (empty machine)"
+      echo "    Note: daemons (docker, podman) install but do not start in a container."
+      $PB >/tmp/c1.log 2>&1 || { tail -40 /tmp/c1.log; exit 1; }
+      grep "localhost  " /tmp/c1.log
+      printf "    fetched: %s tool(s)\n" "$(grep -c -- "-> install" /tmp/c1.log || true)"
+
+      echo
+      echo "==> run 2 — must reinstall nothing"
+      $PB >/tmp/c2.log 2>&1 || { tail -40 /tmp/c2.log; exit 1; }
+      grep "localhost  " /tmp/c2.log
+      again=$(grep -o "installed=[^ ]*  *wanted=[^ ]*  *-> install" /tmp/c2.log || true)
+      if [ -n "$again" ]; then
+        echo "    REFETCHED ON A SECOND RUN:"
+        echo "$again" | sed "s/^/      /"
+        echo "    a probe is misreading the --version output of its tool"
+        exit 1
+      fi
+      echo "    nothing refetched — every probe agrees the pin is already installed"
+    '
     ;;
   rollback)
     # Seeds real files first, so the restore path is actually exercised and not

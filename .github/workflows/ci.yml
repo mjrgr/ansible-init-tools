@@ -11,11 +11,14 @@ on:
 permissions:
   contents: read
 
+# Actions are pinned by commit SHA, not by tag: a tag is mutable, and an action
+# runs with this workflow's permissions. Dependabot bumps the SHAs and keeps the
+# version in the trailing comment honest.
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install linters
         run: pipx install ansible-lint && pipx inject ansible-lint ansible-core && pip install yamllint
@@ -35,25 +38,41 @@ jobs:
   secrets:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0   # gitleaks scans history, not just the tip
 
       - name: gitleaks
         run: |
-          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
+          docker run --rm -v "$PWD:/repo" \
+            ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:b109bc5f8f76a38196a3e413704fc5b9e3c32360bce4e4b603bd6f45b3721dbb \
             detect --source /repo --config /repo/.gitleaks.toml --redact --verbose
 
-  # 22.04 ships ansible-core 2.12 and 26.04 ships 2.16; they do not behave the same,
-  # and only a matrix catches the difference before a real machine does.
-  dotfiles:
+  # Cheap and offline: proves every pinned version carries a digest to verify
+  # against. The expensive counterpart (refetching every asset) runs weekly.
+  checksum-audit:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Every pinned version has a sha256
+        run: ./test/checksums.py --audit
+
+  # 22.04 ships ansible-core 2.12 and 26.04 ships 2.16; they do not behave the
+  # same, and only a matrix catches the difference before a real machine does.
+  # arm64 rides on the current LTS only — the second LTS axis is about the
+  # ansible-core version, not the CPU, so crossing them fully buys nothing.
+  dotfiles:
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        ubuntu: ['22.04', '26.04']
+        include:
+          - {ubuntu: '22.04', runner: ubuntu-latest}
+          - {ubuntu: '26.04', runner: ubuntu-latest}
+          - {ubuntu: '26.04', runner: ubuntu-24.04-arm}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       # Deploys onto a pristine $HOME and asserts a second run reports changed=0.
       - name: Deploy and assert idempotence
@@ -62,13 +81,16 @@ jobs:
           UBUNTU_VERSION: ${{ matrix.ubuntu }}
 
   rollback:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        ubuntu: ['22.04', '26.04']
+        include:
+          - {ubuntu: '22.04', runner: ubuntu-latest}
+          - {ubuntu: '26.04', runner: ubuntu-latest}
+          - {ubuntu: '26.04', runner: ubuntu-24.04-arm}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       # Seeds real files, deploys, rolls back, asserts the originals came back
       # to the right directories.
@@ -77,14 +99,36 @@ jobs:
         env:
           UBUNTU_VERSION: ${{ matrix.ubuntu }}
 
-  pins:
-    runs-on: ubuntu-latest
+  # install_clis.yml end to end, then again: the second pass must reinstall
+  # nothing. The per-role `pins` job below cannot catch a probe that misreads its
+  # own tool's --version output, because it only ever runs that role once.
+  clis:
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        ubuntu: ['22.04', '26.04']
+        include:
+          - {ubuntu: '26.04', runner: ubuntu-latest}
+          - {ubuntu: '26.04', runner: ubuntu-24.04-arm}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Install every CLI, twice
+        run: ./test/run.sh clis
+        env:
+          UBUNTU_VERSION: ${{ matrix.ubuntu }}
+
+  pins:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {ubuntu: '22.04', runner: ubuntu-latest}
+          - {ubuntu: '26.04', runner: ubuntu-latest}
+          - {ubuntu: '26.04', runner: ubuntu-24.04-arm}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       # Dependabot cannot watch tool versions living in Ansible defaults, so this
       # is the only thing standing between a yanked tag and a broken bootstrap.
@@ -96,11 +140,23 @@ jobs:
   wezterm-config:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       # Parses the versioned wezterm.lua with the real binary.
       - name: Parse wezterm.lua
         run: ./test/run.sh wezterm
+
+  # Refetches every pinned asset and compares it to the digest in the repo. A
+  # mismatch means an artefact that was supposed to be immutable was rewritten
+  # upstream — worth knowing about, and not something a PR should pay for.
+  checksum-drift:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Pinned assets still hash to what the repo says
+        run: ./test/checksums.py --check
 
   # Not part of the CI gate: it reports what upstream has moved on to, on a
   # schedule, because nothing else watches versions that live in Ansible defaults.
@@ -111,7 +167,7 @@ jobs:
       contents: read
       issues: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Compare the pins against upstream
         id: drift
@@ -141,7 +197,7 @@ jobs:
             echo
             cat /tmp/drift.md
             echo
-            echo "Bump the \`<role>_version\` defaults, then \`make test-pins\`."
+            echo "Bump the \`<role>_version\` defaults, run \`make checksums\`, then \`make test-pins\`."
           } > /tmp/issue.md
           if [ -n "$existing" ]; then
             gh issue edit "$existing" --body-file /tmp/issue.md

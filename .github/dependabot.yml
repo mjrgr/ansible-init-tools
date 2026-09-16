@@ -1,8 +1,9 @@
 version: 2
 
 updates:
-  # Action tags drift silently and are a supply-chain surface: a compromised or
-  # abandoned action runs with the workflow's permissions.
+  # Actions are pinned by commit SHA in the workflow, which stops a moved tag
+  # from changing what runs with the workflow's permissions — and leaves nothing
+  # watching for the updates a tag used to deliver. This is that watcher.
   - package-ecosystem: github-actions
     directory: /
     schedule:
