@@ -33,6 +33,7 @@
       - jq
       - gh
       - sops
+      - certigo
       - starship
       - wezterm
       - glow

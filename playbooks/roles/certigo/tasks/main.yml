@@ -1,0 +1,26 @@
+---
+# role: certigo
+
+- name: "Resolve the certigo version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: certigo
+    clis_repo: square/certigo
+    clis_target: "{{ certigo_version }}"
+
+- name: "Decide whether certigo must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: certigo
+    clis_bin: /usr/local/bin/certigo
+    clis_target: "{{ certigo_reported_version[certigo_version] | default(certigo_version) }}"
+
+- name: "Install certigo"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_binary.yml"
+  vars:
+    clis_name: certigo
+    clis_url: "{{ certigo_url }}"
+    clis_arch_map: "{{ certigo_arch }}"
+    clis_sha256: "{{ certigo_sha256[clis_arch] }}"
+    clis_dest: /usr/local/bin/certigo
+  when: clis_need_install | bool

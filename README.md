@@ -27,7 +27,7 @@ dotfiles** on **Ubuntu / Debian**.
 - opentofu
 - yq, jq
 - gh
-- sops, age
+- sops, age, certigo
 - starship, wezterm, vscode
 - btop, lazygit
 - codex (OpenAI Codex CLI)
@@ -56,6 +56,15 @@ binary, so `/usr/local/bin` is where it goes here. It carries no `--version`, so
 it is checked for existence rather than through the version probe: a box
 provisioned before this task existed has codex at the pinned version and no helper,
 a state the probe alone reports as up to date.
+
+certigo is pinned to v1.18.0, the first release that ships a `linux-arm64`
+asset. That binary answers `--version` with `1.17.1`: upstream builds without
+ldflags and did not bump the constant in `cli/cli.go`. Left alone, the probe
+would see 1.17.1 against a v1.18.0 pin and refetch on every run, so the role
+carries a `certigo_reported_version` map keyed by tag. A later bump falls
+outside the map and compares the real number again; if that tag misreports
+too, `make test-clis` fails on its second pass rather than the machine
+silently redownloading forever.
 
 The Rust CLIs are split by how fast they move. `rust_clis` takes ripgrep, fd, bat
 and zoxide from apt in one batch, and shims `fdfind`/`batcat` back to `fd`/`bat` —
