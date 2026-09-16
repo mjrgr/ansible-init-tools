@@ -200,7 +200,8 @@ make upgrade     # re-run every installer and upgrade in place
 make dotfiles    # deploy the dotfiles (no sudo)
 make rollback    # remove the symlinks, restore the backups
 make test        # deploy in a container, assert idempotence
-make lint        # yamllint + ansible-lint + syntax check
+make lint        # yamllint + ansible-lint + syntax check + checksum audit
+make checksums   # refetch every pinned asset and record its sha256
 make scan        # scan the tree and history for secrets
 make hooks       # enable the pre-commit secret scan
 ```
@@ -297,15 +298,65 @@ already matches. Moving a pin is detected and reinstalls. `clis_state=latest` is
 explicit opt-in to upgrade everything past its pin — the same semantics as
 `state: present` versus `state: latest` on the apt module.
 
+### The pin says which version, the checksum says which bytes
+
+A version pin alone buys reproducibility, not integrity: a git tag is mutable, a
+release asset can be replaced under it, and a download that goes through a proxy or a
+compromised mirror arrives with nobody the wiser. So every binary download also
+carries the sha256 it must hash to, next to the version that names it:
+
+```yaml
+kind_version: "v0.33.0"
+kind_sha256:
+  amd64: "aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d"
+  arm64: "20022bee6cfcd5086cb7234d218e3454e6090022f2a8f55d1fa7fcf42c3867a2"
+```
+
+`get_url` verifies before the file is installed, so a mismatch fails the run instead
+of landing in `/usr/local/bin`. Bumping a version means refreshing the digests:
+
+```bash
+make checksums            # refetch every pinned asset, write its digest back
+make checksums-audit      # offline: assert no pinned version is missing one
+```
+
+Digests are never edited by hand — a hand-copied digest is one nobody rechecked.
+`make lint` runs the offline audit, CI runs it on every PR, and a weekly job refetches
+every asset and reports any that no longer hashes to what the repo says: an artefact
+that was supposed to be immutable and was not is worth knowing about.
+
+A version pinned to `latest` cannot be checksummed ahead of time, and its digest is
+blanked to say so. That is the cost of not pinning, made visible rather than implied.
+
+The digest proves the bytes are the ones upstream published; it says nothing about
+whether they run on this machine. So each role also executes what it just installed.
+A musl build on a host that needs glibc, or a wrong architecture slug in a map, both
+download perfectly and then fail on first use — which is a worse place to find out.
+
+The apt-installed tools are outside this: their packages are verified against the
+repository signing key in `/etc/apt/keyrings`, which is the same guarantee by
+another route.
+
+### Architectures
+
+`x86_64` and `aarch64`. Every role maps those onto whatever its upstream calls them —
+there is no agreement whatsoever (`linux-amd64`, `x86_64-unknown-linux-gnu`,
+`Linux_x86_64`, and starship publishes a gnu build for x86_64 and only a musl one for
+aarch64) — so the mapping lives in each role's `<role>_arch` default. A host that is
+neither fails with a named error rather than a 404 mid-download. CI installs the whole
+set on both.
+
 Not pinned, and why:
 
 | Tool | Reason |
 |---|---|
-| docker, gh, podman, jq, wezterm, vscode, rust_clis | installed from apt repositories, which track whatever apt has at install time |
+| docker, gh, podman, jq, wezterm, vscode, rust_clis | installed from apt repositories, which track whatever apt has at install time; the distro decides the version, and apt's signature check is what guards the download |
 | claude | self-updating, and installed per user by the dotfiles play; pick a train with `dotfiles_claude_channel` |
 
 **Dependabot does not watch these pins** — no ecosystem understands versions living in
-Ansible defaults. It covers the GitHub Actions tags and the test image only. What
+Ansible defaults. It covers the GitHub Actions only, which are pinned by commit SHA
+with the version in a trailing comment: a tag is mutable and an action runs with the
+workflow's permissions. What
 guards the pins is `make test-pins`, which installs every pinned version in a
 container and fails on a yanked tag or a changed asset URL. It runs in CI.
 
@@ -368,7 +419,7 @@ only honest way to check what happens on a machine that has never been touched:
 
 ```bash
 ./test/run.sh dotfiles        # full dotfiles.yml, twice, asserts idempotence
-./test/run.sh clis [role]     # install_clis.yml, optionally a single role
+./test/run.sh clis [role]     # install_clis.yml twice, asserts nothing refetches
 ./test/run.sh rollback        # deploy then roll back, asserts the restore
 ./test/run.sh pins            # every pinned tool version still installs
 ./test/run.sh wezterm         # installs wezterm and parses the versioned config
@@ -384,6 +435,10 @@ The base image is selectable, and CI runs the suite across both LTS releases:
 ```bash
 UBUNTU_VERSION=22.04 ./test/run.sh dotfiles
 ```
+
+CI also runs the container targets on an `arm64` runner, on the current LTS only: the
+second LTS axis exists to cover the ansible-core version, not the CPU, so crossing the
+two in full would buy nothing for three times the minutes.
 
 This is not cosmetic. 22.04 ships ansible-core 2.12 and 26.04 ships 2.16, and they do
 not behave the same — an `include_role` whose `apply.tags` referenced `item` worked on
@@ -409,6 +464,18 @@ The container runs `bash -c`, not `bash -lc`: a login shell executes `~/.bash_lo
 on the way out, and Ubuntu's ends with a test that returns 1 when `clear_console` is
 absent — under `set -e` that status silently overrides an explicit `exit 0` and turns a
 passing target into a failure.
+
+What `clis` asserts:
+
+- `install_clis.yml` completes on a machine with none of the tools present
+- a second pass refetches nothing — again in the **same** container
+
+`changed=0` is deliberately not the assertion there. docker, gh, vscode and wezterm
+delete their apt source before `apt_repository` recreates it, so the play reports
+`changed` on every run by design. What must hold is that no tool is downloaded twice,
+which is what each role's probe decides and prints, and a probe that misreads its own
+tool's `--version` output is exactly the bug this catches: `pins` cannot, because it
+only ever runs each role once.
 
 Caveat: daemons (docker, podman) install but do not start in a container. The
 `chsh` does run — the test user holds a `NOPASSWD` sudoers entry — and it is part
