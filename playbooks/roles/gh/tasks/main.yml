@@ -28,10 +28,12 @@
     path: /etc/apt/sources.list.d/github-cli.list
     state: absent
 
+# dpkg says amd64/arm64 where uname says x86_64/aarch64; passing the uname
+# spelling through makes apt look for an architecture no mirror publishes.
 - name: "Add the GitHub CLI apt source"
   ansible.builtin.apt_repository:
     repo: >-
-      deb [arch={{ 'amd64' if ansible_architecture == 'x86_64' else ansible_architecture }}
+      deb [arch={{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}
       signed-by=/etc/apt/keyrings/githubcli.gpg]
       https://cli.github.com/packages stable main
     filename: github-cli
