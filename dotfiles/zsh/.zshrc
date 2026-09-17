@@ -310,7 +310,9 @@ claude() {
   # PID namespace, so the tab indicator never fires from process detection alone.
   # A user-var travels in the terminal byte stream instead, crossing that boundary.
   (( $+functions[_wt_user_var] )) && _wt_user_var claude_active 1
-  command claude "$@"
+  # The state hooks (claude-state-hook.sh) write to this tty; hooks do not
+  # reliably inherit a controlling terminal, so /dev/tty alone is not enough.
+  CLAUDE_STATE_TTY=$TTY command claude "$@"
   local rc=$?
   (( $+functions[_wt_user_var] )) && _wt_user_var claude_active ''
   return $rc

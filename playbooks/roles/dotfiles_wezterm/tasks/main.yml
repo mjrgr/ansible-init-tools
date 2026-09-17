@@ -5,6 +5,7 @@
   ansible.builtin.include_tasks: "{{ role_path }}/../dotfiles_common/tasks/link.yml"
   loop:
     - { src: "{{ dotfiles_src }}/wezterm/wezterm.lua", dest: "{{ dotfiles_home }}/.config/wezterm/wezterm.lua" }
+    - { src: "{{ dotfiles_src }}/wezterm/claude-state-hook.sh", dest: "{{ dotfiles_home }}/.config/wezterm/claude-state-hook.sh" }
   loop_control:
     loop_var: dl
     label: "{{ dl.dest }}"

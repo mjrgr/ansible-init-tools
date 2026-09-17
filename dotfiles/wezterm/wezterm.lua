@@ -109,19 +109,71 @@ local function palette_for(scheme)
   return palettes[scheme]
 end
 
+-- Tab bar colours derive from the scheme so one rule set holds on Mocha and
+-- Latte: accent for the active tab, a surface one step off the background for
+-- the rest. Only semantic markers (prod red, claude orange) stay literal.
+local tab_palettes = {}
+local function tab_colors(scheme)
+  if tab_palettes[scheme] then return tab_palettes[scheme] end
+  local p = palette_for(scheme)
+  local light = scheme == LIGHT
+  local bg, fg = wezterm.color.parse(p.background), wezterm.color.parse(p.foreground)
+  local function off_bg(f) return tostring(light and bg:darken(f) or bg:lighten(f)) end
+  -- Shifting Mocha's blue-tinted foreground in HSL saturates it into a plain
+  -- blue; desaturating is what makes the inactive text read as grey. Latte's
+  -- foreground is already mid-grey, so it needs half the shift.
+  local function off_fg(f)
+    local c = light and fg:lighten(f) or fg:darken(f)
+    return tostring(c:desaturate(0.7))
+  end
+  tab_palettes[scheme] = {
+    bar = p.background,
+    surface = off_bg(0.12),
+    hover = off_bg(0.20),
+    accent = p.ansi[5],
+    on_accent = p.background,
+    fg = p.foreground,
+    dim = off_fg(light and 0.15 or 0.25),
+    faint = off_fg(light and 0.30 or 0.45),
+    red = p.ansi[2],
+    yellow = p.ansi[4],
+    green = p.ansi[3],
+  }
+  return tab_palettes[scheme]
+end
+
 -- Everything the scheme drives, in one place: applied to `config` at load time,
 -- re-applied as overrides when the desktop preference flips.
 local function theme(scheme)
   local p = palette_for(scheme)
+  local c = tab_colors(scheme)
   return {
     color_scheme = scheme,
     window_frame = {
-      font = wezterm.font { family = 'JetBrainsMono Nerd Font', weight = 'Bold' },
-      font_size = 11.0,
+      -- No Bold anywhere: a synthesised bold pixelates, colour tells the active
+      -- tab apart. FiraCode is a per-user install on the Windows side (HKCU
+      -- fonts key), JetBrainsMono is the fallback wherever it is missing.
+      font = wezterm.font_with_fallback {
+        { family = 'FiraCode Nerd Font', weight = 'Medium' },
+        { family = 'JetBrainsMono Nerd Font', weight = 'Medium' },
+      },
+      -- Sets the tab bar height, not just the label size
+      font_size = 12.0,
       active_titlebar_bg = p.background,
       inactive_titlebar_bg = p.background,
     },
-    colors = { tab_bar = { inactive_tab_edge = p.background } },
+    colors = {
+      tab_bar = {
+        background = c.bar,
+        -- The visible seam between two inactive tabs of the same colour
+        inactive_tab_edge = c.dim,
+        active_tab = { bg_color = c.accent, fg_color = c.on_accent },
+        inactive_tab = { bg_color = c.surface, fg_color = c.dim },
+        inactive_tab_hover = { bg_color = c.hover, fg_color = c.fg },
+        new_tab = { bg_color = c.bar, fg_color = c.dim },
+        new_tab_hover = { bg_color = c.hover, fg_color = c.fg },
+      },
+    },
   }
 end
 
@@ -160,7 +212,11 @@ end
 -- ============================================================
 local OPACITY = 0.98
 config.window_background_opacity = OPACITY
-config.window_decorations = 'RESIZE'
+-- Min/max/close drawn inside the fancy tab bar: no native title bar, but a way
+-- to quit with the mouse. Style follows the desktop so the buttons look native.
+config.window_decorations = 'INTEGRATED_BUTTONS|RESIZE'
+config.integrated_title_button_style = IS_WINDOWS and 'Windows' or 'Gnome'
+config.integrated_title_button_alignment = 'Right'
 config.window_padding = { left = 8, right = 8, top = 6, bottom = 4 }
 config.window_close_confirmation = 'AlwaysPrompt'
 config.skip_close_confirmation_for_processes_named = {
@@ -183,10 +239,17 @@ config.scrollback_lines = 50000
 -- ============================================================
 -- Tab bar
 -- ============================================================
-config.use_fancy_tab_bar = true
-config.tab_bar_at_bottom = false
+-- Fancy: the only bar whose height follows window_frame.font_size (retro is one
+-- text row, full stop), and it draws inactive_tab_edge between tabs. Retro keeps
+-- the pill edges below but cannot be made taller.
+local TAB_BAR_RETRO = false
+local TAB_BAR_BOTTOM = false
+
+config.use_fancy_tab_bar = not TAB_BAR_RETRO
+config.tab_bar_at_bottom = TAB_BAR_BOTTOM
 config.hide_tab_bar_if_only_one_tab = false
-config.tab_max_width = 40
+config.show_new_tab_button_in_tab_bar = true
+config.tab_max_width = 36
 
 -- Claude Code installs as a native ELF at ~/.local/share/claude/versions/<semver>,
 -- and what wezterm reports is /proc/<pid>/exe — so the basename is a version
@@ -200,144 +263,353 @@ local function is_claude(proc)
       or proc:match('/claude$') ~= nil
 end
 
--- Every pane of the tab, not just the active one: a claude left running in a
--- split, on a tab you are not looking at, is the case the indicator exists for.
+-- format-tab-title's `panes` argument lists the panes of the *active* tab, for
+-- every tab it formats — using it for the others paints the active tab's
+-- claude icon on all of them. Inactive tabs are read through the mux instead,
+-- shaped like PaneInformation so the detectors below need only one form. A
+-- claude left running in a split, on a tab you are not looking at, is the
+-- case the indicators exist for.
+local function tab_panes(tab, active_panes)
+  if tab.is_active then return active_panes end
+  local ok, infos = pcall(function()
+    local out = {}
+    for _, info in ipairs(wezterm.mux.get_tab(tab.tab_id):panes_with_info()) do
+      local pane = info.pane
+      table.insert(out, {
+        pane_id = pane:pane_id(),
+        foreground_process_name = pane:get_foreground_process_name(),
+        user_vars = pane:get_user_vars(),
+        title = pane:get_title(),
+      })
+    end
+    return out
+  end)
+  if ok and #infos > 0 then return infos end
+  return { tab.active_pane }
+end
+
+local function any_pane(panes, pred)
+  for _, p in ipairs(panes) do
+    if pred(p) then return true end
+  end
+  return false
+end
+
+local function user_var(p, name)
+  return p.user_vars and p.user_vars[name] or nil
+end
+
 -- Process detection alone misses a WSL setup where the GUI is the Windows-side
 -- wezterm-gui.exe: it cannot read /proc inside the WSL PID namespace, so
--- foreground_process_name is never populated there. claude_active is a user
--- var set via OSC 1337 by the `claude` zsh wrapper (~/.zshrc) — it rides the
--- terminal byte stream instead, so it survives that boundary.
-local function tab_runs_claude(tab)
-  for _, p in ipairs(tab.panes or { tab.active_pane }) do
-    if is_claude(p.foreground_process_name) then return true end
-    if p.user_vars and p.user_vars.claude_active == '1' then return true end
-  end
-  return false
+-- foreground_process_name is never populated there. The *_active user vars are
+-- set via OSC 1337 by the zsh wrappers (~/.zshrc) — they ride the terminal byte
+-- stream instead, so they survive that boundary.
+local function runs_claude(panes)
+  return any_pane(panes, function(p)
+    return is_claude(p.foreground_process_name) or user_var(p, 'claude_active') == '1'
+  end)
 end
 
--- Codex CLI is a static musl binary at /usr/local/bin/codex, so unlike claude the
--- leaf name is the command name and matching it is enough — where the process is
--- visible at all. Same WSL blind spot, and no title fallback to lean on the way
--- k9s has one: codex overwrites the title with the cwd basename a few seconds in,
--- so matching it lit the tab only until the TUI came up, and would have fired in
--- any directory named `codex`. The codex_active user var from the `codex` zsh
--- wrapper (~/.zshrc) is what actually carries this across the WSL boundary.
-local function tab_runs_codex(tab)
-  for _, p in ipairs(tab.panes or { tab.active_pane }) do
+-- Codex is a static musl binary at /usr/local/bin/codex, so the leaf name is the
+-- command name — where the process is visible at all. No title fallback: codex
+-- overwrites the title with the cwd basename a few seconds in.
+local function runs_codex(panes)
+  return any_pane(panes, function(p)
     local proc = p.foreground_process_name
-    if proc and proc:match('/codex$') then return true end
-    if p.user_vars and p.user_vars.codex_active == '1' then return true end
-  end
-  return false
+    return (proc and proc:match('/codex$') ~= nil) or user_var(p, 'codex_active') == '1'
+  end)
 end
 
--- Same WSL blind spot as claude, so same two-track detection — plus a third that
--- needs nothing at all: k9s sets the pane title to `k9s`, and a title rides the
--- byte stream, so it crosses the WSL boundary even from a shell with no wrapper.
-local function tab_runs_k9s(tab)
-  for _, p in ipairs(tab.panes or { tab.active_pane }) do
+-- Third track needing nothing at all: k9s sets the pane title to `k9s`, and a
+-- title rides the byte stream, so it crosses the WSL boundary from any shell.
+local function runs_k9s(panes)
+  return any_pane(panes, function(p)
     local proc = p.foreground_process_name
-    if proc and proc:match('/k9s$') then return true end
-    if p.user_vars and p.user_vars.k9s_active == '1' then return true end
-    if p.title and p.title:match('^k9s') then return true end
-  end
-  return false
+    return (proc and proc:match('/k9s$') ~= nil)
+        or user_var(p, 'k9s_active') == '1'
+        or (p.title and p.title:match('^k9s') ~= nil)
+  end)
 end
 
--- Sturdier than k9s's title track, so no zsh wrapper and no user var: sofka
--- writes `sofka: <context>/<namespace>` (terminal_title, on by default) and
--- clears it on exit, so the tab never stays lit after the TUI is gone. The
--- colon is load-bearing — a bare `^sofka` also matches a shell sitting in a
--- directory named sofka, which is where this config is edited.
-local function tab_runs_sofka(tab)
-  for _, p in ipairs(tab.panes or { tab.active_pane }) do
+-- sofka writes `sofka: <context>/<namespace>` and clears it on exit. The colon
+-- is load-bearing — a bare `^sofka` also matches a shell sitting in a directory
+-- named sofka, which is where this config is edited.
+local function runs_sofka(panes)
+  return any_pane(panes, function(p)
     local proc = p.foreground_process_name
-    if proc and proc:match('/sofka$') then return true end
-    if p.title and p.title:match('^sofka: ') then return true end
-  end
-  return false
+    return (proc and proc:match('/sofka$') ~= nil)
+        or (p.title and p.title:match('^sofka: ') ~= nil)
+  end)
 end
+
+-- ---- Per-pane state kept on the GUI side ----
+-- Keyed by pane_id; a config reload empties them, which only resets a timer or
+-- re-shows a marker once.
+local busy_since = {}   -- pane_id -> os.time() when busy first seen
+local acked_fail = {}   -- pane_id -> last_fail value already shown on a focused tab
+local bells = {}        -- pane_id -> true until the tab is focused
+
+wezterm.on('bell', function(window, pane)
+  bells[pane:pane_id()] = true
+end)
 
 -- Not has_unseen_output: that flag means "bytes arrived since you last focused
 -- this pane" and an invisible OSC 133 or a background redraw sets it, so it
 -- stays lit on idle tabs. busy is set by the zsh preexec/precmd pair, so it
 -- answers the question actually worth an indicator: is a command running there.
-local function tab_is_busy(tab)
-  if tab.is_active then return false end
-  for _, p in ipairs(tab.panes or { tab.active_pane }) do
-    if p.user_vars and p.user_vars.busy == '1' then return true end
+-- No timestamp from the shell (that would cost a base64 fork per command): the
+-- start is stamped when the user var arrives. The first-sight fallback below only
+-- covers a config reload mid-command.
+wezterm.on('user-var-changed', function(window, pane, name, value)
+  if name ~= 'busy' then return end
+  busy_since[pane:pane_id()] = value == '1' and os.time() or nil
+end)
+
+local function busy_seconds(panes)
+  local now, longest = os.time(), nil
+  for _, p in ipairs(panes) do
+    local id = p.pane_id
+    if user_var(p, 'busy') == '1' then
+      busy_since[id] = busy_since[id] or now
+      local e = now - busy_since[id]
+      if not longest or e > longest then longest = e end
+    else
+      busy_since[id] = nil
+    end
+  end
+  return longest
+end
+
+-- Minutes, not seconds: the bar only repaints when something changes (pane
+-- output, the clock in the right status once a minute), so a seconds counter
+-- advanced in jerks. Under a minute the dot alone says it.
+local function fmt_duration(sec)
+  if sec < 60 then return '' end
+  if sec < 3600 then return math.floor(sec / 60) .. 'm' end
+  return string.format('%dh%02d', math.floor(sec / 3600), math.floor(sec % 3600 / 60))
+end
+
+-- last_fail is `epoch:rc` from the zsh precmd, '' after a success. A failure is
+-- shown on an inactive tab until that tab has been focused once with it.
+local function unseen_failure(tab, panes)
+  local rc
+  for _, p in ipairs(panes) do
+    local lf = user_var(p, 'last_fail')
+    if lf and lf ~= '' then
+      if tab.is_active then
+        acked_fail[p.pane_id] = lf
+      elseif acked_fail[p.pane_id] ~= lf then
+        rc = lf:match(':(%d+)$') or '?'
+      end
+    end
+  end
+  return rc
+end
+
+-- Focusing the tab is the acknowledgement; anything that rings (make, a script,
+-- Claude Code with terminal_bell) gets the marker without wiring a hook.
+local function unseen_bell(tab, panes)
+  local hit = false
+  for _, p in ipairs(panes) do
+    if bells[p.pane_id] then
+      if tab.is_active then bells[p.pane_id] = nil else hit = true end
+    end
+  end
+  return hit
+end
+
+-- Set by the Claude Code hooks (claude-state-hook.sh): working after a prompt,
+-- waiting after a Stop or a permission/idle notification, '' otherwise. waiting
+-- is shown until the tab has been focused once, like the bell: on the focused
+-- tab you are already looking at the answer. Any other state resets the ack.
+local acked_wait = {}   -- pane_id -> true once its 'waiting' was seen focused
+local function claude_state(tab, panes)
+  local state = ''
+  for _, p in ipairs(panes) do
+    local st = user_var(p, 'claude_state')
+    if st == 'waiting' then
+      if tab.is_active then
+        acked_wait[p.pane_id] = true
+      elseif not acked_wait[p.pane_id] then
+        return 'waiting'
+      end
+    else
+      acked_wait[p.pane_id] = nil
+      if st == 'working' then state = 'working' end
+    end
+  end
+  return state
+end
+
+local function ssh_host(panes)
+  for _, p in ipairs(panes) do
+    local h = user_var(p, 'ssh_host')
+    if h and h ~= '' then return h end
+  end
+  return nil
+end
+
+-- is_root covers the local shell; a `root@` title covers remote or sudo -i
+-- shells, which run without these dotfiles.
+local function is_root(panes)
+  return any_pane(panes, function(p)
+    return user_var(p, 'is_root') == '1' or (p.title and p.title:match('^root@') ~= nil)
+  end)
+end
+
+-- ---- Title ----
+-- Matched on the path rather than $HOME: the Windows-side GUI's HOME is the
+-- Windows profile, never the WSL one.
+local HOME_PATTERNS = { '^/home/[^/]+/?$', '^/root/?$', '^/Users/[^/]+/?$', '^/[A-Za-z]:/Users/[^/]+/?$' }
+-- Leaves that say nothing on their own: shown as parent/leaf instead.
+local GENERIC_LEAF = {
+  src = true, lib = true, bin = true, docs = true, test = true, tests = true, scripts = true,
+  config = true, ['.config'] = true, dotfiles = true, playbooks = true, roles = true,
+  tasks = true, templates = true, files = true, defaults = true, vars = true,
+}
+local TITLE_MAX = 22
+
+local function is_home(path)
+  for _, pat in ipairs(HOME_PATTERNS) do
+    if path:match(pat) then return true end
   end
   return false
 end
 
-wezterm.on('format-tab-title', function(tab, tabs, panes, cfg, hover, max_width)
+-- Middle truncation: the two ends of a repo name carry the meaning
+-- (`ansible-…-tools`), the tail alone rarely does.
+local function shorten(s, max)
+  local len = utf8.len(s)
+  if not len then return s end
+  if len <= max then return s end
+  local keep = math.floor((max - 1) / 2)
+  local head = s:sub(1, utf8.offset(s, keep + 1) - 1)
+  local tail = s:sub(utf8.offset(s, -keep))
+  return head .. '…' .. tail
+end
+
+local function tab_title(tab)
+  -- Ctrl+Shift+E sets tab_title; it has to win over the cwd or the binding is dead
+  if tab.tab_title and tab.tab_title ~= '' then return tab.tab_title end
   local pane = tab.active_pane
-  local title = pane.title
-  if pane.current_working_dir then
-    title = string.match(pane.current_working_dir.file_path, '([^/]+)/?$') or title
+  local cwd = pane.current_working_dir
+  if not cwd then return shorten(pane.title, TITLE_MAX) end
+  local path = cwd.file_path
+  if is_home(path) then return '~' end
+  local parent, leaf = path:match('([^/]+)/([^/]+)/?$')
+  leaf = leaf or path:match('([^/]+)/?$') or pane.title
+  if parent and GENERIC_LEAF[leaf] then return shorten(parent .. '/' .. leaf, TITLE_MAX) end
+  return shorten(leaf, TITLE_MAX)
+end
+
+-- ---- Kube context criticality ----
+-- Non-prod names are tested first: `nonprod` and `preprod` both contain `prod`.
+local NONPROD_PATTERNS = {
+  'preprod', 'pprod', 'pprd', 'nonprod', 'non%-prod', 'hprod', 'hors%-prod',
+  'staging', 'stg', 'uat', 'recette',
+}
+-- Shared by the kube context and the ssh host: the name says the environment.
+local function env_color(name, c)
+  local l = name:lower()
+  for _, pat in ipairs(NONPROD_PATTERNS) do
+    if l:find(pat) then return c.yellow end
   end
-  -- kube_ctx comes from the zsh precmd hook: visible even on an inactive tab
-  local ctx = pane.user_vars.kube_ctx
-  local in_k9s = tab_runs_k9s(tab)
-  local in_codex = tab_runs_codex(tab)
-  local in_sofka = tab_runs_sofka(tab)
-  local ctx_text = ''
-  if ctx and ctx ~= '' then
-    -- Drop the glyph when the leading k9s icon already carries it
-    ctx_text = (in_k9s and ' ' or ' 󱃾 ') .. (ctx:len() > 16 and ctx:sub(1, 16) .. '…' or ctx)
+  if l:find('prod', 1, true) then return c.red end
+  return nil
+end
+
+wezterm.on('format-tab-title', function(tab, tabs, active_panes, cfg, hover, max_width)
+  local c = tab_colors(active_scheme)
+  local panes = tab_panes(tab, active_panes)
+  local pane = tab.active_pane
+  local bg = tab.is_active and c.accent or (hover and c.hover or c.surface)
+  local fg = tab.is_active and c.on_accent or (hover and c.fg or c.dim)
+  local faint = tab.is_active and c.on_accent or c.faint
+  local in_claude, in_codex = runs_claude(panes), runs_codex(panes)
+  local in_k9s, in_sofka = runs_k9s(panes), runs_sofka(panes)
+  local cl_state = in_claude and claude_state(tab, panes) or ''
+  -- Tracked on every tab so the timer starts while the tab is still focused
+  local busy = busy_seconds(panes)
+  local fail_rc = unseen_failure(tab, panes)
+  local rang = unseen_bell(tab, panes)
+
+  local items = {}
+  local function push(t) table.insert(items, t) end
+  local function colored(color, text)
+    push { Foreground = { Color = color } }
+    push { Text = text }
+    push { Foreground = { Color = fg } }
   end
 
-  -- Icons go first, right after the leading space: the fancy tab bar draws its
-  -- hover close button over the tab's right edge, which is exactly where a
-  -- trailing icon would sit — leading them keeps both always visible.
-  local items = { { Text = ' ' } }
-  if tab_runs_claude(tab) then
-    -- Claude's own brand colour, and a literal rather than a palette index on
-    -- purpose: it must read identically whether the desktop is on Catppuccin
-    -- Mocha or Latte.
-    table.insert(items, { Foreground = { Color = '#DE7356' } })
-    table.insert(items, { Text = '󰚩 ' })
-    table.insert(items, 'ResetAttributes')
+  -- Each tab is a pill on the bar background — rounded edges plus a one-cell
+  -- gap after it — so the boundary between two tabs never depends on a colour
+  -- difference alone. The fancy bar draws its own tab shape; an explicit
+  -- background there renders as a box inside it.
+  if TAB_BAR_RETRO then
+    push { Background = { Color = c.bar } }
+    push { Foreground = { Color = bg } }
+    push { Text = '' }
+    push { Background = { Color = bg } }
   end
-  if in_codex then
-    -- OpenAI brands Codex monochrome, which cannot be a single literal here: white
-    -- vanishes on Latte's #eff1f5 titlebar. Flipped with the desktop instead, so
-    -- it stays the darkest/lightest ink either way; the glyph is what separates it
-    -- from the claude icon above, not the colour.
-    table.insert(items, { Foreground = { Color = active_scheme == LIGHT and '#4c4f69' or '#ffffff' } })
-    table.insert(items, { Text = '󰧑 ' })
-    table.insert(items, 'ResetAttributes')
+  push { Foreground = { Color = fg } }
+  push { Text = ' ' }
+
+  -- Icons first: the fancy bar's hover close button covers the right edge.
+  -- Claude's brand colour is a literal on purpose: it must read identically on
+  -- Mocha and Latte.
+  if in_claude then
+    -- Green = it is waiting on you; brand orange = it is working; dim = idle
+    local col = cl_state == 'waiting' and c.green or (cl_state == 'working' and '#DE7356' or fg)
+    colored(col, '󰚩 ')
   end
-  if in_k9s then
-    table.insert(items, { Foreground = { Color = '#326ce5' } })
-    table.insert(items, { Text = '󱃾 ' })
-    table.insert(items, 'ResetAttributes')
+  -- Codex is branded monochrome, so it flips with the scheme rather than being
+  -- one literal; the glyph, not the colour, is what separates it from claude.
+  if in_codex then colored(active_scheme == LIGHT and '#4c4f69' or '#ffffff', '󰧑 ') end
+  if in_k9s then colored('#326ce5', '󱃾 ') end
+  -- Upstream's cat, not a second kube glyph: two icons differing only by colour
+  -- are indistinguishable at tab-bar size.
+  if in_sofka then colored('#5a7d99', '󰄛 ') end
+  -- The agent and cluster-TUI icons already say a long-running command owns this tab
+  local owned = in_claude or in_codex or in_k9s or in_sofka
+  if not tab.is_active and busy and not owned then
+    local d = fmt_duration(busy)
+    colored('#ff9e64', '●' .. (d ~= '' and d or '') .. ' ')
+  elseif fail_rc and not owned then
+    colored(c.red, '✗' .. fail_rc .. ' ')
   end
-  if in_sofka then
-    -- Upstream's cat, not a second kube glyph: two icons differing only by
-    -- colour are indistinguishable at tab-bar size. Grey-blue clears 3:1 on
-    -- both Latte and Mocha titlebars, so unlike codex it needs no flip.
-    table.insert(items, { Foreground = { Color = '#5a7d99' } })
-    table.insert(items, { Text = '󰄛 ' })
-    table.insert(items, 'ResetAttributes')
+  -- Claude's own waiting state already carries the bell it rings
+  if rang and cl_state ~= 'waiting' then colored(c.yellow, '󰂚 ') end
+  if is_root(panes) then colored(c.red, ' ') end
+
+  colored(faint, (tab.tab_index + 1) .. ' ')
+  push { Text = tab_title(tab) }
+
+  -- Only a non-default branch is a signal worth the width
+  local branch = pane.user_vars.git_branch
+  if branch and branch ~= '' and branch ~= 'main' and branch ~= 'master' then
+    colored(faint, '  ' .. shorten(branch, 14))
   end
-  -- The agent and cluster-TUI icons already say "a long-running command owns this tab"
-  if tab_is_busy(tab) and not tab_runs_claude(tab) and not in_codex and not in_k9s
-     and not in_sofka then
-    table.insert(items, { Foreground = { Color = '#ff9e64' } })
-    table.insert(items, { Text = '● ' })
-    table.insert(items, 'ResetAttributes')
+
+  -- kube_ctx comes from the zsh precmd hook: visible even on an inactive tab.
+  -- Colour means risk (prod red, non-prod yellow), not "a TUI is up".
+  local ctx = pane.user_vars.kube_ctx
+  if ctx and ctx ~= '' then
+    local col = env_color(ctx, c) or fg
+    colored(col, (in_k9s and ' ' or ' 󱃾 ') .. shorten(ctx, 16))
   end
-  table.insert(items, { Text = string.format('%d:%s', tab.tab_index + 1, title) })
-  -- Matrix green only while a cluster TUI is up: the color means "you are pointed
-  -- at this cluster right now", not merely "this is what kubectl would target"
-  if ctx_text ~= '' then
-    if in_k9s or in_sofka then table.insert(items, { Foreground = { Color = '#00ff41' } }) end
-    table.insert(items, { Text = ctx_text })
-    if in_k9s or in_sofka then table.insert(items, 'ResetAttributes') end
+
+  local host = ssh_host(panes)
+  if host then colored(env_color(host, c) or fg, '  ' .. shorten(host, 16)) end
+
+  if #panes > 1 then colored(faint, ' ⊞' .. #panes) end
+  if pane.is_zoomed then push { Text = ' ' } end
+  push { Text = ' ' }
+
+  if TAB_BAR_RETRO then
+    push { Background = { Color = c.bar } }
+    push { Foreground = { Color = bg } }
+    push { Text = ' ' }
   end
-  if pane.is_zoomed then table.insert(items, { Text = ' ' }) end
-  table.insert(items, { Text = ' ' })
   return items
 end)
 
@@ -345,7 +617,11 @@ wezterm.on('update-right-status', function(window, pane)
   local cells = {}
   local ws = window:active_workspace()
   if ws ~= config.default_workspace then table.insert(cells, ' ' .. ws) end
-  table.insert(cells, ' ' .. (pane:get_user_vars().distro or pane:get_domain_name()))
+  -- Same rule as the workspace: only shown when it is not the default
+  local domain = pane:get_domain_name()
+  if domain ~= (config.default_domain or 'local') then
+    table.insert(cells, ' ' .. (pane:get_user_vars().distro or domain))
+  end
   table.insert(cells, wezterm.strftime '%H:%M')
   window:set_right_status(wezterm.format {
     { Foreground = { Color = window_palette(window).ansi[5] } },
@@ -459,6 +735,8 @@ config.keys = {
       act.SendKey { key = 'L', mods = 'CTRL' },
   } },
   { key = 'o', mods = 'CTRL|SHIFT', action = act.EmitEvent 'toggle-opacity' },
+  -- Window and app close both honour window_close_confirmation
+  { key = 'q', mods = 'CTRL|SHIFT', action = act.QuitApplication },
   { key = 'p', mods = 'CTRL|SHIFT', action = act.ActivateCommandPalette },
   { key = 'u', mods = 'CTRL|SHIFT', action = act.CharSelect },
 }
