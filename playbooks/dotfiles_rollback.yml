@@ -5,6 +5,17 @@
     dotfiles_src: "{{ playbook_dir | dirname }}/dotfiles"
     dotfiles_home: "{{ ansible_env.HOME }}"
     dotfiles_backup_dir: "{{ ansible_env.HOME }}/.dotfiles-backup"
+    rb_claude_settings: "{{ ansible_env.HOME }}/.claude/settings.json"
+
+    # The Claude Code events dotfiles_wezterm registers. Authoritative here the
+    # same way dotfiles_links is: it is what the deploy may have written, and
+    # keeping the two lists in step is what makes the rollback complete.
+    rb_claude_hook_events:
+      - UserPromptSubmit
+      - Stop
+      - Notification
+      - SessionStart
+      - SessionEnd
 
     # Authoritative list of what the deploy may have symlinked. Backups are named
     # after the basename only, so this mapping is what puts a restored file back in
@@ -67,9 +78,45 @@
       register: rb_restore
       changed_when: "'restored ' in rb_restore.stdout"
 
+    # settings.json was merged, not symlinked, so there is nothing to unlink.
+    # Un-registering means taking our own event keys back out and leaving the
+    # rest of the user's file — tokens, statusLine, plugins — alone. The deploy
+    # owns those keys whole, so the rollback drops them whole.
+    - name: "Look for the Claude Code settings.json"
+      ansible.builtin.stat:
+        path: "{{ rb_claude_settings }}"
+      register: rb_settings_stat
+
+    - name: "Read the Claude Code settings.json"
+      ansible.builtin.slurp:
+        src: "{{ rb_claude_settings }}"
+      register: rb_settings_raw
+      when: rb_settings_stat.stat.exists
+      no_log: true
+
+    - name: "Strip the wezterm state hooks out of settings.json"
+      ansible.builtin.copy:
+        content: "{{ rb_stripped | to_nice_json }}\n"
+        dest: "{{ rb_claude_settings }}"
+        mode: "0600"
+      vars:
+        rb_current: "{{ rb_settings_raw.content | b64decode | from_json }}"
+        rb_kept: >-
+          {{ rb_current.hooks | default({}) | dict2items
+             | rejectattr('key', 'in', rb_claude_hook_events) | items2dict }}
+        # An empty hooks object is noise in the file; drop the key outright.
+        rb_stripped: >-
+          {{ rb_current | combine({'hooks': rb_kept}) if rb_kept
+             else rb_current | dict2items | rejectattr('key', 'eq', 'hooks') | items2dict }}
+      when:
+        - rb_settings_stat.stat.exists
+        - (rb_settings_raw.content | b64decode | from_json) is mapping
+      diff: false
+
     - name: "Report"
       ansible.builtin.debug:
         msg: >-
           {{ (rb_restore.results | default([]) | map(attribute='stdout') | list) }}
           | Backups kept in {{ dotfiles_backup_dir }}, nothing deleted.
+          Claude Code state hooks un-registered from {{ rb_claude_settings }}.
           ~/.zshenv.local, ~/.zshrc.local and ~/.gitconfig.local untouched.

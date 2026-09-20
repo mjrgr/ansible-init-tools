@@ -9,3 +9,61 @@
   loop_control:
     loop_var: dl
     label: "{{ dl.dest }}"
+
+# ---- Claude Code state hooks (defaults/main.yml says why they live here) ----
+#
+# settings.json is not symlinked like the rest: it is the user's own file,
+# holding API tokens and machine-local preferences next to these hooks. So it is
+# merged, never templated — only the events this role owns are rewritten, and
+# everything else in the file is carried across untouched. no_log is on
+# throughout: the parsed content would otherwise reach the log and the diff.
+
+- name: "Look for an existing Claude Code settings.json"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.stat:
+    path: "{{ dotfiles_wezterm_claude_settings }}"
+  register: dfw_settings_stat
+
+- name: "Read the existing Claude Code settings.json"
+  ansible.builtin.slurp:
+    src: "{{ dotfiles_wezterm_claude_settings }}"
+  register: dfw_settings_raw
+  when: dfw_settings_stat.stat.exists
+  no_log: true
+
+# A file that is not a JSON object is a file this role does not understand.
+# Failing beats replacing it with one that holds nothing but our hooks.
+- name: "Fail if settings.json is not a JSON object"
+  ansible.builtin.fail:
+    msg: >-
+      {{ dotfiles_wezterm_claude_settings }} did not parse as a JSON object.
+      Fix or move it, then re-run — refusing to overwrite it.
+  when:
+    - dfw_settings_stat.stat.exists
+    - (dfw_settings_raw.content | b64decode | from_json) is not mapping
+
+- name: "Merge the state hooks into the Claude Code settings"  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    dfw_settings_current: "{{ dfw_current }}"
+    dfw_settings_merged: "{{ dfw_current | combine({'hooks': dfw_current.hooks | default({}) | combine(dotfiles_wezterm_claude_hooks)}) }}"
+  vars:
+    dfw_current: "{{ (dfw_settings_raw.content | b64decode | from_json) if dfw_settings_stat.stat.exists else {} }}"
+  no_log: true
+
+# Same contract as link.yml: a real pre-existing file is kept before it is
+# rewritten. Skipped when the merge is a no-op, so re-runs stop piling up copies.
+- name: "Back up settings.json before rewriting it"
+  ansible.builtin.copy:
+    src: "{{ dotfiles_wezterm_claude_settings }}"
+    dest: "{{ dotfiles_backup_dir }}/settings.json.{{ dotfiles_stamp }}"
+    mode: "0600"
+    remote_src: true
+  when:
+    - dfw_settings_stat.stat.exists
+    - dfw_settings_merged != dfw_settings_current
+
+- name: "Register the Claude Code state hooks"
+  ansible.builtin.copy:
+    content: "{{ dfw_settings_merged | to_nice_json }}\n"
+    dest: "{{ dotfiles_wezterm_claude_settings }}"
+    mode: "0600"
+  diff: false

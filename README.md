@@ -82,12 +82,13 @@ and predate options the deployed configs use.
 | `claude` | Claude Code into `~/.local/share/claude`, symlinked at `~/.local/bin/claude` |
 | `tmux` | `~/.tmux.conf` |
 | `git` | `~/.gitconfig` |
-| `wezterm` | `~/.config/wezterm/wezterm.lua` |
+| `wezterm` | `~/.config/wezterm/wezterm.lua`, `~/.config/wezterm/claude-state-hook.sh`, and the hook registration merged into `~/.claude/settings.json` |
 | `btop` | `~/.config/btop/btop.conf` |
 
 Each one is a symlink into `dotfiles/` in this repo, so an edit made in `$HOME` shows
-up in `git status` with no copy-back step. The `fonts` group is the exception — a font
-is installed, not linked.
+up in `git status` with no copy-back step. Two entries are not links: `fonts` installs
+a font, and the `wezterm` group merges its Claude Code hooks into an existing
+`~/.claude/settings.json` rather than replacing a file that is not ours.
 
 The Nerd Font is not cosmetic: `starship.toml` and `wezterm.lua` use Private Use Area
 glyphs, and without the font the prompt and the tab bar render tofu.
@@ -116,6 +117,28 @@ the pane's shell are on opposite sides of a WSL boundary — see below. The
 `claude` zsh wrapper (`~/.zshrc`) backs it up by setting a `claude_active` user
 var over OSC 1337, which rides the terminal byte stream instead of the process
 tree and works in both cases.
+
+The icon's colour is the session's state, not just its presence: coral while
+Claude is working, green once it is waiting on you, and the plain tab foreground
+otherwise. That comes from `claude-state-hook.sh`, which Claude Code runs on
+`UserPromptSubmit`, `Stop`, `Notification`, `SessionStart` and `SessionEnd`, and
+which publishes a `claude_state` user var the same OSC 1337 way. The waiting
+green survives until you focus the tab, like the bell marker — on the tab you are
+already looking at, the answer is on screen.
+
+Two things have to be true for the colour to move, and the script being deployed
+is only one of them. Claude Code runs hooks it finds registered in
+`~/.claude/settings.json`, so the `wezterm` group merges those five events into
+that file — merged rather than symlinked, because it is the user's own file and
+holds tokens and machine-local preferences beside the hooks. A deploy that lands
+the script without the registration leaves the icon permanently grey. The hooks
+also need the pane's tty, which hooks do not reliably inherit; the `claude` zsh
+wrapper passes it as `CLAUDE_STATE_TTY`. Headless runs (`-p`, the SDK) have no
+tty to write to and stay silent by design.
+
+`SubagentStop` is deliberately not registered: it fires when a subagent finishes
+while the main agent keeps working, which would turn the tab green with nothing
+actually waiting on you.
 
 A monochrome 󰧑 marks a tab running the OpenAI Codex CLI — white on Mocha,
 Latte's ink (`#4c4f69`) once the desktop flips to light, since white on a `#eff1f5`

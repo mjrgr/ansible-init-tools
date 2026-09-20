@@ -5,6 +5,7 @@ dotfiles_common_dirs:
   - "{{ dotfiles_home }}/.config/zsh"
   - "{{ dotfiles_home }}/.config/wezterm"
   - "{{ dotfiles_home }}/.config/btop"
+  - "{{ dotfiles_home }}/.claude"
   - "{{ dotfiles_home }}/.kube"
   - "{{ dotfiles_home }}/.local/bin"
   - "{{ dotfiles_backup_dir }}"

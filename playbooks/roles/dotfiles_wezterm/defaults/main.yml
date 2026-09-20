@@ -1,0 +1,36 @@
+---
+# role: dotfiles_wezterm
+
+dotfiles_wezterm_state_hook: "{{ dotfiles_home }}/.config/wezterm/claude-state-hook.sh"
+dotfiles_wezterm_claude_settings: "{{ dotfiles_home }}/.claude/settings.json"
+
+# Claude Code publishes its state to the tab bar through claude-state-hook.sh,
+# which writes an OSC 1337 user var that wezterm.lua reads back (claude_state).
+# The script alone does nothing: Claude only runs it if these events are
+# registered in ~/.claude/settings.json. Deploying the script without the
+# registration is what leaves the tab icon permanently grey.
+#
+# The registration lives in this role rather than in dotfiles_claude because the
+# hooks exist for the tab bar, not for Claude: dotfiles_claude only installs the
+# binary, and the states below are matched one-for-one in wezterm.lua — working
+# paints the icon orange, waiting green, and no argument clears it back to grey.
+#
+# SubagentStop is deliberately absent. It fires when a subagent finishes while
+# the main agent keeps working, so mapping it to "waiting" would turn the tab
+# green with nothing actually waiting on you.
+dotfiles_wezterm_claude_hooks:
+  UserPromptSubmit:
+    - hooks:
+        - { type: command, command: "{{ dotfiles_wezterm_state_hook }} working" }
+  Stop:
+    - hooks:
+        - { type: command, command: "{{ dotfiles_wezterm_state_hook }} waiting" }
+  Notification:
+    - hooks:
+        - { type: command, command: "{{ dotfiles_wezterm_state_hook }} waiting" }
+  SessionStart:
+    - hooks:
+        - { type: command, command: "{{ dotfiles_wezterm_state_hook }}" }
+  SessionEnd:
+    - hooks:
+        - { type: command, command: "{{ dotfiles_wezterm_state_hook }}" }
