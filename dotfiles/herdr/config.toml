@@ -9,7 +9,8 @@ version_check = false
 manifest_check = false
 
 [theme]
-# "terminal" inherits WezTerm's ANSI palette, so the Mocha/Latte toggle carries over.
+# Pinned rather than following the terminal: "terminal" would inherit WezTerm's
+# ANSI palette and flip with it, this keeps Latte when WezTerm switches to Mocha.
 name = "catppuccin-latte"
 auto_switch = false
 
