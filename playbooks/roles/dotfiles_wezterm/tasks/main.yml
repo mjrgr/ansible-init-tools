@@ -18,16 +18,16 @@
 # everything else in the file is carried across untouched. no_log is on
 # throughout: the parsed content would otherwise reach the log and the diff.
 
-- name: "Look for an existing Claude Code settings.json"  # noqa: var-naming[no-role-prefix]
+- name: "Look for an existing Claude Code settings.json"
   ansible.builtin.stat:
     path: "{{ dotfiles_wezterm_claude_settings }}"
-  register: dfw_settings_stat
+  register: dotfiles_wezterm_settings_stat
 
 - name: "Read the existing Claude Code settings.json"
   ansible.builtin.slurp:
     src: "{{ dotfiles_wezterm_claude_settings }}"
-  register: dfw_settings_raw
-  when: dfw_settings_stat.stat.exists
+  register: dotfiles_wezterm_settings_raw
+  when: dotfiles_wezterm_settings_stat.stat.exists
   no_log: true
 
 # A file that is not a JSON object is a file this role does not understand.
@@ -38,15 +38,17 @@
       {{ dotfiles_wezterm_claude_settings }} did not parse as a JSON object.
       Fix or move it, then re-run — refusing to overwrite it.
   when:
-    - dfw_settings_stat.stat.exists
-    - (dfw_settings_raw.content | b64decode | from_json) is not mapping
+    - dotfiles_wezterm_settings_stat.stat.exists
+    - (dotfiles_wezterm_settings_raw.content | b64decode | from_json) is not mapping
 
-- name: "Merge the state hooks into the Claude Code settings"  # noqa: var-naming[no-role-prefix]
+- name: "Merge the state hooks into the Claude Code settings"
   ansible.builtin.set_fact:
-    dfw_settings_current: "{{ dfw_current }}"
-    dfw_settings_merged: "{{ dfw_current | combine({'hooks': dfw_current.hooks | default({}) | combine(dotfiles_wezterm_claude_hooks)}) }}"
+    dotfiles_wezterm_settings_current: "{{ dotfiles_wezterm_current }}"
+    dotfiles_wezterm_settings_merged: >-
+      {{ dotfiles_wezterm_current | combine({'hooks': dotfiles_wezterm_current.hooks
+         | default({}) | combine(dotfiles_wezterm_claude_hooks)}) }}
   vars:
-    dfw_current: "{{ (dfw_settings_raw.content | b64decode | from_json) if dfw_settings_stat.stat.exists else {} }}"
+    dotfiles_wezterm_current: "{{ (dotfiles_wezterm_settings_raw.content | b64decode | from_json) if dotfiles_wezterm_settings_stat.stat.exists else {} }}"
   no_log: true
 
 # Same contract as link.yml: a real pre-existing file is kept before it is
@@ -58,12 +60,16 @@
     mode: "0600"
     remote_src: true
   when:
-    - dfw_settings_stat.stat.exists
-    - dfw_settings_merged != dfw_settings_current
+    - dotfiles_wezterm_settings_stat.stat.exists
+    - dotfiles_wezterm_settings_merged != dotfiles_wezterm_settings_current
 
+# Guarded on the parsed content, not on copy's byte comparison: Claude Code
+# rewrites settings.json in its own layout on install, so an unguarded write
+# reformats it back on every run and the play never reports changed=0.
 - name: "Register the Claude Code state hooks"
   ansible.builtin.copy:
-    content: "{{ dfw_settings_merged | to_nice_json }}\n"
+    content: "{{ dotfiles_wezterm_settings_merged | to_nice_json }}\n"
     dest: "{{ dotfiles_wezterm_claude_settings }}"
     mode: "0600"
+  when: dotfiles_wezterm_settings_merged != dotfiles_wezterm_settings_current
   diff: false
