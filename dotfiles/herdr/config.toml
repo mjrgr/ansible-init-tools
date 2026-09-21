@@ -10,7 +10,7 @@ manifest_check = false
 
 [theme]
 # "terminal" inherits WezTerm's ANSI palette, so the Mocha/Latte toggle carries over.
-name = "terminal"
+name = "catppuccin-latte"
 auto_switch = false
 
 [ui]

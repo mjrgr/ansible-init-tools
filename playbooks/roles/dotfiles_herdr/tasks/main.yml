@@ -64,8 +64,12 @@
     path: "/run/user/{{ ansible_user_uid }}/systemd/private"
   register: dotfiles_herdr_systemd
 
+# systemd, not systemd_service: the newer name only exists from ansible-core 2.17
+# and 22.04 ships less than that. Module names resolve at load time, before any
+# `when:` runs, so an unknown one fails the whole playbook on a host that would
+# have skipped the task anyway. `systemd` stays an alias in current cores.
 - name: "Enable the herd status publisher"
-  ansible.builtin.systemd_service:
+  ansible.builtin.systemd:
     name: herd-publish.service
     scope: user
     daemon_reload: true
