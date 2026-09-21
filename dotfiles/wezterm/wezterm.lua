@@ -667,25 +667,36 @@ local HERD_STATUS = IS_WINDOWS
   and ((os.getenv 'LOCALAPPDATA' or '') .. '\\herd-status')
   or ((os.getenv 'HOME' or '') .. '/.cache/herd-status')
 
+-- A stale file is a dead publisher, not a quiet herd, and reporting it as "all
+-- idle" would be the silent failure this indicator exists to rule out. The window
+-- is wide because the two clocks being compared are not the same one: the stamp
+-- is written by WSL and read by Windows, and WSL's clock drifts from the host's
+-- across a suspend. Wide enough to absorb that, still far short of a publisher
+-- that stopped writing two seconds at a time.
+local HERD_STALE_AFTER = 120
+
 local function herd_counts()
   local f = io.open(HERD_STATUS, 'r')
   if not f then return nil end
   local line = f:read 'l'
   f:close()
-  local w, b, d = (line or ''):match('^(%d+) (%d+) (%d+)$')
-  if not w then return nil end
+  local w, b, d, at = (line or ''):match('^(%d+) (%d+) (%d+) (%d+)$')
+  if not w or os.time() - tonumber(at) > HERD_STALE_AFTER then return nil end
   return tonumber(w), tonumber(b), tonumber(d)
 end
 
 wezterm.on('update-right-status', function(window, pane)
   local cells = {}
   local working, blocked, done = herd_counts()
-  if working and working + blocked + done > 0 then
+  if working then
     local herd = {}
     if working > 0 then table.insert(herd, working .. HERD_MARK.working) end
     if blocked > 0 then table.insert(herd, blocked .. HERD_MARK.blocked) end
     if done > 0 then table.insert(herd, done .. HERD_MARK.done) end
-    table.insert(cells, '󰳆 ' .. table.concat(herd, ' '))
+    -- Idle agents carry no count: the glyph on its own is the herd at rest, and
+    -- it has to stay on screen — an indicator that vanishes when nothing happens
+    -- cannot be told apart from one that vanished because it broke.
+    table.insert(cells, '󰳆' .. (#herd > 0 and ' ' .. table.concat(herd, ' ') or ''))
   end
   local ws = window:active_workspace()
   if ws ~= config.default_workspace then table.insert(cells, ' ' .. ws) end

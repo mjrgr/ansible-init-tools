@@ -18,11 +18,14 @@ if [[ -d $win_local ]]; then out="$win_local/herd-status"; else out="$HOME/.cach
 mkdir -p "$(dirname "$out")"
 
 while :; do
-  line=$(herdr api snapshot 2>/dev/null | jq -r '
+  # The trailing epoch is what lets the reader tell "herd is idle" from "publisher
+  # is dead": without it an all-zero line and a stale file look identical.
+  line=$(herdr api snapshot 2>/dev/null | jq -r --argjson now "$(date +%s)" '
     [.result.snapshot.agents[].agent_status] as $s
     | [ ($s | map(select(. == "working")) | length),
         ($s | map(select(. == "blocked")) | length),
-        ($s | map(select(. == "done"))    | length) ]
+        ($s | map(select(. == "done"))    | length),
+        $now ]
     | join(" ")' 2>/dev/null) || line=''
   # Written whole or not at all: the reader must never catch a half-flushed file.
   printf '%s\n' "$line" > "$out.tmp" && mv -f "$out.tmp" "$out"

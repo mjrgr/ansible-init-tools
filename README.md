@@ -132,7 +132,13 @@ Windows side: a WSL pane exposes the Windows process tree, never the distro's
 `/proc`, so `foreground_process_name` never says `herdr` there.
 
 The right status bar carries the whole herd — `󰳆 2󰉁 1󰏤` for two agents working and
-one blocked. It reads a file, never a process: `update-right-status` runs on the GUI
+one blocked, and the glyph on its own when every agent is idle. Idle carries no
+count on purpose, but the indicator still has to be on screen: one that disappears
+when nothing is happening cannot be told apart from one that disappeared because it
+broke. The publisher stamps each line with the time it wrote it, and a line older
+than `HERD_STALE_AFTER` reads as absent — so the glyph really does mean the
+publisher is alive. That window is wide (120 s) because the stamp is written by WSL
+and read by Windows, and the two clocks drift apart across a suspend. It reads a file, never a process: `update-right-status` runs on the GUI
 thread once a second, and asking herdr from there would put `wsl.exe` on that thread,
 ~100 ms of frozen UI per tick. `herd-publish.sh` pays the crossing instead, from a
 systemd user unit, writing into `LOCALAPPDATA` so the GUI reads an NTFS path. It polls
