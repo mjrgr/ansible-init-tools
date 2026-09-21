@@ -1,0 +1,11 @@
+[Unit]
+Description=Publish herdr agent counts for the WezTerm status bar
+
+[Service]
+Type=simple
+ExecStart=%h/.config/herdr/herd-publish.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

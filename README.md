@@ -84,7 +84,7 @@ and predate options the deployed configs use.
 | `git` | `~/.gitconfig` |
 | `wezterm` | `~/.config/wezterm/wezterm.lua`, `~/.config/wezterm/claude-state-hook.sh`, and the hook registration merged into `~/.claude/settings.json` |
 | `btop` | `~/.config/btop/btop.conf` |
-| `herdr` | `~/.config/herdr/config.toml` |
+| `herdr` | `~/.config/herdr/config.toml`, `herd-publish.sh` + its user unit, and the generated `~/.claude/skills/herdr/SKILL.md` |
 
 Each one is a symlink into `dotfiles/` in this repo, so an edit made in `$HOME` shows
 up in `git status` with no copy-back step. Two entries are not links: `fonts` installs
@@ -93,6 +93,15 @@ a font, and the `wezterm` group merges its Claude Code hooks into an existing
 
 The Nerd Font is not cosmetic: `starship.toml` and `wezterm.lua` use Private Use Area
 glyphs, and without the font the prompt and the tab bar render tofu.
+
+Tab-bar icons drop their colour on the active tab. Every literal in there is tuned
+against the bar — near-black on Mocha, near-white on Latte — but the active tab paints
+itself `ansi[5]`, and measured against that background no literal clears 2.4:1: k9s
+lands at 1.03, which is invisible rather than merely dim. On the active tab the icons
+fall back to `fg`, which is `on_accent` and readable by construction (7.8 and 4.3).
+The shape is what identifies an icon; the colour is a bonus the active tab does not
+get. For the same reason the herd marks use Nerd Font glyphs and not `⏸` U+23F8, which
+JetBrainsMono does not carry and which the emoji font would render coloured.
 
 ### herdr and the tab bar do not see the same thing
 
@@ -121,6 +130,25 @@ The `herdr: ` prefix is what the match keys on — the same load-bearing colon
 `sofka` uses, and for the same reason. A process check is not an option on the
 Windows side: a WSL pane exposes the Windows process tree, never the distro's
 `/proc`, so `foreground_process_name` never says `herdr` there.
+
+The right status bar carries the whole herd — `󰳆 2󰉁 1󰏤` for two agents working and
+one blocked. It reads a file, never a process: `update-right-status` runs on the GUI
+thread once a second, and asking herdr from there would put `wsl.exe` on that thread,
+~100 ms of frozen UI per tick. `herd-publish.sh` pays the crossing instead, from a
+systemd user unit, writing into `LOCALAPPDATA` so the GUI reads an NTFS path. It polls
+rather than blocks: `herdr agent wait` needs a target and cannot watch the herd as a
+whole, and a snapshot over the unix socket costs ~8 ms.
+
+The unit is what makes this survive: the publisher has to outlive the shell that
+started it and come back when it dies, which a backgrounded loop in `.zshrc` gives
+neither. A host with no user systemd — a container, notably — skips the whole block.
+
+`herdr --skill` is rendered into `~/.claude/skills/herdr/SKILL.md` at deploy time
+rather than versioned here: it documents the CLI of the herdr that printed it, so a
+copy committed to this repo would drift into teaching Claude commands that no longer
+exist. `update.version_check` and `update.manifest_check` are off for the same reason
+the binary is pinned — the version is decided by `playbooks/roles/herdr`, not by a
+background call to herdr.dev.
 
 `Ctrl+Shift+A` opens a fuzzy picker over `herdr agent list` and focuses the one you
 choose, across every workspace and SSH machine in the session. The state marks come

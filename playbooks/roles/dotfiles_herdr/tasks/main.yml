@@ -1,10 +1,21 @@
 ---
 # role: dotfiles_herdr — herdr config (the binary comes from the `herdr` role)
 
-- name: "Deploy the herdr config"
+- name: "Create the herdr target directories"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ dotfiles_home }}/.config/systemd/user"
+    - "{{ dotfiles_home }}/.claude/skills/herdr"
+
+- name: "Deploy the herdr config and status publisher"
   ansible.builtin.include_tasks: "{{ role_path }}/../dotfiles_common/tasks/link.yml"
   loop:
     - { src: "{{ dotfiles_src }}/herdr/config.toml", dest: "{{ dotfiles_home }}/.config/herdr/config.toml" }
+    - { src: "{{ dotfiles_src }}/herdr/herd-publish.sh", dest: "{{ dotfiles_home }}/.config/herdr/herd-publish.sh" }
+    - { src: "{{ dotfiles_src }}/herdr/herd-publish.service", dest: "{{ dotfiles_home }}/.config/systemd/user/herd-publish.service" }
   loop_control:
     loop_var: dl
     label: "{{ dl.dest }}"
@@ -18,3 +29,43 @@
   ansible.builtin.command: herdr server reload-config
   changed_when: false
   failed_when: false
+
+# ---- Agent skill ----
+#
+# `herdr --skill` prints the instructions for the herdr version that prints them,
+# so this is generated rather than versioned: bumping herdr_version rewrites it,
+# and a stale copy in the repo would teach Claude a CLI that no longer matches.
+- name: "Render the herdr agent skill"
+  ansible.builtin.command: herdr --skill
+  register: dotfiles_herdr_skill
+  changed_when: false
+  failed_when: false
+
+- name: "Install the herdr agent skill for Claude Code"
+  ansible.builtin.copy:
+    content: "{{ dotfiles_herdr_skill.stdout }}\n"
+    dest: "{{ dotfiles_home }}/.claude/skills/herdr/SKILL.md"
+    mode: "0644"
+  when: dotfiles_herdr_skill.rc == 0
+
+# ---- Status publisher ----
+#
+# A user unit, not a line in .zshrc: the publisher must outlive the shell that
+# started it and be restarted when it dies, and a shell-launched background loop
+# gives neither. `is-system-running` answers "degraded" with rc 1 on a healthy
+# WSL instance, so the gate reads the word rather than the exit status — and a
+# container, which answers nothing at all, skips the whole block.
+- name: "Look for a user systemd instance"
+  ansible.builtin.command: systemctl --user is-system-running
+  register: dotfiles_herdr_systemd
+  changed_when: false
+  failed_when: false
+
+- name: "Enable the herd status publisher"
+  ansible.builtin.systemd_service:
+    name: herd-publish.service
+    scope: user
+    daemon_reload: true
+    enabled: true
+    state: started
+  when: dotfiles_herdr_systemd.stdout is search('running|degraded')

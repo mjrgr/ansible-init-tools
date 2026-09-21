@@ -2,6 +2,12 @@
 # `herdr config reset-keys` rewrites this file in place, comments included.
 onboarding = false
 
+[update]
+# The version herdr runs is decided by playbooks/roles/herdr, not by a background
+# call to herdr.dev — and behind a corporate proxy that call is noise either way.
+version_check = false
+manifest_check = false
+
 [theme]
 # "terminal" inherits WezTerm's ANSI palette, so the Mocha/Latte toggle carries over.
 name = "terminal"

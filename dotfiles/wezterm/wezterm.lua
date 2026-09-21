@@ -572,6 +572,13 @@ wezterm.on('format-tab-title', function(tab, tabs, active_panes, cfg, hover, max
     push { Foreground = { Color = fg } }
   end
 
+  -- Every icon literal below is tuned against the bar, which is near-black on
+  -- Mocha and near-white on Latte. The active tab is neither: it paints itself
+  -- ansi[5], and measured against that no literal clears 2.4:1 — k9s lands at
+  -- 1.03, invisible. fg is on_accent there (7.8 and 4.3), so the active tab
+  -- drops the hue and keeps the shape, which is what identifies the icon anyway.
+  local function icon(col) return tab.is_active and fg or col end
+
   -- Each tab is a pill on the bar background — rounded edges plus a one-cell
   -- gap after it — so the boundary between two tabs never depends on a colour
   -- difference alone. The fancy bar draws its own tab shape; an explicit
@@ -591,19 +598,18 @@ wezterm.on('format-tab-title', function(tab, tabs, active_panes, cfg, hover, max
   if in_claude then
     -- Green = it is waiting on you; brand orange = it is working; dim = idle
     local col = cl_state == 'waiting' and c.green or (cl_state == 'working' and '#DE7356' or fg)
-    colored(col, '󰚩 ')
+    colored(icon(col), '󰚩 ')
   end
   -- Codex is branded monochrome, so it flips with the scheme rather than being
   -- one literal; the glyph, not the colour, is what separates it from claude.
-  if in_codex then colored(active_scheme == LIGHT and '#4c4f69' or '#ffffff', '󰧑 ') end
-  if in_k9s then colored('#326ce5', '󱃾 ') end
+  if in_codex then colored(icon(active_scheme == LIGHT and '#4c4f69' or '#ffffff'), '󰧑 ') end
+  if in_k9s then colored(icon('#326ce5'), '󱃾 ') end
   -- Upstream's cat, not a second kube glyph: two icons differing only by colour
   -- are indistinguishable at tab-bar size.
-  if in_sofka then colored('#5a7d99', '󰄛 ') end
-  -- No literal colour: the bar spans #1e1e2e to #eff1f5 and the active tab paints
-  -- itself ansi[5] (blue, light on Mocha and dark on Latte), so no fixed hue reads
-  -- above 2.8:1 on all four. fg flips with the tab state; the shape is the identity.
-  if in_herdr then push { Text = '󰳆 ' } end
+  if in_sofka then colored(icon('#5a7d99'), '󰄛 ') end
+  -- Teal scores 2.77 against both inactive backgrounds, above every other
+  -- literal here; on the active tab icon() takes over.
+  if in_herdr then colored(icon('#3c898b'), '󰳆 ') end
   -- The agent and cluster-TUI icons already say a long-running command owns this tab
   local owned = in_claude or in_codex or in_k9s or in_sofka or in_herdr
   if not tab.is_active and busy and not owned then
@@ -648,8 +654,39 @@ wezterm.on('format-tab-title', function(tab, tabs, active_panes, cfg, hover, max
   return items
 end)
 
+-- Nerd Font, not the Unicode symbols: U+23F8 PAUSE is absent from JetBrainsMono
+-- and falls back to the emoji font, which renders it coloured and out of step
+-- with every other glyph on the line.
+local HERD_MARK = { working = '󰉁', blocked = '󰏤', done = '󰄬' }
+
+-- Written every couple of seconds by herd-publish.sh. A file read, not a process
+-- spawn: update-right-status runs on the GUI thread once a second, and asking
+-- herdr directly would mean wsl.exe on that thread — ~100 ms of frozen UI per
+-- tick. The publisher pays the crossing instead, off the GUI thread.
+local HERD_STATUS = IS_WINDOWS
+  and ((os.getenv 'LOCALAPPDATA' or '') .. '\\herd-status')
+  or ((os.getenv 'HOME' or '') .. '/.cache/herd-status')
+
+local function herd_counts()
+  local f = io.open(HERD_STATUS, 'r')
+  if not f then return nil end
+  local line = f:read 'l'
+  f:close()
+  local w, b, d = (line or ''):match('^(%d+) (%d+) (%d+)$')
+  if not w then return nil end
+  return tonumber(w), tonumber(b), tonumber(d)
+end
+
 wezterm.on('update-right-status', function(window, pane)
   local cells = {}
+  local working, blocked, done = herd_counts()
+  if working and working + blocked + done > 0 then
+    local herd = {}
+    if working > 0 then table.insert(herd, working .. HERD_MARK.working) end
+    if blocked > 0 then table.insert(herd, blocked .. HERD_MARK.blocked) end
+    if done > 0 then table.insert(herd, done .. HERD_MARK.done) end
+    table.insert(cells, '󰳆 ' .. table.concat(herd, ' '))
+  end
   local ws = window:active_workspace()
   if ws ~= config.default_workspace then table.insert(cells, ' ' .. ws) end
   -- Same rule as the workspace: only shown when it is not the default
@@ -718,7 +755,6 @@ local function herdr_cli(args)
   return parsed and decoded or nil
 end
 
-local HERD_MARK = { working = '⚡', blocked = '⏸', done = '✓' }
 
 wezterm.on('herd-jump', function(window, pane)
   local data = herdr_cli { 'agent', 'list' }
