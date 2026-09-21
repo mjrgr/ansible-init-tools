@@ -1,0 +1,24 @@
+# herdr — terminal workspace manager for the coding agents.
+# `herdr config reset-keys` rewrites this file in place, comments included.
+onboarding = false
+
+[theme]
+# "terminal" inherits WezTerm's ANSI palette, so the Mocha/Latte toggle carries over.
+name = "terminal"
+auto_switch = false
+
+[ui]
+status_indicators = "symbols"
+# The "herdr: " prefix is what wezterm.lua keys off: on the Windows GUI a WSL
+# pane exposes no usable process name, so the title is the only channel left.
+# Kept short — the tab bar middle-truncates past TITLE_MAX. {terminal_title} is
+# dropped on purpose: it substitutes the form stripped of the agent state glyph.
+window_title = "herdr: {workspace}/{tab}"
+
+[ui.sound]
+enabled = false
+
+[ui.toast]
+# "herdr" paints the toast inside the TUI — invisible the moment the terminal
+# loses focus, which is exactly when a blocked agent needs to reach you.
+delivery = "terminal"

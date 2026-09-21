@@ -12,6 +12,10 @@ config.default_workspace = 'main'
 -- stops the two setups drifting apart the way they did before.
 local IS_WINDOWS = wezterm.target_triple:find('windows') ~= nil
 
+-- wsl.exe addresses a distribution, not a WezTerm domain name; the herd lives in
+-- WSL while this config runs in the Windows GUI. Set in the branch below.
+local WSL_DISTRO = nil
+
 if IS_WINDOWS then
   -- Derived from `wsl -l -v` at config load, so renaming or adding a distro
   -- costs a Ctrl+Shift+R instead of an edit here.
@@ -31,6 +35,10 @@ if IS_WINDOWS then
   -- error, so fall back rather than lose the terminal over a rename.
   if not config.default_domain and wsl_domains[1] then
     config.default_domain = wsl_domains[1].name
+  end
+
+  for _, dom in ipairs(wsl_domains) do
+    if dom.name == config.default_domain then WSL_DISTRO = dom.distribution end
   end
 
   -- Shell for the 'local' domain: avoids falling back to cmd.exe.
@@ -263,6 +271,19 @@ local function is_claude(proc)
       or proc:match('/claude$') ~= nil
 end
 
+-- herdr multiplexes the agents behind a single pane, so its cwd is wherever it
+-- was launched and never where the work is: the title it writes (ui.window_title)
+-- is the only part of it that moves.
+--
+-- Matched on the title, not on the process: a WSL pane exposes no usable process
+-- name to the Windows GUI, which reads the Windows process tree and never the
+-- distro's /proc. The "herdr: " prefix is set in herdr's own config.toml, so the
+-- match is on a string this repo owns at both ends rather than on a shape any
+-- other program could produce.
+local function herdr_label(p)
+  return p.title and p.title:match('^herdr: (.+)$') or nil
+end
+
 -- format-tab-title's `panes` argument lists the panes of the *active* tab, for
 -- every tab it formats — using it for the others paints the active tab's
 -- claude icon on all of them. Inactive tabs are read through the mux instead,
@@ -340,6 +361,13 @@ local function runs_sofka(panes)
     return (proc and proc:match('/sofka$') ~= nil)
         or (p.title and p.title:match('^sofka: ') ~= nil)
   end)
+end
+
+-- Same contract as sofka, colon included, and title-only for the reason spelled
+-- out at herdr_label: on this laptop the pane is a WSL pane and the Windows GUI
+-- has no process name to match against.
+local function runs_herdr(panes)
+  return any_pane(panes, function(p) return herdr_label(p) ~= nil end)
 end
 
 -- ---- Per-pane state kept on the GUI side ----
@@ -492,6 +520,8 @@ local function tab_title(tab)
   -- Ctrl+Shift+E sets tab_title; it has to win over the cwd or the binding is dead
   if tab.tab_title and tab.tab_title ~= '' then return tab.tab_title end
   local pane = tab.active_pane
+  local herd = herdr_label(pane)
+  if herd then return shorten(herd, TITLE_MAX) end
   local cwd = pane.current_working_dir
   if not cwd then return shorten(pane.title, TITLE_MAX) end
   local path = cwd.file_path
@@ -527,6 +557,7 @@ wezterm.on('format-tab-title', function(tab, tabs, active_panes, cfg, hover, max
   local faint = tab.is_active and c.on_accent or c.faint
   local in_claude, in_codex = runs_claude(panes), runs_codex(panes)
   local in_k9s, in_sofka = runs_k9s(panes), runs_sofka(panes)
+  local in_herdr = runs_herdr(panes)
   local cl_state = in_claude and claude_state(tab, panes) or ''
   -- Tracked on every tab so the timer starts while the tab is still focused
   local busy = busy_seconds(panes)
@@ -569,8 +600,12 @@ wezterm.on('format-tab-title', function(tab, tabs, active_panes, cfg, hover, max
   -- Upstream's cat, not a second kube glyph: two icons differing only by colour
   -- are indistinguishable at tab-bar size.
   if in_sofka then colored('#5a7d99', '󰄛 ') end
+  -- No literal colour: the bar spans #1e1e2e to #eff1f5 and the active tab paints
+  -- itself ansi[5] (blue, light on Mocha and dark on Latte), so no fixed hue reads
+  -- above 2.8:1 on all four. fg flips with the tab state; the shape is the identity.
+  if in_herdr then push { Text = '󰳆 ' } end
   -- The agent and cluster-TUI icons already say a long-running command owns this tab
-  local owned = in_claude or in_codex or in_k9s or in_sofka
+  local owned = in_claude or in_codex or in_k9s or in_sofka or in_herdr
   if not tab.is_active and busy and not owned then
     local d = fmt_duration(busy)
     colored('#ff9e64', '●' .. (d ~= '' and d or '') .. ' ')
@@ -662,6 +697,57 @@ wezterm.on('copy-last-output', function(window, pane)
   window:toast_notification('WezTerm', #text .. ' bytes copied', nil, 2000)
 end)
 
+-- ---- herdr: the herd, seen from outside it -------------------------------
+--
+-- herdr multiplexes the agents, so a WezTerm pane running it shows `herdr` as
+-- its foreground process and carries no user vars from the agents inside: every
+-- per-pane detector above goes blind the moment you work through it. Its socket
+-- API is the way back in, and it reports a richer state than the OSC hook does
+-- (blocked and done have no equivalent in claude_state).
+--
+-- run_child_process blocks the GUI thread, so this is only ever called from a
+-- key press — never from update-right-status, which fires once a second.
+local function herdr_cli(args)
+  local argv = IS_WINDOWS
+    and { 'wsl.exe', '-d', WSL_DISTRO or 'Ubuntu', '--', 'herdr' }
+    or { 'herdr' }
+  for _, a in ipairs(args) do table.insert(argv, a) end
+  local ok, stdout = wezterm.run_child_process(argv)
+  if not ok then return nil end
+  local parsed, decoded = pcall(wezterm.json_parse, stdout)
+  return parsed and decoded or nil
+end
+
+local HERD_MARK = { working = '⚡', blocked = '⏸', done = '✓' }
+
+wezterm.on('herd-jump', function(window, pane)
+  local data = herdr_cli { 'agent', 'list' }
+  local choices = {}
+  for _, a in ipairs(data and data.result and data.result.agents or {}) do
+    -- match, not gsub: gsub returns two values and would shift the format args.
+    local repo = (a.cwd or ''):match '([^/]+)/?$' or '?'
+    table.insert(choices, {
+      id = a.pane_id,
+      label = ('%s  %-7s %-22s %s'):format(HERD_MARK[a.agent_status] or '·',
+        a.agent or '?', repo, a.terminal_title_stripped or ''),
+    })
+  end
+  -- InputSelector with no choices opens an overlay that only Escape closes.
+  if #choices == 0 then
+    window:toast_notification('herdr',
+      data and 'No agents in the herd' or 'herdr is not reachable', nil, 2000)
+    return
+  end
+  window:perform_action(act.InputSelector {
+    title = 'the herd',
+    choices = choices,
+    fuzzy = true,
+    action = wezterm.action_callback(function(_, _, id)
+      if id then herdr_cli { 'agent', 'focus', id } end
+    end),
+  }, pane)
+end)
+
 wezterm.on('toggle-opacity', function(window)
   local o = window:get_config_overrides() or {}
   o.window_background_opacity = (o.window_background_opacity == 1.0) and OPACITY or 1.0
@@ -728,6 +814,9 @@ config.keys = {
         end
       end),
   } },
+
+  -- Agents
+  { key = 'a', mods = 'CTRL|SHIFT', action = act.EmitEvent 'herd-jump' },
 
   -- Misc
   { key = 'k', mods = 'CTRL|SHIFT', action = act.Multiple {

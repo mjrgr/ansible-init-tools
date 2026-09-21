@@ -39,6 +39,7 @@
       - glow
       - vhs
       - gitlogue
+      - herdr
       - fzf
       - btop
       - rust_clis

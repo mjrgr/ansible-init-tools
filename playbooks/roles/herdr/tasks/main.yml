@@ -1,0 +1,26 @@
+---
+# role: herdr
+
+- name: "Resolve the herdr version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: herdr
+    clis_repo: herdrdev/herdr
+    clis_target: "{{ herdr_version }}"
+
+- name: "Decide whether herdr must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: herdr
+    clis_bin: /usr/local/bin/herdr
+    clis_target: "{{ herdr_version }}"
+
+- name: "Install herdr"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_binary.yml"
+  vars:
+    clis_name: herdr
+    clis_url: "{{ herdr_url }}"
+    clis_arch_map: "{{ herdr_arch }}"
+    clis_sha256: "{{ herdr_sha256[clis_arch] }}"
+    clis_dest: /usr/local/bin/herdr
+  when: clis_need_install | bool

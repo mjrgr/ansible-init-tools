@@ -29,8 +29,8 @@ dotfiles** on **Ubuntu / Debian**.
 - gh
 - sops, age, certigo
 - starship, wezterm, vscode
-- btop, lazygit
-- codex (OpenAI Codex CLI)
+- btop, lazygit, fzf, glow, vhs, gitlogue
+- codex (OpenAI Codex CLI), herdr (coding-agent session runtime)
 - eza, ripgrep, fd, bat, zoxide, delta
 - git, make, curl, wget, gnupg, unzip, fontconfig
 
@@ -84,6 +84,7 @@ and predate options the deployed configs use.
 | `git` | `~/.gitconfig` |
 | `wezterm` | `~/.config/wezterm/wezterm.lua`, `~/.config/wezterm/claude-state-hook.sh`, and the hook registration merged into `~/.claude/settings.json` |
 | `btop` | `~/.config/btop/btop.conf` |
+| `herdr` | `~/.config/herdr/config.toml` |
 
 Each one is a symlink into `dotfiles/` in this repo, so an edit made in `$HOME` shows
 up in `git status` with no copy-back step. Two entries are not links: `fonts` installs
@@ -92,6 +93,44 @@ a font, and the `wezterm` group merges its Claude Code hooks into an existing
 
 The Nerd Font is not cosmetic: `starship.toml` and `wezterm.lua` use Private Use Area
 glyphs, and without the font the prompt and the tab bar render tofu.
+
+### herdr and the tab bar do not see the same thing
+
+herdr is itself a multiplexer, so a WezTerm pane running it reports `herdr` as its
+foreground process and carries no user vars from the agents inside: `runs_claude`,
+`claude_state` and the rest of the per-pane detectors go dark the moment you work
+through it. `claude-state-hook.sh` still fires, but its OSC 1337 lands on a herdr
+pty rather than on WezTerm's.
+
+Two things bridge that gap, and neither replaces the hook — the hook is what still
+works when herdr is not in the picture.
+
+`ui.toast.delivery = "terminal"` hands herdr's notifications to WezTerm, which raises
+a desktop toast. In-app toasts (`"herdr"`, the default this config overrides) are
+invisible exactly when they matter: when the terminal is not focused.
+
+The WezTerm tab that hosts herdr carries a `󰳆` sheep and reads its title rather
+than its cwd: herdr is a
+multiplexer, so its cwd is wherever it was launched — `~` in practice — while
+`ui.window_title` tracks the workspace and tab you are actually in. The template
+stays under `TITLE_MAX`, and leaves `{terminal_title}` out: that token substitutes
+the agent title *stripped* of its state glyph, so it costs a third of the tab width
+and carries no state.
+
+The `herdr: ` prefix is what the match keys on — the same load-bearing colon
+`sofka` uses, and for the same reason. A process check is not an option on the
+Windows side: a WSL pane exposes the Windows process tree, never the distro's
+`/proc`, so `foreground_process_name` never says `herdr` there.
+
+`Ctrl+Shift+A` opens a fuzzy picker over `herdr agent list` and focuses the one you
+choose, across every workspace and SSH machine in the session. The state marks come
+from herdr's own `agent_status`, which is finer than the hook's: `⚡` working,
+`⏸` blocked on a permission prompt, `✓` done, `·` idle.
+
+It calls `herdr` through `wsl.exe` on the Windows side, in a non-login shell whose
+PATH covers `/usr/local/bin` but not `~/.local/bin`. So the picker only works against
+the binary `install_clis.yml` installs — a copy left in `~/.local/bin` by herdr's own
+installer is invisible to it, and `herdr update` would keep that copy, not this one.
 
 The zsh and WezTerm configs work together: `~/.config/zsh/wezterm.zsh` emits OSC 133
 semantic zones and publishes the current kubectl context as a user var, which

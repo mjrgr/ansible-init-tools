@@ -1,0 +1,20 @@
+---
+# role: dotfiles_herdr — herdr config (the binary comes from the `herdr` role)
+
+- name: "Deploy the herdr config"
+  ansible.builtin.include_tasks: "{{ role_path }}/../dotfiles_common/tasks/link.yml"
+  loop:
+    - { src: "{{ dotfiles_src }}/herdr/config.toml", dest: "{{ dotfiles_home }}/.config/herdr/config.toml" }
+  loop_control:
+    loop_var: dl
+    label: "{{ dl.dest }}"
+
+# The server caches config.toml at startup, so a fresh link would otherwise wait
+# for the next herdr restart — hours away on a session that survives reboots.
+# Never reported as changed: it reloads what is already on disk, and a task that
+# claims a change on every run is a task that breaks the idempotence assertion.
+# A non-zero rc just means no server is running, which is not an error here.
+- name: "Reload the running herdr server"
+  ansible.builtin.command: herdr server reload-config
+  changed_when: false
+  failed_when: false

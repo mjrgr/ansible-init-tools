@@ -1,0 +1,20 @@
+---
+# Pinned so two machines provisioned months apart get the same binary.
+# Set to "latest" to track upstream, or override on the command line:
+#   -e herdr_version=<tag>
+# Bump deliberately, then re-run the container tests.
+herdr_version: "v0.9.1"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+herdr_arch:
+  amd64: "x86_64"
+  arm64: "aarch64"
+
+herdr_url: "https://github.com/herdrdev/herdr/releases/download/{version}/herdr-linux-{arch}"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+herdr_sha256:
+  amd64: "2a02fed16beb651ef006e1d43f048f652ca4dc58ad053cd2d44450563d5c54b7"
+  arm64: "f4ccf4de745f2cb9a39a983e9ba3703dad50ec2a58dea83026ceab721bbd8d9e"
