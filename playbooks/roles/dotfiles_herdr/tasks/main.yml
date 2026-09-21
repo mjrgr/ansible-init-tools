@@ -52,14 +52,17 @@
 #
 # A user unit, not a line in .zshrc: the publisher must outlive the shell that
 # started it and be restarted when it dies, and a shell-launched background loop
-# gives neither. `is-system-running` answers "degraded" with rc 1 on a healthy
-# WSL instance, so the gate reads the word rather than the exit status — and a
-# container, which answers nothing at all, skips the whole block.
+# gives neither.
+#
+# The gate is the manager's own control socket rather than `systemctl --user
+# is-system-running`: that command answers "degraded" with rc 1 on a perfectly
+# healthy WSL instance, so its exit status cannot be trusted and its output has
+# to be pattern-matched. The socket exists exactly when the user manager is up,
+# which is the question being asked. A container has neither, and skips.
 - name: "Look for a user systemd instance"
-  ansible.builtin.command: systemctl --user is-system-running
+  ansible.builtin.stat:
+    path: "/run/user/{{ ansible_user_uid }}/systemd/private"
   register: dotfiles_herdr_systemd
-  changed_when: false
-  failed_when: false
 
 - name: "Enable the herd status publisher"
   ansible.builtin.systemd_service:
@@ -68,4 +71,4 @@
     daemon_reload: true
     enabled: true
     state: started
-  when: dotfiles_herdr_systemd.stdout is search('running|degraded')
+  when: dotfiles_herdr_systemd.stat.exists
