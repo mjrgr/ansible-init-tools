@@ -22,12 +22,21 @@
         state: directory
         mode: "0755"
 
+    # Retried like every binary download in clis_common, which this task was
+    # missing: a github release CDN that stalls for ten seconds failed the whole
+    # play, and CI hit exactly that. The timeout is raised off get_url's default
+    # 10s because this is a ~30 MB archive, not a single binary.
     - name: "Download the Nerd Font: {{ dotfiles_fonts_name }}"
       ansible.builtin.get_url:
         url: "{{ dotfiles_fonts_url }}"
         dest: "/tmp/{{ dotfiles_fonts_name }}.zip"
         mode: "0644"
+        timeout: 30
         checksum: "{{ ('sha256:' ~ dotfiles_fonts_sha256) if (dotfiles_fonts_sha256 | length > 0) else omit }}"
+      register: dotfiles_fonts_download
+      retries: 5
+      delay: 5
+      until: dotfiles_fonts_download is succeeded
 
     - name: "Unpack the font"
       ansible.builtin.unarchive:

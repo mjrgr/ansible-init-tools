@@ -46,8 +46,10 @@
         mode: "0644"
         checksum: "{{ ('sha256:' ~ clis_sha256) if (clis_sha256 | default('') | length > 0) else omit }}"
       register: clis_download
+      # delay 5 rather than 3: a 504 from the github release CDN outlasted the old
+      # ~15s window in CI, and five tries that all land inside one outage are one try.
       retries: 5
-      delay: 3
+      delay: 5
       until: clis_download is succeeded
 
     - name: "Unpack the release archive for {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
