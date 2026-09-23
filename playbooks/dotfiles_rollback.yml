@@ -35,6 +35,7 @@
       - "{{ dotfiles_home }}/.config/herdr/claude-statusline.sh"
       - "{{ dotfiles_home }}/.config/herdr/quota-status.sh"
       - "{{ dotfiles_home }}/.config/systemd/user/herd-publish.service"
+      - "{{ dotfiles_home }}/.config/herdr-automatic-rename/config.sh"
       - "{{ dotfiles_home }}/.kube/k8s-clusters.sh"
 
   tasks:

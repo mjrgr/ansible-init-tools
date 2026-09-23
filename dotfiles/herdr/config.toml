@@ -42,7 +42,9 @@ row_gap = 0 # herdr-agent-usage
 # herdr indents every row of an agent but its first. The header is only set on
 # the first agent of a space, so the others get a blank first row instead — a
 # zero-width nest gap — and every identity row lands in column two.
-rows = [[{ token = "$quota_group", bold = true, dim = false }, { token = "$quota_nest_gap", bold = false, dim = false }], ["state_icon", "tab", { token = "$quota_provider", bold = true, dim = false }], [{ token = "$quota_topic", bold = false, dim = false }], [{ token = "$quota_error", fg = "#e4b957", bold = false, dim = false }]] # herdr-agent-usage-row
+# terminal_title_stripped is the Claude Code session title; $quota_topic scraped
+# the last visible prompt instead, and read as a reply once the pane scrolled.
+rows = [[{ token = "$quota_group", bold = true, dim = false }, { token = "$quota_nest_gap", bold = false, dim = false }], ["state_icon", "tab", { token = "$quota_provider", bold = true, dim = false }], ["terminal_title_stripped"], [{ token = "$quota_model", bold = false, dim = false }, { token = "$quota_context", bold = false, dim = false }], [{ token = "$quota_error", fg = "#e4b957", bold = false, dim = false }]] # herdr-agent-usage-row
 
 # Plugin actions by <plugin_id>.<action_id>; ids come from `herdr plugin action list`.
 [[keys.command]]

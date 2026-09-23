@@ -9,6 +9,7 @@
   loop:
     - "{{ dotfiles_home }}/.config/systemd/user"
     - "{{ dotfiles_home }}/.claude/skills/herdr"
+    - "{{ dotfiles_home }}/.config/herdr-automatic-rename"
 
 - name: "Deploy the herdr config and status publisher"
   ansible.builtin.include_tasks: "{{ role_path }}/../dotfiles_common/tasks/link.yml"
@@ -18,6 +19,7 @@
     - { src: "{{ dotfiles_src }}/herdr/claude-statusline.sh", dest: "{{ dotfiles_home }}/.config/herdr/claude-statusline.sh" }
     - { src: "{{ dotfiles_src }}/herdr/quota-status.sh", dest: "{{ dotfiles_home }}/.config/herdr/quota-status.sh" }
     - { src: "{{ dotfiles_src }}/herdr/herd-publish.service", dest: "{{ dotfiles_home }}/.config/systemd/user/herd-publish.service" }
+    - { src: "{{ dotfiles_src }}/herdr/automatic-rename.sh", dest: "{{ dotfiles_home }}/.config/herdr-automatic-rename/config.sh" }
   loop_control:
     loop_var: dl
     label: "{{ dl.dest }}"

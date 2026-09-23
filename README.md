@@ -84,7 +84,7 @@ and predate options the deployed configs use.
 | `git` | `~/.gitconfig` |
 | `wezterm` | `~/.config/wezterm/wezterm.lua`, `~/.config/wezterm/claude-state-hook.sh`, and the hook registration merged into `~/.claude/settings.json` |
 | `btop` | `~/.config/btop/btop.conf` |
-| `herdr` | `~/.config/herdr/config.toml`, `herd-publish.sh` + its user unit, `claude-statusline.sh`, `quota-status.sh`, the generated `~/.claude/skills/herdr/SKILL.md`, and the pinned marketplace plugins |
+| `herdr` | `~/.config/herdr/config.toml`, `herd-publish.sh` + its user unit, `claude-statusline.sh`, `quota-status.sh`, `~/.config/herdr-automatic-rename/config.sh`, the generated `~/.claude/skills/herdr/SKILL.md`, and the pinned marketplace plugins |
 
 Each one is a symlink into `dotfiles/` in this repo, so an edit made in `$HOME` shows
 up in `git status` with no copy-back step. Two entries are not links: `fonts` installs
@@ -168,6 +168,13 @@ because upstream publishes no linux-arm64 asset and a binary role here has to
 checksum both targets. There is no rollback for plugins beyond `herdr plugin
 uninstall <id>`.
 
+`herdr-automatic-rename` reads `~/.config/herdr-automatic-rename/config.sh`, a path
+of its own rather than `herdr plugin config-dir`. The committed one turns off the
+`[N]` jump-key prefix on tabs and workspaces (`AUTO_INDEX=0`): the sidebar rows
+already name each agent, and the prefix was spending sidebar width on a number the
+`prefix+N` keys work without. Prefixes already on screen go with the plugin's
+`clear` action, not the toggle.
+
 `herdr-agent-usage` is the one plugin that reaches outside its own directory, and
 its `configure --apply` action is where the agreements below come from. It rewrites
 three things: the `[ui.sidebar.agents]` rows in `config.toml` (a symlink into this
@@ -187,9 +194,14 @@ after a bump, then put the two hand edits back:
   first row, and herdr indents every row of an agent but its first, so that agent's
   identity line sat two columns right of the others. The committed rows give every
   agent a first row — the header, or the plugin's zero-width nest gap — and the
-  identity row is herdr's own `state_icon` and `tab` plus the plugin's provider. The
-  quota tokens are gone from the rows on purpose: the quota is per account, and one
-  copy per agent pane was the same bars repeated.
+  identity row is herdr's own `state_icon` and `tab` plus the plugin's provider.
+  The second row is herdr's `terminal_title_stripped`, the session title Claude Code
+  sets after a few turns (`Claude Code` before that, nothing for Codex), rather than
+  the plugin's `$quota_topic`, which scrapes the last visible `❯` line and shows a
+  reply once the prompt has scrolled off. The third row is model and context
+  pressure, the two things that change how a session behaves. The quota tokens are
+  gone from the rows on purpose: the quota is per account, and one copy per agent
+  pane was the same bars repeated.
 
 The quota lives in the tab bar instead, once: `quota-status.sh` runs from
 `ui.tab_bar_right` every 30 s, reads the plugin's state files and prints one line per
