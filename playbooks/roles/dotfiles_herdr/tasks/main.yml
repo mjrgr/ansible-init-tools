@@ -20,6 +20,89 @@
     loop_var: dl
     label: "{{ dl.dest }}"
 
+# ---- Plugins ----
+#
+# Plugin builds run as children of `herdr plugin install`, and Ansible's PATH
+# has no ~/.cargo/bin: cargo has to be reachable or every Rust plugin fails.
+# The probes carry check_mode: false so a --check run still evaluates the rest.
+- name: "Install the herdr plugins"
+  environment:
+    PATH: "{{ dotfiles_home }}/.cargo/bin:{{ dotfiles_home }}/.local/bin:{{ ansible_env.PATH }}"
+  block:
+    - name: "Look for cargo"
+      ansible.builtin.command: cargo --version
+      register: dotfiles_herdr_cargo
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: "Read the installed clauth version"
+      ansible.builtin.command: clauth --version
+      register: dotfiles_herdr_clauth
+      changed_when: false
+      failed_when: false
+      check_mode: false
+      when: dotfiles_herdr_cargo.rc == 0
+
+    # crates.io rather than a binary role: upstream ships no linux-arm64 asset,
+    # and every binary role here has to checksum both targets.
+    - name: "Install clauth from crates.io"
+      ansible.builtin.command:
+        argv: [cargo, install, clauth, --locked, --version, "{{ dotfiles_herdr_clauth_version }}"]
+      when:
+        - dotfiles_herdr_cargo.rc == 0
+        - dotfiles_herdr_clauth_version not in (dotfiles_herdr_clauth.stdout | default(''))
+
+    - name: "Look for the tools the plugins need"
+      ansible.builtin.shell: |
+        for tool in {{ (['herdr'] + (dotfiles_herdr_plugins | map(attribute='requires') | flatten)) | unique | join(' ') }}; do
+          command -v "$tool" >/dev/null 2>&1 && echo "$tool"
+        done
+        exit 0
+      args:
+        executable: /bin/bash
+      register: dotfiles_herdr_tools
+      changed_when: false
+      check_mode: false
+
+    # `plugin install` always re-clones and replaces, so the guard is here:
+    # install only when the source is absent or sits on another commit.
+    - name: "List the installed herdr plugins"
+      ansible.builtin.command: herdr plugin list --json
+      register: dotfiles_herdr_plugin_list
+      changed_when: false
+      check_mode: false
+      when: "'herdr' in dotfiles_herdr_tools.stdout_lines"
+
+    - name: "Install the pinned herdr plugins"
+      ansible.builtin.command:
+        argv: [herdr, plugin, install, "{{ hp.source }}", --ref, "{{ hp.ref }}", --yes]
+      loop: "{{ dotfiles_herdr_plugins }}"
+      loop_control:
+        loop_var: hp
+        label: "{{ hp.source }} @ {{ hp.ref[:12] }}"
+      vars:
+        hp_installed: >-
+          {{ (dotfiles_herdr_plugin_list.stdout | from_json).result.plugins
+             | selectattr('source.kind', 'equalto', 'github')
+             | selectattr('source.owner', 'equalto', hp.source.split('/')[0])
+             | selectattr('source.repo', 'equalto', hp.source.split('/')[1])
+             | map(attribute='source.resolved_commit') | first | default('') }}
+      when:
+        - "'herdr' in dotfiles_herdr_tools.stdout_lines"
+        - hp.requires | difference(dotfiles_herdr_tools.stdout_lines) | length == 0
+        - hp_installed != hp.ref
+
+    - name: "Plugins skipped for want of a tool"
+      ansible.builtin.debug:
+        msg: >-
+          {{ hp.source }}: needs {{ (['herdr'] + hp.requires) | difference(dotfiles_herdr_tools.stdout_lines) | join(', ') }}
+      loop: "{{ dotfiles_herdr_plugins }}"
+      loop_control:
+        loop_var: hp
+        label: "{{ hp.source }}"
+      when: (['herdr'] + hp.requires) | difference(dotfiles_herdr_tools.stdout_lines) | length > 0
+
 # The server caches config.toml at startup, so a fresh link would otherwise wait
 # for the next herdr restart — hours away on a session that survives reboots.
 # Never reported as changed: it reloads what is already on disk, and a task that

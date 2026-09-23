@@ -1,0 +1,45 @@
+---
+# Marketplace plugins, pinned to a commit: `--ref` takes a full sha or a tag,
+# never a short sha, and a tag can be moved. `version` is the manifest version
+# at that commit, kept for the reader; herdr never sees it.
+#
+# `requires` lists the commands the install needs on PATH. A plugin whose
+# requirements are missing is skipped, not failed: the container tests have no
+# herdr and no cargo, and a laptop without a Rust toolchain still gets the rest.
+#
+# Bump by replacing `ref` with the new head commit; the role reinstalls on drift.
+dotfiles_herdr_plugins:
+  # Tabs named after directory, branch and what runs there. Bash only.
+  - source: qu8n/herdr-automatic-rename
+    ref: 081489b4d961d0d9c0c8b6a02d472e5cfe125ad5
+    version: 0.11.1
+    requires: []
+  # Agent diffs in a split pane, line comments sent back to the agent.
+  - source: persiyanov/herdr-reviewr
+    ref: dca1fb88a56c0d6246a2e9004ecbe27fd11a4436
+    version: 0.38.0
+    requires: []
+  # Full-text search over past Claude Code / Codex sessions.
+  - source: nicosuave/memex
+    ref: 649355e4b442de9b63c24a3702f5c765233a84e4
+    version: 0.24.0
+    requires: []
+  # Claude / Codex quota and context left, in the sidebar. Builds with cargo.
+  - source: levi-qiao/herdr-agent-usage
+    ref: cbe2cf320e9ba44072bf0cd05084878d0bb7a534
+    version: 1.6.2
+    requires: [cargo]
+  # Fuzzy jump to any workspace, agent, session or directory. Builds with cargo.
+  - source: thanhdat77/herdr-navigator
+    ref: 9bdf30f03f53730e6232377a3fca3bdc6ed9f3ca
+    version: 0.3.6
+    requires: [cargo]
+  # Claude Code account switcher, as a popup over the `clauth` binary below.
+  - source: uwuclxdy/clauth/herdr-plugin
+    ref: e6f6cdb50b53fc516c90f7a6b3b72b1a0187039a
+    version: 0.15.2
+    requires: [clauth]
+
+# Not a role of its own: upstream publishes no linux-arm64 asset, and every
+# binary role here must checksum both targets. crates.io it is, per user.
+dotfiles_herdr_clauth_version: "0.15.2"

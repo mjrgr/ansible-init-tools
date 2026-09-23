@@ -84,7 +84,7 @@ and predate options the deployed configs use.
 | `git` | `~/.gitconfig` |
 | `wezterm` | `~/.config/wezterm/wezterm.lua`, `~/.config/wezterm/claude-state-hook.sh`, and the hook registration merged into `~/.claude/settings.json` |
 | `btop` | `~/.config/btop/btop.conf` |
-| `herdr` | `~/.config/herdr/config.toml`, `herd-publish.sh` + its user unit, and the generated `~/.claude/skills/herdr/SKILL.md` |
+| `herdr` | `~/.config/herdr/config.toml`, `herd-publish.sh` + its user unit, the generated `~/.claude/skills/herdr/SKILL.md`, and the pinned marketplace plugins |
 
 Each one is a symlink into `dotfiles/` in this repo, so an edit made in `$HOME` shows
 up in `git status` with no copy-back step. Two entries are not links: `fonts` installs
@@ -155,6 +155,20 @@ copy committed to this repo would drift into teaching Claude commands that no lo
 exist. `update.version_check` and `update.manifest_check` are off for the same reason
 the binary is pinned — the version is decided by `playbooks/roles/herdr`, not by a
 background call to herdr.dev.
+
+Marketplace plugins are pinned the same way, to a commit rather than a tag, in
+`dotfiles_herdr_plugins`. A plugin is code that runs as you with your whole
+environment — tokens, kubeconfigs — so `--ref` has to name bytes someone read, and a
+tag can be moved after the fact. `herdr plugin install` re-clones and replaces on
+every call, so the role reads `herdr plugin list --json` first and installs only
+what is absent or sits on another commit. Each entry says which tools its build
+needs; a host without them (the container, a box with no Rust toolchain) skips that
+plugin and reports it rather than failing. `clauth` itself comes from crates.io
+because upstream publishes no linux-arm64 asset and a binary role here has to
+checksum both targets. Two things stay manual by design: `herdr-agent-usage`'s
+`configure --apply` edits `config.toml`, which is a symlink into this repo, so run it
+once, `git diff`, and commit what it wrote; and there is no rollback for plugins
+beyond `herdr plugin uninstall <id>`.
 
 `Ctrl+Shift+A` opens a fuzzy picker over `herdr agent list` and focuses the one you
 choose, across every workspace and SSH machine in the session. The state marks come
