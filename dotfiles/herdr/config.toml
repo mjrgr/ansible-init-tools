@@ -9,9 +9,8 @@ version_check = false
 manifest_check = false
 
 [theme]
-# Pinned rather than following the terminal: "terminal" would inherit WezTerm's
-# ANSI palette and flip with it, this keeps Latte when WezTerm switches to Mocha.
-name = "catppuccin-latte"
+# Follows WezTerm's ANSI palette, so the sidebar flips with the desktop theme.
+name = "terminal"
 auto_switch = false
 
 [ui]
@@ -21,6 +20,12 @@ status_indicators = "symbols"
 # Kept short — the tab bar middle-truncates past TITLE_MAX. {terminal_title} is
 # dropped on purpose: it substitutes the form stripped of the agent state glyph.
 window_title = "herdr: {workspace}/{tab}"
+agent_panel_sort = "spaces" # herdr-agent-usage
+# Account quota once, in the tab bar: agent-usage's sidebar tokens are per pane,
+# and the quota is per account, so N agents meant N copies of the same bars.
+tab_bar_right = [
+  { type = "command", command = "~/.config/herdr/quota-status.sh", interval_seconds = 30, timeout_seconds = 5 },
+]
 
 [ui.sound]
 enabled = false
@@ -29,3 +34,43 @@ enabled = false
 # "herdr" paints the toast inside the TUI — invisible the moment the terminal
 # loses focus, which is exactly when a blocked agent needs to reach you.
 delivery = "terminal"
+
+[ui.sidebar]
+
+[ui.sidebar.agents]
+row_gap = 0 # herdr-agent-usage
+# herdr indents every row of an agent but its first. The header is only set on
+# the first agent of a space, so the others get a blank first row instead — a
+# zero-width nest gap — and every identity row lands in column two.
+rows = [[{ token = "$quota_group", bold = true, dim = false }, { token = "$quota_nest_gap", bold = false, dim = false }], ["state_icon", "tab", { token = "$quota_provider", bold = true, dim = false }], [{ token = "$quota_topic", bold = false, dim = false }], [{ token = "$quota_error", fg = "#e4b957", bold = false, dim = false }]] # herdr-agent-usage-row
+
+# Plugin actions by <plugin_id>.<action_id>; ids come from `herdr plugin action list`.
+[[keys.command]]
+key = "prefix+t"
+type = "plugin_action"
+command = "herdr-navigator.open"
+description = "navigator: jump anywhere"
+
+[[keys.command]]
+key = "prefix+d"
+type = "plugin_action"
+command = "persiyanov.reviewr.toggle"
+description = "reviewr: toggle the diff pane"
+
+[[keys.command]]
+key = "prefix+m"
+type = "plugin_action"
+command = "nicosuave.memex.palette"
+description = "memex: past sessions"
+
+[[keys.command]]
+key = "prefix+shift+r"
+type = "plugin_action"
+command = "herdr-agent-usage.refresh"
+description = "refresh all agent quotas"
+
+[[keys.command]]
+key = "prefix+shift+q"
+type = "plugin_action"
+command = "herdr-agent-usage.open-settings"
+description = "open agent quota settings"

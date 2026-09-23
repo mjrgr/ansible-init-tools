@@ -15,6 +15,8 @@
   loop:
     - { src: "{{ dotfiles_src }}/herdr/config.toml", dest: "{{ dotfiles_home }}/.config/herdr/config.toml" }
     - { src: "{{ dotfiles_src }}/herdr/herd-publish.sh", dest: "{{ dotfiles_home }}/.config/herdr/herd-publish.sh" }
+    - { src: "{{ dotfiles_src }}/herdr/claude-statusline.sh", dest: "{{ dotfiles_home }}/.config/herdr/claude-statusline.sh" }
+    - { src: "{{ dotfiles_src }}/herdr/quota-status.sh", dest: "{{ dotfiles_home }}/.config/herdr/quota-status.sh" }
     - { src: "{{ dotfiles_src }}/herdr/herd-publish.service", dest: "{{ dotfiles_home }}/.config/systemd/user/herd-publish.service" }
   loop_control:
     loop_var: dl

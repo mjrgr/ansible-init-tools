@@ -84,7 +84,7 @@ and predate options the deployed configs use.
 | `git` | `~/.gitconfig` |
 | `wezterm` | `~/.config/wezterm/wezterm.lua`, `~/.config/wezterm/claude-state-hook.sh`, and the hook registration merged into `~/.claude/settings.json` |
 | `btop` | `~/.config/btop/btop.conf` |
-| `herdr` | `~/.config/herdr/config.toml`, `herd-publish.sh` + its user unit, the generated `~/.claude/skills/herdr/SKILL.md`, and the pinned marketplace plugins |
+| `herdr` | `~/.config/herdr/config.toml`, `herd-publish.sh` + its user unit, `claude-statusline.sh`, `quota-status.sh`, the generated `~/.claude/skills/herdr/SKILL.md`, and the pinned marketplace plugins |
 
 Each one is a symlink into `dotfiles/` in this repo, so an edit made in `$HOME` shows
 up in `git status` with no copy-back step. Two entries are not links: `fonts` installs
@@ -165,10 +165,40 @@ what is absent or sits on another commit. Each entry says which tools its build
 needs; a host without them (the container, a box with no Rust toolchain) skips that
 plugin and reports it rather than failing. `clauth` itself comes from crates.io
 because upstream publishes no linux-arm64 asset and a binary role here has to
-checksum both targets. Two things stay manual by design: `herdr-agent-usage`'s
-`configure --apply` edits `config.toml`, which is a symlink into this repo, so run it
-once, `git diff`, and commit what it wrote; and there is no rollback for plugins
-beyond `herdr plugin uninstall <id>`.
+checksum both targets. There is no rollback for plugins beyond `herdr plugin
+uninstall <id>`.
+
+`herdr-agent-usage` is the one plugin that reaches outside its own directory, and
+its `configure --apply` action is where the agreements below come from. It rewrites
+three things: the `[ui.sidebar.agents]` rows in `config.toml` (a symlink into this
+repo, so the write lands in `git status`), Claude Code's `statusLine` in
+`~/.claude/settings.json`, and the `[[keys.command]]` entries it wants. Run it once
+after a bump, then put the two hand edits back:
+
+- **statusLine.** The plugin reads the 5h/7d quota through Claude Code's statusLine
+  hook and has no pass-through, so its `configure` replaces ccstatusline with its own
+  renderer. `claude-statusline.sh` feeds the same session JSON to both and draws only
+  the command given as arguments — ccstatusline by default, or a project's own status
+  line when its `.claude/settings.json` overrides the global one, which `mjgbrain-v2`
+  does. Point `statusLine.command` at the script again after every `configure`. It
+  globs the plugin's checkout directory rather than naming it: the directory carries
+  a hash that follows the pinned ref, and a stale path would drop the quota silently.
+- **Sidebar rows.** The generated rows put the workspace header on the first agent's
+  first row, and herdr indents every row of an agent but its first, so that agent's
+  identity line sat two columns right of the others. The committed rows give every
+  agent a first row — the header, or the plugin's zero-width nest gap — and the
+  identity row is herdr's own `state_icon` and `tab` plus the plugin's provider. The
+  quota tokens are gone from the rows on purpose: the quota is per account, and one
+  copy per agent pane was the same bars repeated.
+
+The quota lives in the tab bar instead, once: `quota-status.sh` runs from
+`ui.tab_bar_right` every 30 s, reads the plugin's state files and prints one line per
+provider — hourglass and calendar-week glyphs for the 5h and 7d windows, a
+circle-slice pie for what is left, the number only below 100 %, `?` when the last
+observation is older than three hours. A provider at 100/100 still shows, without
+numbers. The statusLine wrapper is what keeps those files fresh, so a Claude session
+started before the wrapper was installed, or one whose project settings bypass it,
+reports nothing until it is restarted with `claude --continue`.
 
 `Ctrl+Shift+A` opens a fuzzy picker over `herdr agent list` and focuses the one you
 choose, across every workspace and SSH machine in the session. The state marks come

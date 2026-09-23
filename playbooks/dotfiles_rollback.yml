@@ -32,6 +32,8 @@
       - "{{ dotfiles_home }}/.config/btop/btop.conf"
       - "{{ dotfiles_home }}/.config/herdr/config.toml"
       - "{{ dotfiles_home }}/.config/herdr/herd-publish.sh"
+      - "{{ dotfiles_home }}/.config/herdr/claude-statusline.sh"
+      - "{{ dotfiles_home }}/.config/herdr/quota-status.sh"
       - "{{ dotfiles_home }}/.config/systemd/user/herd-publish.service"
       - "{{ dotfiles_home }}/.kube/k8s-clusters.sh"
 
