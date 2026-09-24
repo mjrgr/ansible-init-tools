@@ -26,17 +26,24 @@ render() {
   local label=$1 file=$2 fetched line
   [[ -r $file ]] || return
   fetched=$(jq -r '.fetched_at_unix // 0' "$file")
-  line=$(jq -r '
-    def cell: "\(if .kind == "five_hour" then "5h" else "7d" end) \(.remaining_percent | floor)";
-    [.windows[] | select(.kind == "five_hour" or .kind == "weekly") | cell] | join(" ")' "$file")
+  # The top-level windows are whichever session reported last, and some Claude
+  # sessions omit five_hour: merge every session, keep the live window per kind.
+  # No live 5h window means it reset with nothing used since, so it reads full.
+  line=$(jq -r --argjson now "$now" '
+    [(.windows // []), (.session_windows // {} | .[])] | add // []
+    | map(select(.kind == "five_hour" or .kind == "weekly") | select((.resets_at // $now + 1) > $now))
+    | group_by(.kind) | map(max_by([.resets_at, .used_percent])) as $live
+    | ["five_hour", "weekly"] | map(. as $k | ($live[] | select(.kind == $k)) // {kind: $k, remaining_percent: 100})
+    | map("\(if .kind == "five_hour" then "5h" else "7d" end) \(.remaining_percent | floor)") | join(" ")' "$file")
   [[ -n $line ]] || return
-  local out="$label" kind pct icon
+  local out="$label" kind pct icon cells
+  read -ra cells <<<"$line"
   while read -r kind pct; do
     [[ -n ${kind:-} ]] || continue
     [[ $kind == 5h ]] && icon=$icon_5h || icon=$icon_7d
     out+="  $icon $(pie "$pct")"
     (( pct < 100 )) && out+=" $pct"
-  done < <(printf '%s\n' $line | paste - -)
+  done < <(printf '%s\n' "${cells[@]}" | paste - -)
   (( now - fetched > stale_after )) && out+="?"
   printf '%s' "$out"
 }
