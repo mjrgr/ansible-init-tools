@@ -43,3 +43,8 @@ dotfiles_herdr_plugins:
 # Not a role of its own: upstream publishes no linux-arm64 asset, and every
 # binary role here must checksum both targets. crates.io it is, per user.
 dotfiles_herdr_clauth_version: "0.15.2"
+
+# gauges is the only layout with a context meter; used makes it read as fill.
+dotfiles_herdr_agent_usage_prefs:
+  sidebar-layout: gauges
+  quota-percent: used

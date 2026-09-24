@@ -194,7 +194,16 @@ after a bump, then put the two hand edits back:
   first row, and herdr indents every row of an agent but its first, so that agent's
   identity line sat two columns right of the others. The committed rows give every
   agent a first row — the header, or the plugin's zero-width nest gap — and the
-  identity row is herdr's own `state_icon` and `tab` plus the plugin's provider.
+  identity row is herdr's `state_icon` and `tab`, then provider/model in Claude
+  orange (`$quota_model` alone is not published in the `gauges` layout).
+  The plugin's vendor mark was tried in place of `state_icon` and dropped: it
+  carries padding meant for the plugin's own layout, and herdr separates it from
+  the tab with ` · `, so the rows no longer lined up.
+  The last row is the plugin's context meter, `cx ▰▱▱▱▱▱ 16%`, which it only
+  publishes in its `gauges` layout, green, then yellow past 50 % used and red past
+  80 %. The layout and the used-not-remaining style are two files in the plugin's
+  state directory; the role writes them directly (`dotfiles_herdr_agent_usage_prefs`)
+  because `configure` would rewrite the rows and the statusLine along with them.
   The second row is herdr's `terminal_title_stripped`, the session title Claude Code
   sets after a few turns (`Claude Code` before that, nothing for Codex), rather than
   the plugin's `$quota_topic`, which scrapes the last visible `❯` line and shows a

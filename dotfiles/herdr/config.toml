@@ -10,7 +10,7 @@ manifest_check = false
 
 [theme]
 # Follows WezTerm's ANSI palette, so the sidebar flips with the desktop theme.
-name = "terminal"
+name = "catppuccin-latte"
 auto_switch = false
 
 [ui]
@@ -44,7 +44,11 @@ row_gap = 0 # herdr-agent-usage
 # zero-width nest gap — and every identity row lands in column two.
 # terminal_title_stripped is the Claude Code session title; $quota_topic scraped
 # the last visible prompt instead, and read as a reply once the pane scrolled.
-rows = [[{ token = "$quota_group", bold = true, dim = false }, { token = "$quota_nest_gap", bold = false, dim = false }], ["state_icon", "tab", { token = "$quota_provider", bold = true, dim = false }], ["terminal_title_stripped"], [{ token = "$quota_model", bold = false, dim = false }, { token = "$quota_context", bold = false, dim = false }], [{ token = "$quota_error", fg = "#e4b957", bold = false, dim = false }]] # herdr-agent-usage-row
+# Not $quota_icon: the plugin pads it for its own layout and herdr puts " · "
+# after it, so the identity rows went out of line.
+# The context meter exists only in the gauges layout, one token per severity;
+# that layout drops $quota_model from its 16-token budget, provider_model stays.
+rows = [[{ token = "$quota_group", bold = true, dim = false }, { token = "$quota_nest_gap", bold = false, dim = false }], ["state_icon", "tab", { token = "$quota_provider_model", fg = "#DE7356", bold = true, dim = false }], ["terminal_title_stripped"], [{ token = "$quota_context_normal", fg = "#98b17d", bold = false, dim = false }, { token = "$quota_context_warning", fg = "#dec27f", bold = false, dim = false }, { token = "$quota_context_danger", fg = "#df919b", bold = false, dim = false }], [{ token = "$quota_error", fg = "#e4b957", bold = false, dim = false }]] # herdr-agent-usage-row
 
 # Plugin actions by <plugin_id>.<action_id>; ids come from `herdr plugin action list`.
 [[keys.command]]

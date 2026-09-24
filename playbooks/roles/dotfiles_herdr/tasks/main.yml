@@ -112,6 +112,18 @@
 # Never reported as changed: it reloads what is already on disk, and a task that
 # claims a change on every run is a task that breaks the idempotence assertion.
 # A non-zero rc just means no server is running, which is not an error here.
+# agent-usage keeps these in its state dir, not config.toml; configure would
+# also rewrite the rows and the statusLine, so the two files are set directly.
+- name: "Set the herdr-agent-usage sidebar preferences"
+  ansible.builtin.copy:
+    content: "{{ item.value }}"
+    dest: "{{ dotfiles_home }}/.local/state/herdr/plugins/herdr-agent-usage/{{ item.key }}"
+    mode: "0644"
+  loop: "{{ dotfiles_herdr_agent_usage_prefs | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}={{ item.value }}"
+  when: (dotfiles_home ~ '/.local/state/herdr/plugins/herdr-agent-usage') is directory
+
 - name: "Reload the running herdr server"
   ansible.builtin.command: herdr server reload-config
   changed_when: false
