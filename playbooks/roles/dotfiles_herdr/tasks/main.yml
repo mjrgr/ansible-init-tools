@@ -140,6 +140,22 @@
   changed_when: false
   failed_when: false
 
+# Without this SessionStart hook herdr never learns a pane's Claude session id,
+# and agent-usage then labels the pane with whichever session reported last.
+# `integration status` only checks the script, so the settings entry is probed.
+- name: "Read the Claude Code settings"
+  ansible.builtin.slurp:
+    src: "{{ dotfiles_home }}/.claude/settings.json"
+  register: dotfiles_herdr_claude_settings
+  failed_when: false
+  check_mode: false
+
+- name: "Wire the herdr session hook into Claude Code"
+  ansible.builtin.command: herdr integration install claude
+  when:
+    - "'herdr' in dotfiles_herdr_tools.stdout_lines"
+    - "'herdr-agent-state.sh' not in (dotfiles_herdr_claude_settings.content | default('') | b64decode)"
+
 - name: "Install the herdr agent skill for Claude Code"
   ansible.builtin.copy:
     content: "{{ dotfiles_herdr_skill.stdout }}\n"
