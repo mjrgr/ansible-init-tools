@@ -1,0 +1,27 @@
+---
+# Turns a malformed override into a named failure at include time, rather
+# than a 404 halfway through a download.
+argument_specs:
+  main:
+    short_description: Bootstrap a Rust toolchain with rustup, for building herdr's Rust plugins
+    options:
+      cargo_version:
+        type: str
+        required: true
+        description: rustup-init release to install (bootstraps "stable"; not the toolchain's own version).
+      cargo_arch:
+        type: dict
+        required: true
+        description: rustup's target triples, also the stable-<triple> toolchain directory name.
+      cargo_url:
+        type: str
+        required: true
+        description: rustup-init download template; {version} and {arch} are substituted.
+      cargo_sha256:
+        type: dict
+        required: true
+        description: Expected digest per architecture.
+      cargo_home:
+        type: str
+        required: true
+        description: Where RUSTUP_HOME and CARGO_HOME live during the bootstrap install.

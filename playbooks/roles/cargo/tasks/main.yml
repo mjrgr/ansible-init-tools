@@ -1,0 +1,87 @@
+---
+# role: cargo — a Rust toolchain, bootstrapped with rustup-init rather than
+# apt: see defaults/main.yml for why apt's cargo cannot build what needs it.
+
+- name: "Resolve the rustup-init architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: cargo
+    clis_target: "{{ cargo_version }}"
+
+- name: "Check whether the toolchain is already installed"
+  ansible.builtin.stat:
+    path: "{{ cargo_home }}/rustup/toolchains/stable-{{ cargo_arch[clis_arch] }}/bin/cargo"
+  register: cargo_present
+
+- name: "Bootstrap or update the Rust toolchain"
+  when: not cargo_present.stat.exists or clis_state == 'latest'
+  block:
+    - name: "Create a scratch directory for rustup-init"
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: "-rustup-init"
+      register: cargo_scratch
+
+    - name: "Download rustup-init"
+      ansible.builtin.get_url:
+        url: "{{ cargo_url | replace('{version}', clis_version) | replace('{arch}', cargo_arch[clis_arch]) }}"
+        dest: "{{ cargo_scratch.path }}/rustup-init"
+        mode: "0755"
+        checksum: "sha256:{{ cargo_sha256[clis_arch] }}"
+      register: cargo_download
+      retries: 5
+      delay: 5
+      until: cargo_download is succeeded
+
+    # RUSTUP_HOME/CARGO_HOME move both out of $HOME: this role runs as root
+    # (install_clis.yml), whose $HOME is /root — invisible to every other user,
+    # including the unprivileged dotfiles play that later builds herdr's
+    # plugins. Only the manager and its bookkeeping live here; the toolchain
+    # binaries below are symlinked out to /usr/local so no caller needs these
+    # two variables at all.
+    - name: "Install the stable toolchain with rustup-init"
+      ansible.builtin.command:
+        argv:
+          - "{{ cargo_scratch.path }}/rustup-init"
+          - -y
+          - --no-modify-path
+          - --profile
+          - minimal
+          - --default-toolchain
+          - stable
+      environment:
+        RUSTUP_HOME: "{{ cargo_home }}/rustup"
+        CARGO_HOME: "{{ cargo_home }}/cargo"
+      when: not cargo_present.stat.exists
+
+    - name: "Update the stable toolchain"
+      ansible.builtin.command: "{{ cargo_home }}/cargo/bin/rustup update stable"
+      environment:
+        RUSTUP_HOME: "{{ cargo_home }}/rustup"
+        CARGO_HOME: "{{ cargo_home }}/cargo"
+      when: cargo_present.stat.exists and clis_state == 'latest'
+      changed_when: true
+  always:
+    - name: "Drop the scratch directory"
+      ansible.builtin.file:
+        path: "{{ cargo_scratch.path }}"
+        state: absent
+      when: cargo_scratch.path is defined
+
+# The real per-toolchain binaries, not the rustup proxies in cargo_home/cargo/bin:
+# a proxy resolves RUSTUP_HOME/CARGO_HOME at call time and falls back to
+# $HOME/.rustup and $HOME/.cargo when unset, which is /root's for every other
+# user. The binaries under toolchains/ need neither variable, only each other
+# on PATH, which /usr/local/bin already is.
+- name: "Expose cargo and rustc on the system PATH"
+  ansible.builtin.file:
+    src: "{{ cargo_home }}/rustup/toolchains/stable-{{ cargo_arch[clis_arch] }}/bin/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    state: link
+  loop:
+    - cargo
+    - rustc
+
+- name: "Check that cargo runs"
+  ansible.builtin.command: /usr/local/bin/cargo --version
+  changed_when: false

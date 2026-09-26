@@ -1,0 +1,31 @@
+---
+# Not a CLI installed for its own sake: dotfiles_herdr uses cargo to build the
+# herdr plugins that ship as source (herdr-agent-usage, herdr-navigator,
+# clauth). apt's cargo (1.75 on 22.04/24.04) predates edition2024 — stabilized
+# in rustc 1.85 — and clauth needs it, so this bootstraps a toolchain via
+# rustup-init instead of the archive.
+#
+# rustup-init only bootstraps; the toolchain it installs is whatever "stable"
+# resolves to when this runs, same unpinned tradeoff as rust_clis, just fetched
+# from rustup rather than apt. rustup-init itself is pinned and checksummed
+# like every other binary role.
+cargo_version: "1.29.1"
+
+# rustup's own target triples; also the toolchain directory name it installs
+# under (stable-<triple>), which is how the real cargo/rustc binaries below
+# are found without going through the rustup proxy.
+cargo_arch:
+  amd64: "x86_64-unknown-linux-gnu"
+  arm64: "aarch64-unknown-linux-gnu"
+
+cargo_url: "https://static.rust-lang.org/rustup/archive/{version}/{arch}/rustup-init"
+
+# Verified on download, like every pinned binary.
+# Regenerate with `make checksums` after bumping the version above.
+cargo_sha256:
+  amd64: "dda7234360b7f578ca8b0ddcb80145646fa61a67c1720a5abc7051b35c9fcb71"
+  arm64: "15f6e4ce9f583b929c996c91562bad6d4454f3281de858b02cdfdef615fac433"
+
+# System-wide, not $HOME/.cargo: install_clis.yml runs as root and provisions
+# for every user, same as everything else this role installs under /usr/local.
+cargo_home: /opt/rust

@@ -32,6 +32,7 @@ dotfiles** on **Ubuntu / Debian**.
 - btop, lazygit, fzf, glow, vhs, gitlogue
 - codex (OpenAI Codex CLI), herdr (coding-agent session runtime)
 - eza, ripgrep, fd, bat, zoxide, delta
+- cargo
 - git, make, curl, wget, gnupg, unzip, fontconfig
 
 WezTerm comes from the official apt repository (`apt.fury.io/wez`): the distro
@@ -71,6 +72,22 @@ and zoxide from apt in one batch, and shims `fdfind`/`batcat` back to `fd`/`bat`
 Debian renames them to avoid a clash with fdclone and bacula. eza and delta get
 their own roles and pinned binaries: the apt versions are a year or more behind
 and predate options the deployed configs use.
+
+`cargo` is a build toolchain, not a CLI anyone runs directly here: it exists so
+`dotfiles_herdr` can build the herdr plugins that ship as source
+(herdr-agent-usage, herdr-navigator, clauth). Apt's cargo (1.75 on 22.04/24.04)
+is years behind and cannot build clauth, which needs the `edition2024` cargo
+feature — stabilized in rustc 1.85 — so the role bootstraps a current
+toolchain with `rustup-init` instead, pinned and checksummed like every other
+binary role. `rustup-init` only bootstraps: the toolchain it installs is
+whatever "stable" resolves to at run time, so the pin guards the installer,
+not the compiler version. It installs to `/opt/rust`, not `$HOME/.cargo` —
+`install_clis.yml` runs as root, and a toolchain under `/root` would be
+invisible to every other user, including the unprivileged `dotfiles.yml` play
+that later builds herdr's plugins. Without it, `dotfiles_herdr` skips those
+plugins silently — each lists `cargo` under `requires` and a missing
+requirement is a skip, not a failure, so a box that never ran `make install`
+for this role just has a quieter herdr sidebar and no error to explain why.
 
 ## Managed dotfiles
 

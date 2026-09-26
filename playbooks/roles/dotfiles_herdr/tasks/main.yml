@@ -147,6 +147,38 @@
     mode: "0644"
   when: dotfiles_herdr_skill.rc == 0
 
+# ---- Claude Code wiring ----
+#
+# Neither of these two is optional in practice: without them the herdr sidebar
+# never shows more than a pane's icon and title. Both are global
+# (~/.claude/settings.json), so neither is a dotfile symlink — Claude Code
+# itself writes there too, and a templated file would fight it on every run.
+#
+# The SessionStart hook is what tells herdr which pane holds which Claude
+# session (`pane.report_agent_session`); without it herdr-agent-usage can never
+# attribute a pane to a subscription and quietly clears its quota/context rows
+# instead of guessing. `herdr integration install` owns that hooks entry and is
+# idempotent in effect, but prints the same "installed / ensured" lines
+# whether or not anything actually changed — same reasoning as reload-config
+# above, so this stays changed_when: false rather than fail the idempotence
+# assertion on every run.
+- name: "Install herdr's Claude Code integration"
+  ansible.builtin.command: herdr integration install claude
+  changed_when: false
+  when: "'herdr' in dotfiles_herdr_tools.stdout_lines"
+
+# The statusLine is the other half: it is what feeds herdr-agent-usage its
+# quota/context data in the first place. `herdr integration install` does not
+# touch it — that plumbing is this plugin's own, not herdr core's — so it is
+# chained here instead, idempotently and without disturbing whatever command
+# was already configured (ccstatusline, a project's own status line, or none).
+- name: "Chain herdr's statusLine wrapper into Claude Code settings"
+  ansible.builtin.script:
+    cmd: "wire-claude-statusline.py {{ dotfiles_home }}/.claude/settings.json {{ dotfiles_home }}/.config/herdr/claude-statusline.sh"
+  register: dotfiles_herdr_statusline_wire
+  changed_when: dotfiles_herdr_statusline_wire.stdout | trim == 'changed'
+  when: "'herdr' in dotfiles_herdr_tools.stdout_lines"
+
 # ---- Status publisher ----
 #
 # A user unit, not a line in .zshrc: the publisher must outlive the shell that

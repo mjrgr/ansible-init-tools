@@ -25,9 +25,12 @@ dotfiles_herdr_plugins:
     version: 0.24.0
     requires: []
   # Claude / Codex quota and context left, in the sidebar. Builds with cargo.
+  # 1.6.2 shipped a regression where Claude quota computed correctly but never
+  # published to any pane: upstream's #119 ("expose stale Claude quota instead
+  # of presenting it as live") landed two days later and fixed exactly this.
   - source: levi-qiao/herdr-agent-usage
-    ref: cbe2cf320e9ba44072bf0cd05084878d0bb7a534
-    version: 1.6.2
+    ref: cd6927b282d974764b66a08def017adc58d37399
+    version: 1.6.3
     requires: [cargo]
   # Fuzzy jump to any workspace, agent, session or directory. Builds with cargo.
   - source: thanhdat77/herdr-navigator

@@ -18,6 +18,7 @@ declare -A UPSTREAM=(
   [kubectl]=https://dl.k8s.io/release/stable.txt
   [helm]=helm/helm
   [starship]=starship/starship
+  [cargo]=rust-lang/rustup
 )
 
 # Upstream tags are not a single convention: codex ships rust-v0.154.0, most ship
