@@ -69,7 +69,9 @@ end
 -- ============================================================
 -- Rendering / perf
 -- ============================================================
-config.front_end = 'OpenGL'
+-- OpenGL on the Windows GUI drops glyphs from the atlas (blank cells, spacing intact).
+config.front_end = 'WebGpu'
+config.webgpu_power_preference = 'HighPerformance'
 config.max_fps = 120
 config.animation_fps = 30
 config.status_update_interval = 1000
@@ -86,6 +88,8 @@ config.font_size = 12.0
 -- rendering produces color fringing over a translucent background.
 config.freetype_load_target = 'Light'
 config.freetype_render_target = 'Normal'
+-- Default 9 mis-measures modern emoji/VS16 sequences that TUIs (Claude Code, herdr) emit.
+config.unicode_version = 14
 config.warn_about_missing_glyphs = false
 config.adjust_window_size_when_changing_font_size = false
 
