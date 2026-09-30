@@ -1,0 +1,21 @@
+---
+# Pinned so two machines provisioned months apart get the same binary.
+# Set to "latest" to track upstream, or override on the command line:
+#   -e neovim_version=<tag>
+# Bump deliberately, then re-run the container tests.
+# LazyVim needs >= 0.11; the Ubuntu apt package is older.
+neovim_version: "v0.12.5"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+neovim_arch:
+  amd64: "x86_64"
+  arm64: "arm64"
+
+neovim_url: "https://github.com/neovim/neovim/releases/download/{version}/nvim-linux-{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+neovim_sha256:
+  amd64: "bce0f56eda1f1b1db6eee8f4133d7a38813ea07933837dd1777411ca384c6875"
+  arm64: "1aa5ca085249580ae0f91eb14f27ec0919773ff2d99a163d03f3d6c21ac29725"

@@ -1,0 +1,34 @@
+---
+# role: neovim
+# The tarball is a prefix tree: nvim finds its runtime at ../share/nvim relative
+# to the binary, so the three pieces must land under the same prefix.
+# The tree mode is symbolic: the default 0644 also hits directories and makes
+# runtime/ untraversable for every non-root user.
+
+- name: "Resolve the neovim version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: neovim
+    clis_repo: neovim/neovim
+    clis_target: "{{ neovim_version }}"
+
+- name: "Decide whether neovim must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: neovim
+    clis_bin: /usr/local/bin/nvim
+    clis_target: "{{ neovim_version }}"
+
+- name: "Install neovim"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: neovim
+    clis_url: "{{ neovim_url }}"
+    clis_arch_map: "{{ neovim_arch }}"
+    clis_sha256: "{{ neovim_sha256[clis_arch] }}"
+    clis_files:
+      - {src: "nvim-linux-{{ neovim_arch[clis_arch] }}/bin/nvim", dest: "/usr/local/bin/nvim"}
+    clis_trees:
+      - {src: "nvim-linux-{{ neovim_arch[clis_arch] }}/share/nvim/", dest: "/usr/local/share/nvim", mode: "u=rwX,go=rX"}
+      - {src: "nvim-linux-{{ neovim_arch[clis_arch] }}/lib/nvim/", dest: "/usr/local/lib/nvim", mode: "u=rwX,go=rX"}
+  when: clis_need_install | bool

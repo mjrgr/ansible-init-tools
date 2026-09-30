@@ -30,6 +30,7 @@ dotfiles** on **Ubuntu / Debian**.
 - sops, age, certigo
 - starship, wezterm, vscode
 - btop, lazygit, fzf, glow, vhs, gitlogue
+- neovim (pinned tarball; LazyVim needs >= 0.11, newer than the Ubuntu apt package)
 - codex (OpenAI Codex CLI), herdr (coding-agent session runtime)
 - eza, ripgrep, fd, bat, zoxide, delta
 - cargo
