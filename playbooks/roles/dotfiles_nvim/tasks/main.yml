@@ -1,0 +1,12 @@
+---
+# role: dotfiles_nvim — LazyVim config (the binary comes from the `neovim` role)
+# Starter vendored from LazyVim/starter@803bc18. lazy-lock.json and lazyvim.json
+# are written by nvim through the symlink, so plugin bumps show up in git.
+
+- name: "Deploy the nvim config"
+  ansible.builtin.include_tasks: "{{ role_path }}/../dotfiles_common/tasks/link.yml"
+  loop:
+    - { src: "{{ dotfiles_src }}/nvim", dest: "{{ dotfiles_home }}/.config/nvim" }
+  loop_control:
+    loop_var: dl
+    label: "{{ dl.dest }}"

@@ -27,6 +27,7 @@
       - fonts
       - claude
       - btop
+      - nvim
 
   tasks:
     - name: "Refuse to run on a non-apt system"

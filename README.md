@@ -102,6 +102,7 @@ for this role just has a quieter herdr sidebar and no error to explain why.
 | `git` | `~/.gitconfig` |
 | `wezterm` | `~/.config/wezterm/wezterm.lua`, `~/.config/wezterm/claude-state-hook.sh`, and the hook registration merged into `~/.claude/settings.json` |
 | `btop` | `~/.config/btop/btop.conf` |
+| `nvim` | `~/.config/nvim` (LazyVim starter, whole directory; `lazy-lock.json` lands in the repo) |
 | `herdr` | `~/.config/herdr/config.toml`, `herd-publish.sh` + its user unit, `claude-statusline.sh`, `quota-status.sh`, `~/.config/herdr-automatic-rename/config.sh`, the generated `~/.claude/skills/herdr/SKILL.md`, and the pinned marketplace plugins |
 
 Each one is a symlink into `dotfiles/` in this repo, so an edit made in `$HOME` shows

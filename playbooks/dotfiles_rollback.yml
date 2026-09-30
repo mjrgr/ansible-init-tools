@@ -30,6 +30,7 @@
       - "{{ dotfiles_home }}/.config/wezterm/wezterm.lua"
       - "{{ dotfiles_home }}/.config/wezterm/claude-state-hook.sh"
       - "{{ dotfiles_home }}/.config/btop/btop.conf"
+      - "{{ dotfiles_home }}/.config/nvim"
       - "{{ dotfiles_home }}/.config/herdr/config.toml"
       - "{{ dotfiles_home }}/.config/herdr/herd-publish.sh"
       - "{{ dotfiles_home }}/.config/herdr/claude-statusline.sh"
@@ -64,7 +65,7 @@
     - name: "Restore the most recent backup of each file"
       ansible.builtin.shell: |
         set -euo pipefail
-        newest=$(ls -1t -- "{{ dotfiles_backup_dir }}/{{ item | basename }}".* 2>/dev/null | head -1) || true
+        newest=$(ls -1dt -- "{{ dotfiles_backup_dir }}/{{ item | basename }}".* 2>/dev/null | head -1) || true
         if [ -z "${newest:-}" ]; then
           echo "no backup for {{ item | basename }}"
           exit 0
