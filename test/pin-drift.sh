@@ -26,9 +26,21 @@ declare -A UPSTREAM=(
 strip() { sed -e 's/^rust-v//' -e 's/^v//' <<<"$1"; }
 
 latest_tag() {
-  gh api "repos/$1/releases/latest" --jq .tag_name 2>/dev/null \
-    || gh api "repos/$1/releases?per_page=1" --jq '.[0].tag_name' 2>/dev/null \
-    || true
+  # `gh api` prints an error body to stdout (not just stderr) on a non-2xx
+  # response, so `||` alone lets a failed call's output leak through as if it
+  # were the tag. Capture each call and only trust it once its own exit status
+  # says it succeeded. The tags fallback covers a repo like rustup that has no
+  # GitHub Releases at all, only tags.
+  local out
+  if out=$(gh api "repos/$1/releases/latest" --jq .tag_name 2>/dev/null) && [ -n "$out" ] && [ "$out" != null ]; then
+    echo "$out"; return
+  fi
+  if out=$(gh api "repos/$1/releases?per_page=1" --jq '.[0].tag_name' 2>/dev/null) && [ -n "$out" ] && [ "$out" != null ]; then
+    echo "$out"; return
+  fi
+  if out=$(gh api "repos/$1/tags?per_page=1" --jq '.[0].name' 2>/dev/null) && [ -n "$out" ] && [ "$out" != null ]; then
+    echo "$out"; return
+  fi
 }
 
 drift=0
@@ -37,7 +49,6 @@ printf '| Role | Pinned | Upstream |\n|---|---|---|\n'
 
 for f in playbooks/roles/*/defaults/main.yml; do
   role=$(basename "$(dirname "$(dirname "$f")")")
-  case "$role" in dotfiles_*) continue ;; esac
   pinned=$(sed -n "s/^${role}_version: *\"\?\([^\"]*\)\"\?/\1/p" "$f")
   [ -n "$pinned" ] || continue
   [ "$pinned" = latest ] && continue
