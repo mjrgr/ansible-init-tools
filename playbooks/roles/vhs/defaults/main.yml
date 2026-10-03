@@ -3,7 +3,7 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e vhs_version=<tag>
 # Bump deliberately, then re-run the container tests.
-vhs_version: "v0.12.0"
+vhs_version: "v0.12.1"
 
 # Upstream's own spelling of each target — no two projects agree on these.
 vhs_arch:
@@ -16,5 +16,5 @@ vhs_url: "https://github.com/charmbracelet/vhs/releases/download/v{version_nov}/
 # /usr/local/bin. Regenerate with `make checksums` after bumping the version.
 # Empty means unverified, which is what a "latest" pin necessarily gets.
 vhs_sha256:
-  amd64: "9f3dc4672af1ec4e83361f4efe996da95c82177b9d795b21d8bcbad814d26823"
-  arm64: "b72a5a6d89089b83abf87796047c4c0660d127231dbf040ac9f067a7bc68c44f"
+  amd64: "eb33787a5b1cebf91fe0b18bd231e2d71d36c1ff4babd99ddac1a6ab411efd10"
+  arm64: "0b27029809fcc2ca2c381cceb854cbe03479a0f229b963e9bc3a2f2c36ffd3e7"

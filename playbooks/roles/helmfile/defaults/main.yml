@@ -3,7 +3,7 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e helmfile_version=<tag>
 # Bump deliberately, then re-run the container tests.
-helmfile_version: "v1.8.0"
+helmfile_version: "v1.8.1"
 
 # Upstream's own spelling of each target — no two projects agree on these.
 helmfile_arch:
@@ -16,5 +16,5 @@ helmfile_url: "https://github.com/helmfile/helmfile/releases/download/v{version_
 # /usr/local/bin. Regenerate with `make checksums` after bumping the version.
 # Empty means unverified, which is what a "latest" pin necessarily gets.
 helmfile_sha256:
-  amd64: "35d5d39fc608342b23fc7ce1dd0c3bf0c96cc07ec3796507ab6894a5d172bf20"
-  arm64: "01037dc187840a778ec65eae66b549b63d619a853540c8983f90d73ccbce5033"
+  amd64: "ccabbe75dddbc25008d055fe92a44f95a184342211e7244d32b870409239c7a3"
+  arm64: "2217788de9fb42cd0b3d84f1ee99c63617e19dea7af4995a59e45e4952c86ec4"

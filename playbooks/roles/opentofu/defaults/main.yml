@@ -3,7 +3,7 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e opentofu_version=<tag>
 # Bump deliberately, then re-run the container tests.
-opentofu_version: "v1.12.6"
+opentofu_version: "v1.13.1"
 
 # Upstream's own spelling of each target — no two projects agree on these.
 opentofu_arch:
@@ -16,5 +16,5 @@ opentofu_url: "https://github.com/opentofu/opentofu/releases/download/v{version_
 # /usr/local/bin. Regenerate with `make checksums` after bumping the version.
 # Empty means unverified, which is what a "latest" pin necessarily gets.
 opentofu_sha256:
-  amd64: "50a6106fa4de523d09c87af85f3db1dd47535fc005727fdca6852146476b88ec"
-  arm64: "9bd0228a81bcd0c88f7045c74378f45a815779f19897191dff7d9efba9976b9e"
+  amd64: "378ada19d4bc70c43732004e8159be771b23b9a5afdf059e5f8a2b3fa2c70a69"
+  arm64: "9c1ef375aa1852db0b2888aa921b640c71f8140d4682aa4fec99378a64fa7dc3"

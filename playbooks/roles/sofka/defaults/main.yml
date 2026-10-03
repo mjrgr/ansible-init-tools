@@ -3,7 +3,7 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e sofka_version=<tag>
 # Bump deliberately, then re-run the container tests.
-sofka_version: "v0.27.2"
+sofka_version: "v0.29.8"
 
 # Upstream's own spelling of each target — no two projects agree on these.
 sofka_arch:
@@ -16,5 +16,5 @@ sofka_url: "https://github.com/nklmilojevic/sofka/releases/download/{version}/so
 # /usr/local/bin. Regenerate with `make checksums` after bumping the version.
 # Empty means unverified, which is what a "latest" pin necessarily gets.
 sofka_sha256:
-  amd64: "9b02d5e840b1195d9166390c3b1b0db03642a0809df8ac0f91a5306af58a82ae"
-  arm64: "9e00aedda9c35d2f172c4a4903d406693a98080650f2cc9181c79a5bde400a2d"
+  amd64: "8a02b27c981e87e47c1b88fc23e0887eefa99fde6bf571bbda6985261ad36ace"
+  arm64: "f61855e38d02a7f13bda09f036d9633936f13ce6c5ca7a1942c01f8b1db5ea68"

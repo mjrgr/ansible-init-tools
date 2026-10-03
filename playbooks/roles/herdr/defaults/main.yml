@@ -3,7 +3,7 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e herdr_version=<tag>
 # Bump deliberately, then re-run the container tests.
-herdr_version: "v0.9.1"
+herdr_version: "v0.9.3"
 
 # Upstream's own spelling of each target — no two projects agree on these.
 herdr_arch:
@@ -16,5 +16,5 @@ herdr_url: "https://github.com/herdrdev/herdr/releases/download/{version}/herdr-
 # /usr/local/bin. Regenerate with `make checksums` after bumping the version.
 # Empty means unverified, which is what a "latest" pin necessarily gets.
 herdr_sha256:
-  amd64: "2a02fed16beb651ef006e1d43f048f652ca4dc58ad053cd2d44450563d5c54b7"
-  arm64: "f4ccf4de745f2cb9a39a983e9ba3703dad50ec2a58dea83026ceab721bbd8d9e"
+  amd64: "18a8dc65f1c2fa485884344356dea1cfd911c6f06cf46fa78e193f4087f4dba7"
+  arm64: "4de7aa3e25678812e92960de64f7c2aaa1bca1f0f80a3c5e559837e231e1f5c0"
