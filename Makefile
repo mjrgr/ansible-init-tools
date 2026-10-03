@@ -49,6 +49,10 @@ test-pins: ## Check every pinned tool version still installs
 drift: ## Report which pinned versions upstream has moved past (needs gh)
 	./test/pin-drift.sh
 
+.PHONY: bump-pins
+bump-pins: ## Bump pinned tools to upstream's latest and refresh checksums (ROLE=<name> to limit, needs gh)
+	./test/bump-pins.sh $(ROLE)
+
 .PHONY: checksums
 checksums: ## Refetch every pinned asset and write its sha256 into the role defaults
 	./test/checksums.py
