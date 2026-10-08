@@ -1,0 +1,13 @@
+---
+podman_packages:
+  - podman
+  - podman-docker
+
+# The former docker role's packages: docker-ce-cli and podman-docker both ship /usr/bin/docker.
+podman_replaced_packages:
+  - docker-ce
+  - docker-ce-cli
+  - docker-ce-rootless-extras
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin

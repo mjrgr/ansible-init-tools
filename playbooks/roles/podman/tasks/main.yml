@@ -1,7 +1,41 @@
 ---
-# role: podman
-- name: "Install podman"
+# role: podman — docker CLI provided by podman-docker, no daemon, no docker0 bridge.
+
+# Not purged: /var/lib/docker (images, volumes) stays until removed by hand.
+- name: "Remove Docker Engine"
   ansible.builtin.apt:
-    name: podman
+    name: "{{ podman_replaced_packages }}"
+    state: absent
+
+- name: "Check for a leftover docker0 bridge"
+  ansible.builtin.stat:
+    path: /sys/class/net/docker0
+  register: podman_docker0
+
+# dockerd leaves docker0 up on stop; its 172.17.0.0/16 route can swallow an SSH session.
+- name: "Delete the leftover docker0 bridge"
+  ansible.builtin.command: ip link delete docker0
+  changed_when: true
+  when: podman_docker0.stat.exists
+
+- name: "Remove the Docker apt source and keyring"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/sources.list.d/docker.list
+    - /etc/apt/keyrings/docker.gpg
+    - /etc/apt/keyrings/docker.gpg.armored
+
+- name: "Install podman and its docker CLI shim"
+  ansible.builtin.apt:
+    name: "{{ podman_packages }}"
     state: "{{ 'latest' if clis_state == 'latest' else 'present' }}"
     update_cache: true
+
+- name: "Silence the shim's 'Emulate Docker CLI using podman' banner"
+  ansible.builtin.copy:
+    content: ""
+    dest: /etc/containers/nodocker
+    mode: "0644"
+    force: false

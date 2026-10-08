@@ -113,14 +113,14 @@ case "$TARGET" in
     ROLE="${2:-}"
     if [[ -n "$ROLE" ]]; then
       echo "==> install_clis.yml (role: $ROLE)"
-      echo "    Note: daemons (docker, podman) install but do not start in a container."
+      echo "    Note: daemons install but do not start in a container."
       run "ansible-playbook /repo/playbooks/install_clis.yml -c local -i localhost, -e install_only=$ROLE 2>&1 | tail -30"
       exit 0
     fi
 
     # Both runs in the SAME container, for the same reason as the dotfiles target.
     #
-    # changed=0 is the wrong assertion here: docker, gh, vscode and wezterm delete
+    # changed=0 is the wrong assertion here: gh, vscode and wezterm delete
     # their apt source before apt_repository recreates it, so the play reports
     # changed on every run by design. What must hold is that no tool is fetched
     # twice — which is exactly what each role probe decides and prints.
@@ -129,7 +129,7 @@ case "$TARGET" in
       PB="ansible-playbook /repo/playbooks/install_clis.yml -c local -i localhost,"
 
       echo "==> run 1 (empty machine)"
-      echo "    Note: daemons (docker, podman) install but do not start in a container."
+      echo "    Note: daemons install but do not start in a container."
       $PB >/tmp/c1.log 2>&1 || { tail -40 /tmp/c1.log; exit 1; }
       grep "localhost  " /tmp/c1.log
       printf "    fetched: %s tool(s)\n" "$(grep -c -- "-> install" /tmp/c1.log || true)"

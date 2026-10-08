@@ -23,7 +23,7 @@ dotfiles** on **Ubuntu / Debian**.
 
 ## Included CLIs / utilities
 - kubectl, helm, kind, kwok, k9s, sofka, argo9s, krew, helmfile
-- docker, podman, nerdctl, crictl
+- podman (+ podman-docker for the `docker` CLI), nerdctl, crictl
 - opentofu
 - yq, jq
 - gh
@@ -444,28 +444,22 @@ Useful variables:
 | `clis_state` | `present` | `latest` re-runs every installer and upgrades |
 | `<tool>_version` | `latest` | pin one tool, e.g. `-e kubectl_version=v1.30.0` |
 | `install_only` | *(unset)* | install a single tool |
-| `docker_add_user_to_group` | `true` | add the invoking user to the `docker` group |
 | `dotfiles_only` | *(unset)* | deploy a single group |
 | `dotfiles_set_default_shell` | `true` | `chsh` to zsh — needs `--ask-become-pass`, on that run only |
 
-## The docker group
+## Containers: podman, not docker
 
-`docker_add_user_to_group` defaults to `true`, so the account that runs the playbook
-lands in the `docker` group and `docker` works without `sudo`.
+There is no Docker Engine. `podman-docker` provides `docker` as a shim over podman:
+daemonless, rootless, and no `docker0` bridge — whose default 172.17.0.0/16 route
+cut SSH on a VM whose client sat in that range.
 
-**That membership is equivalent to root on the host.** The daemon runs as root and will
-bind-mount any path into a container on request, so anyone in the group can read or
-write anything. It is enabled because the alternative is `sudo` before every docker
-command; disable it where that trade does not hold:
+On a machine provisioned before the switch, the podman role removes the Docker
+packages, apt source and leftover `docker0`. `/var/lib/docker` is kept; delete it
+by hand once nothing in it is needed.
 
-```bash
-ansible-playbook playbooks/install_clis.yml -c local -K -e docker_add_user_to_group=false
-```
-
-The group takes effect at the next login — `newgrp docker` in the meantime.
-
-The user is resolved from `SUDO_USER`, not `ansible_user_id`: the play declares
-`become: true`, so facts are gathered as root and `ansible_user_id` would say `root`.
+- `docker compose` needs a provider: `podman compose` delegates to `docker-compose`
+  or `podman-compose`, neither installed here.
+- kind: `KIND_EXPERIMENTAL_PROVIDER=podman`.
 
 ## Reproducibility
 
@@ -539,7 +533,7 @@ Not pinned, and why:
 
 | Tool | Reason |
 |---|---|
-| docker, gh, podman, jq, wezterm, vscode, rust_clis | installed from apt repositories, which track whatever apt has at install time; the distro decides the version, and apt's signature check is what guards the download |
+| gh, podman, jq, wezterm, vscode, rust_clis | installed from apt repositories, which track whatever apt has at install time; the distro decides the version, and apt's signature check is what guards the download |
 | claude | self-updating, and installed per user by the dotfiles play; pick a train with `dotfiles_claude_channel` |
 
 **Dependabot does not watch these pins** — no ecosystem understands versions living in
@@ -659,14 +653,14 @@ What `clis` asserts:
 - `install_clis.yml` completes on a machine with none of the tools present
 - a second pass refetches nothing — again in the **same** container
 
-`changed=0` is deliberately not the assertion there. docker, gh, vscode and wezterm
+`changed=0` is deliberately not the assertion there. gh, vscode and wezterm
 delete their apt source before `apt_repository` recreates it, so the play reports
 `changed` on every run by design. What must hold is that no tool is downloaded twice,
 which is what each role's probe decides and prints, and a probe that misreads its own
 tool's `--version` output is exactly the bug this catches: `pins` cannot, because it
 only ever runs each role once.
 
-Caveat: daemons (docker, podman) install but do not start in a container. The
+Caveat: daemons install but do not start in a container. The
 `chsh` does run — the test user holds a `NOPASSWD` sudoers entry — and it is part
 of what the second run proves, since a task that re-applied it would show up as
 `changed=1`.
@@ -707,6 +701,6 @@ False positives go in `.gitleaks.toml` as a narrow rule — never by disabling t
 
 ## Notes
 - Debian/Ubuntu only. Both playbooks refuse to run elsewhere rather than failing halfway.
-- apt-based tools (docker, gh, podman, jq, wezterm) go through the `apt`
+- apt-based tools (gh, podman, jq, wezterm) go through the `apt`
   module and its repositories; the rest are binary downloads gated by a version probe.
 - - Daemons install but are not started or enabled — that is left to the machine's owner.
