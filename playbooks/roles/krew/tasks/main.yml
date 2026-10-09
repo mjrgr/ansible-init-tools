@@ -92,9 +92,20 @@
       register: krew_list
       changed_when: false
 
+    # One at a time: some plugins ship no build for every arch (access-matrix has no linux/arm64).
     - name: "Install the missing plugins"
       ansible.builtin.command:
-        argv: "{{ [krew_root ~ '/bin/kubectl-krew', 'install'] + krew_missing }}"
+        argv: ["{{ krew_root }}/bin/kubectl-krew", install, "{{ item }}"]
+      loop: "{{ krew_plugins | difference(krew_list.stdout_lines) }}"
+      register: krew_install
+      changed_when: krew_install.rc == 0
+      failed_when:
+        - krew_install.rc != 0
+        - "'does not offer installation for this platform' not in krew_install.stderr"
+
+    - name: "Report the plugins this platform cannot run"
+      ansible.builtin.debug:
+        msg: "krew: no {{ clis_arch }} build for {{ krew_unsupported | join(', ') }}"
       vars:
-        krew_missing: "{{ krew_plugins | difference(krew_list.stdout_lines) }}"
-      when: krew_missing | length > 0
+        krew_unsupported: "{{ krew_install.results | default([]) | rejectattr('rc', 'equalto', 0) | map(attribute='item') | list }}"
+      when: krew_unsupported | length > 0
