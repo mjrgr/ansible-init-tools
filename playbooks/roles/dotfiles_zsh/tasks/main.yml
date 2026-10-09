@@ -38,6 +38,7 @@
     - { src: "{{ dotfiles_src }}/zsh/.zshenv", dest: "{{ dotfiles_home }}/.zshenv" }
     - { src: "{{ dotfiles_src }}/zsh/config/wezterm.zsh", dest: "{{ dotfiles_home }}/.config/zsh/wezterm.zsh" }
     - { src: "{{ dotfiles_src }}/kube/k8s-clusters.sh", dest: "{{ dotfiles_home }}/.kube/k8s-clusters.sh" }
+    - { src: "{{ dotfiles_src }}/kube/krelay-patch-hardened.json", dest: "{{ dotfiles_home }}/.config/krelay/patch-hardened.json" }
   loop_control:
     loop_var: dl
     label: "{{ dl.dest }}"

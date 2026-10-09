@@ -38,6 +38,7 @@
       - "{{ dotfiles_home }}/.config/systemd/user/herd-publish.service"
       - "{{ dotfiles_home }}/.config/herdr-automatic-rename/config.sh"
       - "{{ dotfiles_home }}/.kube/k8s-clusters.sh"
+      - "{{ dotfiles_home }}/.config/krelay/patch-hardened.json"
 
   tasks:
     - name: "Inspect the deployed paths"

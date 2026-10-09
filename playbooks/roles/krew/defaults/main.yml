@@ -1,9 +1,11 @@
 ---
-# Pinned so two machines provisioned months apart get the same binary.
+# Pins the bootstrap binary only: it installs the index's krew, then clis_state=latest runs `krew upgrade`.
 # Set to "latest" to track upstream, or override on the command line:
 #   -e krew_version=<tag>
-# Bump deliberately, then re-run the container tests.
 krew_version: "v0.5.0"
+
+# Per user, not /usr/local/bin: krew owns its root and the plugins live there too.
+krew_root: "{{ lookup('env', 'HOME') }}/.krew"
 
 # Upstream's own spelling of each target — no two projects agree on these.
 krew_arch:
@@ -12,8 +14,19 @@ krew_arch:
 
 krew_url: "https://github.com/kubernetes-sigs/krew/releases/download/{version}/krew-linux_{arch}.tar.gz"
 
-# Verified on download, so a swapped asset fails the run instead of landing in
-# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Installed when missing, never removed: a plugin added by hand stays.
+krew_plugins:
+  - access-matrix
+  - cert-manager
+  - cnpg
+  - ctx
+  - ns
+  - relay
+  - stern
+  - whoami
+
+# Verified on download, so a swapped bootstrap binary fails the run instead of
+# being executed. Regenerate with `make checksums` after bumping the version.
 # Empty means unverified, which is what a "latest" pin necessarily gets.
 krew_sha256:
   amd64: "5d5a221fffdf331d1c5c68d9917530ecd102e0def5b5a6d62eeed1c404efb28a"

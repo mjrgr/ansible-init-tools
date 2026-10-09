@@ -94,7 +94,7 @@ for this role just has a quieter herdr sidebar and no error to explain why.
 
 | Group | Deployed to |
 |---|---|
-| `zsh` | `~/.zshrc`, `~/.zshenv`, oh-my-zsh + 3 external plugins, `~/.config/zsh/wezterm.zsh`, `~/.kube/k8s-clusters.sh` |
+| `zsh` | `~/.zshrc`, `~/.zshenv`, oh-my-zsh + 3 external plugins, `~/.config/zsh/wezterm.zsh`, `~/.kube/k8s-clusters.sh`, `~/.config/krelay/patch-hardened.json` |
 | `starship` | `~/.config/starship.toml` |
 | `fonts` | JetBrainsMono Nerd Font into `~/.local/share/fonts` |
 | `claude` | Claude Code into `~/.local/share/claude`, symlinked at `~/.local/bin/claude` |

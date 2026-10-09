@@ -18,9 +18,6 @@ export PATH="$PATH:/usr/local/go/bin:$GOPATH/bin"
 # Rust / Cargo
 export PATH="$PATH:$HOME/.cargo/bin"
 
-# Krew (kubectl plugin manager)
-export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
-
 # ─── OH-MY-ZSH ───────────────────────────────────────────────────────────────
 export ZSH="$HOME/.oh-my-zsh"
 export ZSH_CUSTOM="${ZSH_CUSTOM:-$ZSH/custom}"
@@ -109,6 +106,25 @@ export GPG_TTY="$(tty)"
 export K9S_FEATURE_GATE_NODE_SHELL=true
 [[ -f "$HOME/.kube/k8s-clusters.sh" ]] && source "$HOME/.kube/k8s-clusters.sh"
 
+# Multi-target tunnel via krelay; targets in ~/.config/krelay/<context>.targets (not versioned)
+ktunnel() {
+  local ctx="${1:-$KTUNNEL_CONTEXT}"
+  [[ -n "$ctx" ]] || { print -u2 "usage: ktunnel <context>  (or set KTUNNEL_CONTEXT in ~/.zshenv.local)"; return 2; }
+  local f="$HOME/.config/krelay/${ctx}.targets"
+  [[ -r "$f" ]] || { print -u2 "ktunnel: no targets file $f"; return 1; }
+  print "🚇 $ctx"
+  grep -vE '^[[:space:]]*(#|//|$)' "$f" | sed 's/^/   /'
+  kubectl relay -v 0 --context "$ctx" --patch-file "$HOME/.config/krelay/patch-hardened.json" -f "$f"
+}
+
+# SOCKS5 proxy via krelay; loopback only, it reaches everything the cluster can
+kproxy() {
+  local ctx="${1:-$KTUNNEL_CONTEXT}" port="${2:-1080}"
+  [[ -n "$ctx" ]] || { print -u2 "usage: kproxy <context> [port]  (or set KTUNNEL_CONTEXT in ~/.zshenv.local)"; return 2; }
+  print "🧦 $ctx → socks5h://127.0.0.1:${port}"
+  kubectl relay --context "$ctx" --patch-file "$HOME/.config/krelay/patch-hardened.json" proxy -l "127.0.0.1:${port}"
+}
+
 # ─── HTTP PROXY (opt-in) ─────────────────────────────────────────────────────
 # Set _PROXY / _NO_PROXY in ~/.zshenv.local to enable. Unset here on purpose:
 # a proxy is site-specific and a wrong default breaks every outbound call.
@@ -164,6 +180,7 @@ alias kl="kubectl logs -f"
 alias kaf="kubectl apply -f"
 alias kdf="kubectl delete -f"
 alias krr="kubectl rollout restart deployment"
+alias krelay="kubectl relay --patch-file ~/.config/krelay/patch-hardened.json"  # requires krew relay plugin
 
 # ─── ALIASES — HELM ──────────────────────────────────────────────────────────
 alias h="helm"

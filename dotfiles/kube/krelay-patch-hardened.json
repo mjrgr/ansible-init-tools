@@ -1,0 +1,26 @@
+{
+  "metadata": {"namespace": "default"},
+  "spec": {
+    "activeDeadlineSeconds": 28800,
+    "securityContext": {
+      "runAsNonRoot": true,
+      "runAsUser": 65532,
+      "runAsGroup": 65532,
+      "seccompProfile": {"type": "RuntimeDefault"}
+    },
+    "containers": [{
+      "name": "krelay-server",
+      "image": "ghcr.io/knight42/krelay-server@sha256:b570a88f61ca4b7009da622ad83eb36bcea2cfccf5bab98cb6cd4ed24b4d51c1",
+      "imagePullPolicy": "IfNotPresent",
+      "resources": {
+        "requests": {"cpu": "10m", "memory": "16Mi"},
+        "limits": {"cpu": "200m", "memory": "64Mi"}
+      },
+      "securityContext": {
+        "allowPrivilegeEscalation": false,
+        "readOnlyRootFilesystem": true,
+        "capabilities": {"drop": ["ALL"]}
+      }
+    }]
+  }
+}

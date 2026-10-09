@@ -1,5 +1,5 @@
 ---
-# role: krew
+# role: krew — krew installs itself under the user's KREW_ROOT, then the plugins
 
 - name: "Resolve the krew version and architecture"
   ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
@@ -8,24 +8,93 @@
     clis_repo: kubernetes-sigs/krew
     clis_target: "{{ krew_version }}"
 
-# `krew version` leads with a multi-line PATH warning, then a table;
-# the GitTag row is the only place the version appears.
-- name: "Decide whether krew must be installed"
-  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
-  vars:
-    clis_name: krew
-    clis_bin: /usr/local/bin/kubectl-krew
-    clis_version_cmd: "/usr/local/bin/kubectl-krew version 2>&1 | awk '/GitTag/ {print $2}'"
-    clis_target: "{{ krew_version }}"
+# Superseded by the copy under KREW_ROOT, which shadowed it on PATH anyway.
+- name: "Remove the system-wide krew binary"
+  ansible.builtin.file:
+    path: /usr/local/bin/kubectl-krew
+    state: absent
 
-- name: "Install krew"
-  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
-  vars:
-    clis_name: krew
-    clis_url: "{{ krew_url }}"
-    clis_arch_map: "{{ krew_arch }}"
-    clis_sha256: "{{ krew_sha256[clis_arch] }}"
-    clis_verify_cmd: "/usr/local/bin/kubectl-krew version"
-    clis_files:
-      - {src: "krew-linux_{{ krew_arch[clis_arch] }}", dest: "/usr/local/bin/kubectl-krew"}
-  when: clis_need_install | bool
+# The play runs as root; KREW_ROOT belongs to the user who launched it.
+- name: "Install krew and its plugins as the invoking user"
+  become: false
+  environment:
+    KREW_ROOT: "{{ krew_root }}"
+  block:
+    - name: "Look for krew under KREW_ROOT"
+      ansible.builtin.stat:
+        path: "{{ krew_root }}/bin/kubectl-krew"
+      register: krew_present
+
+    - name: "Bootstrap krew from the pinned release"
+      when: not krew_present.stat.exists
+      block:
+        - name: "Create a scratch directory for krew"
+          ansible.builtin.tempfile:
+            state: directory
+            suffix: "-krew"
+          register: krew_scratch
+
+        - name: "Download the krew archive"
+          ansible.builtin.get_url:
+            url: >-
+              {{ krew_url
+                 | replace('{version}', clis_version)
+                 | replace('{arch}', krew_arch[clis_arch]) }}
+            dest: "{{ krew_scratch.path }}/archive"
+            mode: "0644"
+            checksum: "{{ ('sha256:' ~ krew_sha256[clis_arch]) if (krew_sha256[clis_arch] | default('') | length > 0) else omit }}"
+          register: krew_download
+          retries: 5
+          delay: 5
+          until: krew_download is succeeded
+
+        - name: "Unpack the krew archive"
+          ansible.builtin.unarchive:
+            src: "{{ krew_scratch.path }}/archive"
+            dest: "{{ krew_scratch.path }}"
+            remote_src: true
+
+        # From the index, not --manifest: a manifest install is "detached" and `krew upgrade` skips it forever.
+        - name: "Let krew install itself"
+          ansible.builtin.command:
+            argv:
+              - "{{ krew_scratch.path }}/krew-linux_{{ krew_arch[clis_arch] }}"
+              - install
+              - krew
+            creates: "{{ krew_root }}/bin/kubectl-krew"
+      always:
+        - name: "Drop the scratch directory for krew"
+          ansible.builtin.file:
+            path: "{{ krew_scratch.path }}"
+            state: absent
+          when: krew_scratch.path is defined
+
+    - name: "Check that krew runs"
+      ansible.builtin.command: "{{ krew_root }}/bin/kubectl-krew version"
+      changed_when: false
+
+    - name: "Initialise the plugin index"
+      ansible.builtin.command:
+        cmd: "{{ krew_root }}/bin/kubectl-krew update"
+        creates: "{{ krew_root }}/index/default"
+
+    # Re-bootstrapping over an existing KREW_ROOT fails with "krew home outdated"; upgrade is the only path.
+    - name: "Upgrade krew and every installed plugin"
+      ansible.builtin.shell:
+        cmd: "set -o pipefail; {{ krew_root }}/bin/kubectl-krew update && {{ krew_root }}/bin/kubectl-krew upgrade 2>&1"
+        executable: /bin/bash
+      register: krew_upgrade
+      changed_when: "'Upgraded plugin' in krew_upgrade.stdout"
+      when: clis_state == 'latest'
+
+    - name: "List the installed plugins"
+      ansible.builtin.command: "{{ krew_root }}/bin/kubectl-krew list"
+      register: krew_list
+      changed_when: false
+
+    - name: "Install the missing plugins"
+      ansible.builtin.command:
+        argv: "{{ [krew_root ~ '/bin/kubectl-krew', 'install'] + krew_missing }}"
+      vars:
+        krew_missing: "{{ krew_plugins | difference(krew_list.stdout_lines) }}"
+      when: krew_missing | length > 0

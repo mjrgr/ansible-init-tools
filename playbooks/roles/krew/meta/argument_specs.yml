@@ -8,7 +8,11 @@ argument_specs:
       krew_version:
         type: str
         required: true
-        description: Release tag to install, or "latest" to track upstream.
+        description: Release tag to bootstrap from, or "latest" to track upstream.
+      krew_root:
+        type: str
+        required: true
+        description: KREW_ROOT of the invoking user; krew and its plugins live there.
       krew_arch:
         type: dict
         required: true
@@ -21,3 +25,8 @@ argument_specs:
         type: dict
         required: true
         description: Expected digest per architecture. Empty means the download is unverified.
+      krew_plugins:
+        type: list
+        elements: str
+        required: true
+        description: Plugins installed when missing; extra ones are left alone.

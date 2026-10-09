@@ -6,6 +6,7 @@ dotfiles_common_dirs:
   - "{{ dotfiles_home }}/.config/wezterm"
   - "{{ dotfiles_home }}/.config/btop"
   - "{{ dotfiles_home }}/.config/herdr"
+  - "{{ dotfiles_home }}/.config/krelay"
   - "{{ dotfiles_home }}/.claude"
   - "{{ dotfiles_home }}/.kube"
   - "{{ dotfiles_home }}/.local/bin"
