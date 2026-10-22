@@ -39,3 +39,10 @@
     dest: /etc/containers/nodocker
     mode: "0644"
     force: false
+
+# Ubuntu ships no search registry: `docker run mcp/grafana` fails on short-name resolution.
+- name: "Resolve unqualified image names against docker.io"
+  ansible.builtin.copy:
+    content: 'unqualified-search-registries = ["docker.io"]'
+    dest: /etc/containers/registries.conf.d/10-unqualified-search.conf
+    mode: "0644"
