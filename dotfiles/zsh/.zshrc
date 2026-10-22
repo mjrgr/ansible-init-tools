@@ -128,17 +128,19 @@ kproxy() {
 # ─── HTTP PROXY (opt-in) ─────────────────────────────────────────────────────
 # Set _PROXY / _NO_PROXY in ~/.zshenv.local to enable. Unset here on purpose:
 # a proxy is site-specific and a wrong default breaks every outbound call.
+# _PROXY_ROUTE (CIDR): when set, auto-export only while that network is routed (VPN up).
 : "${_PROXY:=}"
 : "${_NO_PROXY:=localhost,127.0.0.1,::1}"
+: "${_PROXY_ROUTE:=}"
 
-if [[ -n "$_PROXY" ]]; then
+if [[ -n "$_PROXY" ]] && { [[ -z "$_PROXY_ROUTE" ]] || [[ -n "$(ip route show "$_PROXY_ROUTE" 2>/dev/null)" ]]; }; then
   export http_proxy="$_PROXY" https_proxy="$_PROXY"
   export HTTP_PROXY="$_PROXY" HTTPS_PROXY="$_PROXY"
   export no_proxy="$_NO_PROXY" NO_PROXY="$_NO_PROXY"
 fi
 
 proxy-off() {
-  unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+  unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY no_proxy NO_PROXY
   print "🔓 Proxy disabled"
 }
 proxy-on() {
