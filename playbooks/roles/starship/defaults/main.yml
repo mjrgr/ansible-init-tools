@@ -3,7 +3,7 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e starship_version=<tag>
 # Bump deliberately, then re-run the container tests.
-starship_version: "v1.26.0"
+starship_version: "v1.27.0"
 
 # Upstream's own spelling of each target — no two projects agree on these.
 starship_arch:
@@ -16,5 +16,5 @@ starship_url: "https://github.com/starship/starship/releases/download/{version}/
 # /usr/local/bin. Regenerate with `make checksums` after bumping the version.
 # Empty means unverified, which is what a "latest" pin necessarily gets.
 starship_sha256:
-  amd64: "321f0dd7af8340a5f2e6a8fec6538a04f617486f9ec70d878f91c09cd8deef22"
-  arm64: "dc30189378d2f2e287384e8a692d3f95ad1df64cf0e8c36aa9201516028aed6b"
+  amd64: "3b94758850901717eb36aa1b53f8492c1322506ec6d41273bc6151e79ed8e4a1"
+  arm64: "341f5cbf24699fa0b27ec88965ad25f862ea09e15d35a543fd6ffdff1d2aa00d"

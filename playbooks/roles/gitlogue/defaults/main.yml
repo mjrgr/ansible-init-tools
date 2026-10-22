@@ -3,7 +3,7 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e gitlogue_version=<tag>
 # Bump deliberately, then re-run the container tests.
-gitlogue_version: "v0.12.0"
+gitlogue_version: "v0.12.1"
 
 # Upstream's own spelling of each target — no two projects agree on these.
 gitlogue_arch:
@@ -16,5 +16,5 @@ gitlogue_url: "https://github.com/unhappychoice/gitlogue/releases/download/{vers
 # /usr/local/bin. Regenerate with `make checksums` after bumping the version.
 # Empty means unverified, which is what a "latest" pin necessarily gets.
 gitlogue_sha256:
-  amd64: "7da67cf99d5304b58242bb641d3b80ce7a7535ac80991db18e0805742c39bbec"
-  arm64: "6674f9af4ed8477809bda07a1088e210f6c2cd6391cbfaf0e0fdca009c9817a2"
+  amd64: "c3b51d4c6dd1d84d32eeaf0ecc5bb281bd3a48b300dc64028e5561b5748971c3"
+  arm64: "49559a53a52d6a19f526af6588ac623b823e33a00ebaa50be41db88bdd602cee"
