@@ -1,0 +1,20 @@
+---
+# Pinned so two machines provisioned months apart get the same binary.
+# Set to "latest" to track upstream, or override on the command line:
+#   -e popeye_version=<tag>
+# Bump deliberately, then re-run the container tests.
+popeye_version: "v0.22.1"
+
+# Upstream's own spelling of each target — no two projects agree on these.
+popeye_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+popeye_url: "https://github.com/derailed/popeye/releases/download/{version}/popeye_linux_{arch}.tar.gz"
+
+# Verified on download, so a swapped asset fails the run instead of landing in
+# /usr/local/bin. Regenerate with `make checksums` after bumping the version.
+# Empty means unverified, which is what a "latest" pin necessarily gets.
+popeye_sha256:
+  amd64: "d58a3c0ba45805d452c32628320eecdcb5172fd5f42c82e12aeecc7a17eb930b"
+  arm64: "5188b0b521966113580f0fef7769173af6303061dee10df247536f9bb55fe988"

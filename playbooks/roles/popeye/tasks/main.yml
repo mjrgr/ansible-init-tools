@@ -1,0 +1,31 @@
+---
+# role: popeye
+
+- name: "Resolve the popeye version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: popeye
+    clis_repo: derailed/popeye
+    clis_target: "{{ popeye_version }}"
+
+# `popeye version` opens with an ASCII banner and has no short flag; the probe
+# reads one line, so pick the one carrying the number.
+- name: "Decide whether popeye must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: popeye
+    clis_bin: /usr/local/bin/popeye
+    clis_version_cmd: "/usr/local/bin/popeye version | grep 'Version:'"
+    clis_target: "{{ popeye_version }}"
+
+- name: "Install popeye"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: popeye
+    clis_url: "{{ popeye_url }}"
+    clis_arch_map: "{{ popeye_arch }}"
+    clis_sha256: "{{ popeye_sha256[clis_arch] }}"
+    clis_verify_cmd: "/usr/local/bin/popeye version"
+    clis_files:
+      - {src: "popeye", dest: "/usr/local/bin/popeye"}
+  when: clis_need_install | bool
