@@ -16,9 +16,10 @@
 # tool role, and the caller reads clis_need_install back. A clis_common_ prefix
 # would name a role that never runs on its own.
 
+# sed, not head: head exits after one line, and a tool still writing gets SIGPIPE (rc 141 under pipefail).
 - name: "Probe {{ clis_name }}"  # noqa: var-naming[no-role-prefix]
   ansible.builtin.shell:
-    cmd: "set -o pipefail; {{ clis_version_cmd | default(clis_bin ~ ' --version') }} 2>&1 | head -1"
+    cmd: "set -o pipefail; {{ clis_version_cmd | default(clis_bin ~ ' --version') }} 2>&1 | sed -n 1p"
     executable: /bin/bash
   register: clis_probe
   changed_when: false
