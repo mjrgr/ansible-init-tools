@@ -302,6 +302,10 @@ nvm() {
   nvm "$@"
 }
 
+# ─── MISE ────────────────────────────────────────────────────────────────────
+# After bun/nvm: mise re-prepends its tool paths on each prompt, so a pinned mise tool wins.
+command -v mise &>/dev/null && eval "$(mise activate zsh)"
+
 # ─── MISC ────────────────────────────────────────────────────────────────────
 mywatch() {
   local interval=5
