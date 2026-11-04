@@ -1,0 +1,13 @@
+---
+mise_version: "v2026.10.25"
+
+mise_arch:
+  amd64: "x64"
+  arm64: "arm64"
+
+mise_url: "https://github.com/jdx/mise/releases/download/{version}/mise-{version}-linux-{arch}"
+
+# Regenerate with `make checksums ROLE=mise`; empty means unverified.
+mise_sha256:
+  amd64: "5d362ecc578dc7c146679b841dda949d6472cbf86ff5635db7afdca1b6b3fd87"
+  arm64: "bb09e88b13164ca90691a5cc042726d079f0ba26ab55527344cb173c2e83c998"

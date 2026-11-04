@@ -3,7 +3,7 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e certigo_version=<tag>
 # Bump deliberately, then re-run the container tests.
-certigo_version: "v1.18.1"
+certigo_version: "v1.18.2"
 
 # v1.18.0 still reports 1.17.1: cli/cli.go hardcodes the constant, unbumped.
 # Keyed by tag so a later bump falls back to the real number on its own.
@@ -21,5 +21,5 @@ certigo_url: "https://github.com/square/certigo/releases/download/{version}/cert
 # /usr/local/bin. Regenerate with `make checksums` after bumping the version.
 # Empty means unverified, which is what a "latest" pin necessarily gets.
 certigo_sha256:
-  amd64: "3310cf57ef4e31f06b5049ed7c6fba0208eadd4214c6248cd246de3f9efed8a7"
-  arm64: "f4909b29d982f8d24296322974d5e923154d24210ed2982dac59d506aeb3c989"
+  amd64: "ca47d1c5443d3b25aac723a88750bce86cd0cbbd537615a86caad0563d311c2c"
+  arm64: "074280081d64f76a2ee37e9d91900d0ebfdc7e9b11efa65c2614ec6d2d361313"

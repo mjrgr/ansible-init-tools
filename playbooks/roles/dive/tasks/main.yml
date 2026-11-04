@@ -1,0 +1,29 @@
+---
+# role: dive
+
+- name: "Resolve the dive version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: dive
+    clis_repo: wagoodman/dive
+    clis_target: "{{ dive_version }}"
+
+- name: "Decide whether dive must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: dive
+    clis_bin: /usr/local/bin/dive
+    clis_version_cmd: "/usr/local/bin/dive --version"
+    clis_target: "{{ dive_version }}"
+
+- name: "Install dive"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: dive
+    clis_url: "{{ dive_url }}"
+    clis_arch_map: "{{ dive_arch }}"
+    clis_sha256: "{{ dive_sha256[clis_arch] }}"
+    clis_verify_cmd: "/usr/local/bin/dive --version"
+    clis_files:
+      - {src: "dive", dest: "/usr/local/bin/dive"}
+  when: clis_need_install | bool

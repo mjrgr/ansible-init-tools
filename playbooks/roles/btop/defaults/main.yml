@@ -3,7 +3,7 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e btop_version=<tag>
 # Bump deliberately, then re-run the container tests.
-btop_version: "v1.4.7"
+btop_version: "v1.4.8"
 
 # Upstream's own spelling of each target — no two projects agree on these.
 btop_arch:
@@ -16,5 +16,5 @@ btop_url: "https://github.com/aristocratos/btop/releases/download/{version}/btop
 # /usr/local/bin. Regenerate with `make checksums` after bumping the version.
 # Empty means unverified, which is what a "latest" pin necessarily gets.
 btop_sha256:
-  amd64: "5099054dd6a101bd12eb6ff3702a9a6a3f57aaa27923a0da478ae5b517faf335"
-  arm64: "6270de0ef4c84cf0eea61cb148b3ad9ae91a11e9c3309867ffc6b3751024c252"
+  amd64: "af589cf82cc9ea9c29ce050b9239a13bef2d1492256d476156e1054a42ce89ad"
+  arm64: "95328e26ab08f42033af26628e2d169206a5a420f35669ce17459ef85114c14c"

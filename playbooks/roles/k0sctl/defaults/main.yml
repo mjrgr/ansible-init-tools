@@ -1,0 +1,13 @@
+---
+k0sctl_version: "v0.33.1"
+
+k0sctl_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+k0sctl_url: "https://github.com/k0sproject/k0sctl/releases/download/{version}/k0sctl-linux-{arch}"
+
+# Regenerate with `make checksums ROLE=k0sctl`; empty means unverified.
+k0sctl_sha256:
+  amd64: "bd5cd9125c93d8d30c33f7b2f3693fed0d74140a248d433dad74f2b7015295b5"
+  arm64: "3632072361f3e83dde9b34f83eea49673d3bfe84763cf361edc3aec7209231a6"

@@ -23,8 +23,10 @@ dotfiles** on **Ubuntu / Debian**.
 
 ## Included CLIs / utilities
 - kubectl, helm, kind, kwok, k9s, popeye, sofka, argo9s, krew, helmfile
+- argocd, kubectx/kubens, kubie, cilium, hubble, kyverno, vcluster, cmctl, k0sctl, telepresence, cloud-provider-kind, helm-schema
 - podman (+ podman-docker for the `docker` CLI), nerdctl, crictl
 - opentofu
+- trivy, cosign, oras, dive, ko
 - yq, jq
 - gh
 - sops, age, certigo
@@ -33,7 +35,7 @@ dotfiles** on **Ubuntu / Debian**.
 - neovim (pinned tarball; LazyVim needs >= 0.11, newer than the Ubuntu apt package)
 - codex (OpenAI Codex CLI), herdr (coding-agent session runtime)
 - eza, ripgrep, fd, bat, zoxide, delta
-- cargo
+- cargo, mise (polyglot runtime/tool version manager)
 - git, make, curl, wget, gnupg, unzip, fontconfig
 
 WezTerm comes from the official apt repository (`apt.fury.io/wez`): the distro

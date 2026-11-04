@@ -1,0 +1,13 @@
+---
+vcluster_version: "v0.37.6"
+
+vcluster_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+vcluster_url: "https://github.com/loft-sh/vcluster/releases/download/{version}/vcluster-linux-{arch}"
+
+# Regenerate with `make checksums ROLE=vcluster`; empty means unverified.
+vcluster_sha256:
+  amd64: "294253657c0137fc62d0aa8e28f1f58e603fd0df7600f04e850978cd92bf1009"
+  arm64: "5fac757688d9d1f6c994f89330408e90ef2e4352a44ebe8751e640678c6daf10"

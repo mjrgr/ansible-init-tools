@@ -54,8 +54,8 @@ bump-pins: ## Bump pinned tools to upstream's latest and refresh checksums (ROLE
 	./test/bump-pins.sh $(ROLE)
 
 .PHONY: checksums
-checksums: ## Refetch every pinned asset and write its sha256 into the role defaults
-	./test/checksums.py
+checksums: ## Refetch every pinned asset and write its sha256 into the role defaults (ROLE=<name> to limit)
+	./test/checksums.py $(ROLE)
 
 .PHONY: checksums-audit
 checksums-audit: ## Offline: assert every pinned version carries a sha256

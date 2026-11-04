@@ -1,0 +1,29 @@
+---
+# role: kyverno
+
+- name: "Resolve the kyverno version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: kyverno
+    clis_repo: kyverno/kyverno
+    clis_target: "{{ kyverno_version }}"
+
+- name: "Decide whether kyverno must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: kyverno
+    clis_bin: /usr/local/bin/kyverno
+    clis_version_cmd: "/usr/local/bin/kyverno version"
+    clis_target: "{{ kyverno_version }}"
+
+- name: "Install kyverno"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: kyverno
+    clis_url: "{{ kyverno_url }}"
+    clis_arch_map: "{{ kyverno_arch }}"
+    clis_sha256: "{{ kyverno_sha256[clis_arch] }}"
+    clis_verify_cmd: "/usr/local/bin/kyverno version"
+    clis_files:
+      - {src: "kyverno", dest: "/usr/local/bin/kyverno"}
+  when: clis_need_install | bool

@@ -1,0 +1,21 @@
+---
+argument_specs:
+  main:
+    short_description: Install trivy
+    options:
+      trivy_version:
+        type: str
+        required: true
+        description: Release tag to install, or "latest" to track upstream.
+      trivy_arch:
+        type: dict
+        required: true
+        description: Upstream's own spelling of each target architecture.
+      trivy_url:
+        type: str
+        required: true
+        description: Download template; {version}, {version_nov} and {arch} are substituted.
+      trivy_sha256:
+        type: dict
+        required: true
+        description: Expected digest per architecture. Empty means the download is unverified.

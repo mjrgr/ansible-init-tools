@@ -1,0 +1,13 @@
+---
+argocd_version: "v3.5.7"
+
+argocd_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+argocd_url: "https://github.com/argoproj/argo-cd/releases/download/{version}/argocd-linux-{arch}"
+
+# Regenerate with `make checksums ROLE=argocd`; empty means unverified.
+argocd_sha256:
+  amd64: "e9b7c3f5316b8546bdd499dfb8d874e413a5e3605899a55ec2ce0b668a3e2801"
+  arm64: "6310acfc44f2b492b5cdb5352c86f11a42d35895b3bd522d0f4fa9df4e9ad314"

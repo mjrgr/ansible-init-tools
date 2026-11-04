@@ -1,0 +1,29 @@
+---
+# role: cloud_provider_kind
+
+- name: "Resolve the cloud-provider-kind version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: cloud_provider_kind
+    clis_repo: kubernetes-sigs/cloud-provider-kind
+    clis_target: "{{ cloud_provider_kind_version }}"
+
+- name: "Decide whether cloud-provider-kind must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: cloud_provider_kind
+    clis_bin: /usr/local/bin/cloud-provider-kind
+    clis_version_cmd: "/usr/local/bin/cloud-provider-kind version"
+    clis_target: "{{ cloud_provider_kind_version }}"
+
+- name: "Install cloud-provider-kind"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: cloud_provider_kind
+    clis_url: "{{ cloud_provider_kind_url }}"
+    clis_arch_map: "{{ cloud_provider_kind_arch }}"
+    clis_sha256: "{{ cloud_provider_kind_sha256[clis_arch] }}"
+    clis_verify_cmd: "/usr/local/bin/cloud-provider-kind version"
+    clis_files:
+      - {src: "cloud-provider-kind", dest: "/usr/local/bin/cloud-provider-kind"}
+  when: clis_need_install | bool

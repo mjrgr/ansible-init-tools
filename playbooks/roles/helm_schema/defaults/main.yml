@@ -1,0 +1,13 @@
+---
+helm_schema_version: "0.24.0"
+
+helm_schema_arch:
+  amd64: "x86_64"
+  arm64: "arm64"
+
+helm_schema_url: "https://github.com/dadav/helm-schema/releases/download/{version}/helm-schema_{version_nov}_Linux_{arch}.tar.gz"
+
+# Regenerate with `make checksums ROLE=helm_schema`; empty means unverified.
+helm_schema_sha256:
+  amd64: "0a075160075216d820385aa3dfb738052fee6cea56802de1551d1bda60c26f36"
+  arm64: "c1e7221a2298eee31e409f9781a04a923a03ae6bb3e2c936b62b00881264224b"

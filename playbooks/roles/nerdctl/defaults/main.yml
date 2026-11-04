@@ -3,7 +3,7 @@
 # Set to "latest" to track upstream, or override on the command line:
 #   -e nerdctl_version=<tag>
 # Bump deliberately, then re-run the container tests.
-nerdctl_version: "v2.4.1"
+nerdctl_version: "v2.4.2"
 
 # Upstream's own spelling of each target — no two projects agree on these.
 nerdctl_arch:
@@ -16,5 +16,5 @@ nerdctl_url: "https://github.com/containerd/nerdctl/releases/download/v{version_
 # /usr/local/bin. Regenerate with `make checksums` after bumping the version.
 # Empty means unverified, which is what a "latest" pin necessarily gets.
 nerdctl_sha256:
-  amd64: "f6bbf02fd8a299cbcbc71a0bad113c1b63b3f33689bbb7d51b0fa98c6d361d5e"
-  arm64: "2b60e7311589342abec39ffd2c172bef51da31ccc1278a89ec3aa04d1d3040bb"
+  amd64: "41a66995888043c0ba05f8061574eaba1b9e06b9b21c2a238215179df2728d3f"
+  arm64: "6bb9cfe435be3745c079cde6c1fd14d6515a84de2b285993d1d3e2be2c4fa36a"

@@ -1,0 +1,13 @@
+---
+telepresence_version: "v2.32.3"
+
+telepresence_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+telepresence_url: "https://github.com/telepresenceio/telepresence/releases/download/{version}/telepresence-linux-{arch}"
+
+# Regenerate with `make checksums ROLE=telepresence`; empty means unverified.
+telepresence_sha256:
+  amd64: "e9c32ab75c8b0247d11fce0fc15894bf70b2964465217879353a3be0b5fe8ede"
+  arm64: "b52c4ee113054aafca3b9e4d67bcc79fe2b57741a4be7a25ddd221af6f5758eb"

@@ -1,0 +1,13 @@
+---
+ko_version: "v0.19.1"
+
+ko_arch:
+  amd64: "x86_64"
+  arm64: "arm64"
+
+ko_url: "https://github.com/ko-build/ko/releases/download/{version}/ko_{version_nov}_Linux_{arch}.tar.gz"
+
+# Regenerate with `make checksums ROLE=ko`; empty means unverified.
+ko_sha256:
+  amd64: "635ac6ea3fd376c935fee597fbb29ab2c2449f49ef1655085fe3aa9c25fed7a5"
+  arm64: "4099b2d1170d3b8a70e049237462efc2dd14d5fa30e9d2e5e108fb4f778cdd3f"

@@ -1,0 +1,29 @@
+---
+# role: hubble
+
+- name: "Resolve the hubble version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: hubble
+    clis_repo: cilium/hubble
+    clis_target: "{{ hubble_version }}"
+
+- name: "Decide whether hubble must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: hubble
+    clis_bin: /usr/local/bin/hubble
+    clis_version_cmd: "/usr/local/bin/hubble --version"
+    clis_target: "{{ hubble_version }}"
+
+- name: "Install hubble"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: hubble
+    clis_url: "{{ hubble_url }}"
+    clis_arch_map: "{{ hubble_arch }}"
+    clis_sha256: "{{ hubble_sha256[clis_arch] }}"
+    clis_verify_cmd: "/usr/local/bin/hubble --version"
+    clis_files:
+      - {src: "hubble", dest: "/usr/local/bin/hubble"}
+  when: clis_need_install | bool

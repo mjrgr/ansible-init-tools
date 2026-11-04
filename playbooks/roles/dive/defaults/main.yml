@@ -1,0 +1,13 @@
+---
+dive_version: "v0.13.1"
+
+dive_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+dive_url: "https://github.com/wagoodman/dive/releases/download/{version}/dive_{version_nov}_linux_{arch}.tar.gz"
+
+# Regenerate with `make checksums ROLE=dive`; empty means unverified.
+dive_sha256:
+  amd64: "0970549eb4a306f8825a84145a2534153badb4d7dcf3febd1967c706367c3d0e"
+  arm64: "2fcd2cf20f634ccdb41efac44048b204bfc867c115641f37a7420693ed480a18"

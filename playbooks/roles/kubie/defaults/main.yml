@@ -1,0 +1,13 @@
+---
+kubie_version: "v0.28.0"
+
+kubie_arch:
+  amd64: "amd64"
+  arm64: "arm64"
+
+kubie_url: "https://github.com/sbstp/kubie/releases/download/{version}/kubie-linux-{arch}"
+
+# Regenerate with `make checksums ROLE=kubie`; empty means unverified.
+kubie_sha256:
+  amd64: "73c33bf140e3a6bf4cb603c371d1189f5bcce85ccc4e48fcfef9cd64642ffead"
+  arm64: "04e85711d515d2a81998677d2cdfd6e3d8943dd050b6cd1a5d29ee837b47913e"

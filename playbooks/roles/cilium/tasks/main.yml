@@ -1,0 +1,29 @@
+---
+# role: cilium
+
+- name: "Resolve the cilium version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: cilium
+    clis_repo: cilium/cilium-cli
+    clis_target: "{{ cilium_version }}"
+
+- name: "Decide whether cilium must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: cilium
+    clis_bin: /usr/local/bin/cilium
+    clis_version_cmd: "/usr/local/bin/cilium version --client"
+    clis_target: "{{ cilium_version }}"
+
+- name: "Install cilium"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: cilium
+    clis_url: "{{ cilium_url }}"
+    clis_arch_map: "{{ cilium_arch }}"
+    clis_sha256: "{{ cilium_sha256[clis_arch] }}"
+    clis_verify_cmd: "/usr/local/bin/cilium version --client"
+    clis_files:
+      - {src: "cilium", dest: "/usr/local/bin/cilium"}
+  when: clis_need_install | bool

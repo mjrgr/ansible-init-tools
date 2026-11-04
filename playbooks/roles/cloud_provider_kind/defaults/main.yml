@@ -1,0 +1,13 @@
+---
+cloud_provider_kind_version: "v0.12.0"
+
+cloud_provider_kind_arch:
+  amd64: "linux_amd64"
+  arm64: "linux_arm64"
+
+cloud_provider_kind_url: "https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/{version}/cloud-provider-kind_{version_nov}_{arch}.tar.gz"
+
+# Regenerate with `make checksums ROLE=cloud_provider_kind`; empty means unverified.
+cloud_provider_kind_sha256:
+  amd64: "5716aca8f01a85172c12f3b6329c70f151bec02c91b6f600c9f230845ee138e6"
+  arm64: "8c13bb92ec621d23a77397fe894ac36c10e9d22b92c04fe54d8c9256355d3263"

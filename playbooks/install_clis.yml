@@ -28,7 +28,24 @@
       - helmfile
       - nerdctl
       - crictl
+      - argocd
+      - kubectx
+      - kubie
+      - cilium
+      - hubble
+      - kyverno
+      - vcluster
+      - cmctl
+      - k0sctl
+      - telepresence
+      - cloud_provider_kind
+      - helm_schema
       - opentofu
+      - trivy
+      - cosign
+      - oras
+      - dive
+      - ko
       - yq
       - jq
       - gh
@@ -50,6 +67,7 @@
       - neovim
       - vscode
       - codex
+      - mise
 
     common_packages:
       - git

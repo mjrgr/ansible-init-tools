@@ -1,0 +1,19 @@
+---
+kubectx_version: "v0.11.0"
+
+kubectx_arch:
+  amd64: "x86_64"
+  arm64: "arm64"
+
+kubectx_url: "https://github.com/ahmetb/kubectx/releases/download/{version}/kubectx_{version}_linux_{arch}.tar.gz"
+
+# Regenerate with `make checksums ROLE=kubectx`; empty means unverified.
+kubectx_sha256:
+  amd64: "08e031c54fbffb3f100e904e4eae94bba2730fedf4869921fda79e4d7a8f5d4c"
+  arm64: "1dac2072216689e773325cb7587b858ea7415706ebcf04e23bf80e7e70555340"
+
+kubectx_kubens_url: "https://github.com/ahmetb/kubectx/releases/download/{version}/kubens_{version}_linux_{arch}.tar.gz"
+
+kubectx_kubens_sha256:
+  amd64: "326c021c7b35468ed9a187b361198d0f22ae32828139c65eb6670c0d8301cc09"
+  arm64: "37058abe82ef20c93b44f3dc8ca2382dbb95d416cec958fbf7b8f79f011be86c"

@@ -1,0 +1,28 @@
+---
+# role: telepresence
+
+- name: "Resolve the telepresence version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: telepresence
+    clis_repo: telepresenceio/telepresence
+    clis_target: "{{ telepresence_version }}"
+
+- name: "Decide whether telepresence must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: telepresence
+    clis_bin: /usr/local/bin/telepresence
+    clis_version_cmd: "/usr/local/bin/telepresence version"
+    clis_target: "{{ telepresence_version }}"
+
+- name: "Install telepresence"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_binary.yml"
+  vars:
+    clis_name: telepresence
+    clis_url: "{{ telepresence_url }}"
+    clis_arch_map: "{{ telepresence_arch }}"
+    clis_sha256: "{{ telepresence_sha256[clis_arch] }}"
+    clis_verify_cmd: "/usr/local/bin/telepresence version"
+    clis_dest: /usr/local/bin/telepresence
+  when: clis_need_install | bool

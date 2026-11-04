@@ -1,0 +1,47 @@
+---
+# role: kubectx
+
+- name: "Resolve the kubectx version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: kubectx
+    clis_repo: ahmetb/kubectx
+    clis_target: "{{ kubectx_version }}"
+
+- name: "Decide whether kubectx must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: kubectx
+    clis_bin: /usr/local/bin/kubectx
+    clis_version_cmd: "/usr/local/bin/kubectx --version"
+    clis_target: "{{ kubectx_version }}"
+
+- name: "Install kubectx"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: kubectx
+    clis_url: "{{ kubectx_url }}"
+    clis_arch_map: "{{ kubectx_arch }}"
+    clis_sha256: "{{ kubectx_sha256[clis_arch] }}"
+    clis_verify_cmd: "/usr/local/bin/kubectx --version"
+    clis_files:
+      - {src: "kubectx", dest: "/usr/local/bin/kubectx"}
+  when: clis_need_install | bool
+
+# kubens ships as its own archive under the same tag; the probe only sees kubectx.
+- name: "Check for kubens"
+  ansible.builtin.stat:
+    path: /usr/local/bin/kubens
+  register: kubectx_kubens_bin
+
+- name: "Install kubens"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_archive.yml"
+  vars:
+    clis_name: kubectx
+    clis_url: "{{ kubectx_kubens_url }}"
+    clis_arch_map: "{{ kubectx_arch }}"
+    clis_sha256: "{{ kubectx_kubens_sha256[clis_arch] }}"
+    clis_verify_cmd: "/usr/local/bin/kubens --version"
+    clis_files:
+      - {src: "kubens", dest: "/usr/local/bin/kubens"}
+  when: clis_need_install | bool or not kubectx_kubens_bin.stat.exists

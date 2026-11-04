@@ -1,0 +1,28 @@
+---
+# role: argocd
+
+- name: "Resolve the argocd version and architecture"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"
+  vars:
+    clis_name: argocd
+    clis_repo: argoproj/argo-cd
+    clis_target: "{{ argocd_version }}"
+
+- name: "Decide whether argocd must be installed"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/probe.yml"
+  vars:
+    clis_name: argocd
+    clis_bin: /usr/local/bin/argocd
+    clis_version_cmd: "/usr/local/bin/argocd version --client --short"
+    clis_target: "{{ argocd_version }}"
+
+- name: "Install argocd"
+  ansible.builtin.include_tasks: "{{ role_path }}/../clis_common/tasks/install_binary.yml"
+  vars:
+    clis_name: argocd
+    clis_url: "{{ argocd_url }}"
+    clis_arch_map: "{{ argocd_arch }}"
+    clis_sha256: "{{ argocd_sha256[clis_arch] }}"
+    clis_verify_cmd: "/usr/local/bin/argocd version --client --short"
+    clis_dest: /usr/local/bin/argocd
+  when: clis_need_install | bool
