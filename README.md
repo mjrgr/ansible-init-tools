@@ -1,96 +1,102 @@
+# 📥 init tools 🧰
 
-# 📥 Ansible init Tools 🧰
+A [mise](https://mise.jdx.dev/) setup for installing a collection of CLI tools
+**and deploying personal dotfiles** on **Debian/Ubuntu, Fedora/RHEL and WSL**.
 
-An Ansible project for installing a collection of CLI tools **and deploying personal
-dotfiles** on **Ubuntu / Debian**.
+mise owns everything it can: the tools, their pins, their checksums, the
+environment variables that go with them and the deployment tasks. One shell
+script does what needs root — base packages, podman, WezTerm, VS Code, and the
+mise binary itself. Ansible used to orchestrate all of this; it is gone, and
+[MIGRATION.md](MIGRATION.md) is the path from a machine it provisioned.
 
 ### Features
-- ✅ Self-contained (no external Galaxy roles required)
-- ✅ Idempotent — a re-run installs nothing it already installed, and reports `changed=0`
-- ✅ Every tool pins to a concrete version, or tracks `latest` by default
+- ✅ Self-contained: one config file, one lockfile, a handful of bash tasks
+- ✅ Idempotent — a re-run installs nothing it already installed, and reports no change
+- ✅ Every tool pins to a concrete version, and `mise.lock` carries its sha256 per platform
 - ✅ Dotfiles deployed as symlinks into the repo — edit in `$HOME`, `git status` sees it
 - ✅ Nothing site-specific is versioned: secrets, proxies and host names stay in local override files
 - ✅ Secret scanning in CI and in a pre-commit hook
-- ✅ Tested against a throwaway container, not just against the machine that wrote it
+- ✅ Tested against throwaway containers (Ubuntu 22.04, 26.04, Fedora 43, arm64), not just against the machine that wrote it
 
-## Two playbooks, two privilege scopes
+## Three steps, two privilege scopes
 
-| | `install_clis.yml` | `dotfiles.yml` |
-|---|---|---|
-| Privileges | `become: true` (sudo) | `become: false`, except the one-off `chsh` |
-| Writes to | `/usr/local/bin`, `/etc/apt` | `$HOME`, `$HOME/.config` |
-| Purpose | system-wide tooling | per-user configuration |
+| | `scripts/bootstrap.sh` (then `mise run bootstrap`) | `mise run install` | `mise run dotfiles` |
+|---|---|---|---|
+| Privileges | sudo | none | none, except the one-off `chsh` (your own password) |
+| Writes to | `/usr/local/bin/mise`, `/etc/apt`, `/etc/yum.repos.d`, `/etc/containers` | `~/.local/share/mise` | `$HOME`, `~/.config` |
+| Purpose | what only root can install | every CLI tool, pinned | per-user configuration |
+
+```bash
+sudo apt install -y git make       # dnf on Fedora; the only thing the repo does not install itself
+git clone <this-repo> && cd ansible-init-tools
+make setup                         # bootstrap (sudo), mise trust, mise run install, mise run dotfiles
+exec zsh
+```
+
+`make setup` is the one path that starts without mise: the bootstrap installs
+it. From then on the same three layers are mise tasks (`mise run bootstrap`,
+`mise run install`, `mise run dotfiles`, or `mise run setup` for all three),
+and `make <target>` is only a shorter spelling. The bootstrap asks for sudo
+itself and carries your proxy variables through it; a hand-typed `sudo
+scripts/bootstrap.sh` would drop them before the first `curl`.
 
 ## Included CLIs / utilities
-- kubectl, helm, kind, kwok, k9s, popeye, sofka, argo9s, krew, helmfile
+
+Pinned in `mise/config.toml`, installed under `~/.local/share/mise`:
+
+- kubectl, helm, kind, kwok/kwokctl, k9s, popeye, sofka, argo9s, krew (+ the plugins), helmfile
 - argocd, kubectx/kubens, kubie, cilium, hubble, kyverno, vcluster, cmctl, k0sctl, telepresence, cloud-provider-kind, helm-schema
-- podman (+ podman-docker for the `docker` CLI), nerdctl, crictl
+- nerdctl, crictl
 - opentofu
 - trivy, cosign, oras, dive, ko
-- yq, jq
-- gh
+- yq, jq, gh
 - sops, age, certigo
-- starship, wezterm, vscode
-- btop, lazygit, fzf, glow, vhs, gitlogue
-- neovim (pinned tarball; LazyVim needs >= 0.11, newer than the Ubuntu apt package)
-- codex (OpenAI Codex CLI), herdr (coding-agent session runtime)
+- starship, fzf, btop, lazygit, glow, gum, vhs, gitlogue
 - eza, ripgrep, fd, bat, zoxide, delta
-- cargo, mise (polyglot runtime/tool version manager)
-- git, make, curl, wget, gnupg, unzip, fontconfig
+- neovim (LazyVim needs >= 0.11, newer than the distro package)
+- codex (OpenAI Codex CLI), claude (Claude Code), herdr (coding-agent session runtime), clauth
+- rust (the toolchain the herdr plugins are built with)
 
-WezTerm comes from the official apt repository (`apt.fury.io/wez`): the distro
-packages lag several releases behind. Same reasoning for VS Code and
-`packages.microsoft.com` — with one extra step, since the `code` package installs
-its own copy of that repository from its postinst. The role preseeds
-`code/add-microsoft-repo=false` so apt is not left with two `Signed-By` lines for
-the same URL, which makes it refuse the whole of `sources.list.d`.
+Installed by `scripts/bootstrap.sh`, because they are system packages, GUI
+applications or need root:
 
-Codex CLI is installed from the GitHub release asset rather than `npm i -g
-@openai/codex`: the npm and pip packages only wrap the same static binary, and
-neither node nor python is otherwise a dependency here. It is a ~250 MB binary —
-it embeds its sandbox helpers and its own ripgrep. Unlike Claude Code it does not
-self-update, so `codex_version` is pinned like every other binary role.
+- git, curl, wget, gnupg, unzip, zsh, fontconfig, python3, make, and the cargo build prerequisites (build-essential, pkg-config, OpenSSL headers)
+- podman (+ podman-docker for the `docker` CLI)
+- wezterm, vscode (their official repositories: the distro packages lag)
+- mise itself
 
-The role installs a second binary next to it, `codex-code-mode-host` (~69 MB).
-It is not optional in practice: `codex features list` reports `code_mode_host` as
+Codex CLI is installed from the GitHub release asset (`github:openai/codex`,
+tagged `rust-v<x.y.z>`) rather than `npm i -g @openai/codex`: the npm and pip
+packages only wrap the same static binary. It is a ~250 MB binary — it embeds
+its sandbox helpers and its own ripgrep — and it does not self-update, so it is
+pinned like every other tool.
+
+A second tool comes from the same release, `codex-code-mode-host` (~69 MB). It
+is not optional in practice: `codex features list` reports `code_mode_host` as
 stable and enabled, and the feature fails at runtime with *install
-`codex-code-mode-host`* when the helper is missing — which is what a bare
-`codex` binary leaves you with. Upstream's `install.sh` places it beside the codex
-binary, so `/usr/local/bin` is where it goes here. It carries no `--version`, so
-it is checked for existence rather than through the version probe: a box
-provisioned before this task existed has codex at the pinned version and no helper,
-a state the probe alone reports as up to date.
+`codex-code-mode-host`* when the helper is missing. mise treats two entries for
+one repository as one tool, so the two are declared through `[tool_alias]`,
+each selecting its own asset with `matching_regex`.
 
-certigo is pinned to v1.18.0, the first release that ships a `linux-arm64`
-asset. That binary answers `--version` with `1.17.1`: upstream builds without
-ldflags and did not bump the constant in `cli/cli.go`. Left alone, the probe
-would see 1.17.1 against a v1.18.0 pin and refetch on every run, so the role
-carries a `certigo_reported_version` map keyed by tag. A later bump falls
-outside the map and compares the real number again; if that tag misreports
-too, `make test-clis` fails on its second pass rather than the machine
-silently redownloading forever.
+Claude Code is a mise tool too (`aqua:anthropics/claude-code`, the native
+binary). It is the one entry pinned to `latest`: the lockfile fixes the version
+that `latest` resolved to, `mise upgrade claude` moves it, and
+`DISABLE_AUTOUPDATER=1` in `[env]` keeps its self-updater from fighting the pin.
 
-The Rust CLIs are split by how fast they move. `rust_clis` takes ripgrep, fd, bat
-and zoxide from apt in one batch, and shims `fdfind`/`batcat` back to `fd`/`bat` —
-Debian renames them to avoid a clash with fdclone and bacula. eza and delta get
-their own roles and pinned binaries: the apt versions are a year or more behind
-and predate options the deployed configs use.
+`rust` is a build toolchain, not a CLI anyone runs directly here: it exists so
+the `dotfiles:herdr` task can build the herdr plugins that ship as source
+(herdr-agent-usage, herdr-navigator) and so mise can build `clauth` from
+crates.io. The distro's cargo (1.75 on Ubuntu 22.04/24.04) is years behind and
+cannot build clauth, which needs the `edition2024` cargo feature — stabilized in
+rustc 1.85. mise installs the toolchain through rustup under `~/.rustup` and
+`~/.cargo`, which `.zshenv` already sources. A C/C++ toolchain, pkg-config and
+the OpenSSL headers are in the bootstrap for the same reason: cargo needs them, and a box without them fails `mise install` on clauth rather than quietly
+skipping the plugins.
 
-`cargo` is a build toolchain, not a CLI anyone runs directly here: it exists so
-`dotfiles_herdr` can build the herdr plugins that ship as source
-(herdr-agent-usage, herdr-navigator, clauth). Apt's cargo (1.75 on 22.04/24.04)
-is years behind and cannot build clauth, which needs the `edition2024` cargo
-feature — stabilized in rustc 1.85 — so the role bootstraps a current
-toolchain with `rustup-init` instead, pinned and checksummed like every other
-binary role. `rustup-init` only bootstraps: the toolchain it installs is
-whatever "stable" resolves to at run time, so the pin guards the installer,
-not the compiler version. It installs to `/opt/rust`, not `$HOME/.cargo` —
-`install_clis.yml` runs as root, and a toolchain under `/root` would be
-invisible to every other user, including the unprivileged `dotfiles.yml` play
-that later builds herdr's plugins. Without it, `dotfiles_herdr` skips those
-plugins silently — each lists `cargo` under `requires` and a missing
-requirement is a skip, not a failure, so a box that never ran `make install`
-for this role just has a quieter herdr sidebar and no error to explain why.
+The apt-era CLIs — gh, jq, ripgrep, fd, bat, zoxide, age — are pinned now like
+the rest, instead of tracking whatever the distro ships. There is no
+`fdfind`/`batcat` renaming either: mise installs the upstream binaries under
+their upstream names.
 
 ## Managed dotfiles
 
@@ -99,18 +105,19 @@ for this role just has a quieter herdr sidebar and no error to explain why.
 | `zsh` | `~/.zshrc`, `~/.zshenv`, oh-my-zsh + 3 external plugins, `~/.config/zsh/wezterm.zsh`, `~/.kube/k8s-clusters.sh`, `~/.config/krelay/patch-hardened.json` |
 | `starship` | `~/.config/starship.toml` |
 | `fonts` | JetBrainsMono Nerd Font into `~/.local/share/fonts` |
-| `claude` | Claude Code into `~/.local/share/claude`, symlinked at `~/.local/bin/claude` |
 | `tmux` | `~/.tmux.conf` |
 | `git` | `~/.gitconfig` |
 | `wezterm` | `~/.config/wezterm/wezterm.lua`, `~/.config/wezterm/claude-state-hook.sh`, and the hook registration merged into `~/.claude/settings.json` |
-| `btop` | `~/.config/btop/btop.conf` |
+| `btop` | `~/.config/btop/btop.conf`, and `~/.config/btop/themes` → the themes shipped in the btop release mise unpacks |
 | `nvim` | `~/.config/nvim` (LazyVim starter, whole directory; `lazy-lock.json` lands in the repo) |
+| `mise` | `~/.config/mise` → `mise/` in this repo: the tool pins, `mise.lock`, `[env]` and the tasks become global |
 | `herdr` | `~/.config/herdr/config.toml`, `herd-publish.sh` + its user unit, `claude-statusline.sh`, `quota-status.sh`, `~/.config/herdr-automatic-rename/config.sh`, the generated `~/.claude/skills/herdr/SKILL.md`, and the pinned marketplace plugins |
 
-Each one is a symlink into `dotfiles/` in this repo, so an edit made in `$HOME` shows
-up in `git status` with no copy-back step. Two entries are not links: `fonts` installs
-a font, and the `wezterm` group merges its Claude Code hooks into an existing
-`~/.claude/settings.json` rather than replacing a file that is not ours.
+Each one is a symlink into this repo, so an edit made in `$HOME` shows up in
+`git status` with no copy-back step — including `mise.lock`, which `mise install`
+rewrites through the `~/.config/mise` link. Two entries are not links: `fonts`
+installs a font, and the `wezterm` group merges its Claude Code hooks into an
+existing `~/.claude/settings.json` rather than replacing a file that is not ours.
 
 The Nerd Font is not cosmetic: `starship.toml` and `wezterm.lua` use Private Use Area
 glyphs, and without the font the prompt and the tab bar render tofu.
@@ -174,19 +181,18 @@ neither. A host with no user systemd — a container, notably — skips the whol
 rather than versioned here: it documents the CLI of the herdr that printed it, so a
 copy committed to this repo would drift into teaching Claude commands that no longer
 exist. `update.version_check` and `update.manifest_check` are off for the same reason
-the binary is pinned — the version is decided by `playbooks/roles/herdr`, not by a
+the binary is pinned — the version is decided by `mise/config.toml`, not by a
 background call to herdr.dev.
 
 Marketplace plugins are pinned the same way, to a commit rather than a tag, in
-`dotfiles_herdr_plugins`. A plugin is code that runs as you with your whole
+the `dotfiles:herdr` task (`mise/tasks/dotfiles/herdr`). A plugin is code that runs as you with your whole
 environment — tokens, kubeconfigs — so `--ref` has to name bytes someone read, and a
 tag can be moved after the fact. `herdr plugin install` re-clones and replaces on
-every call, so the role reads `herdr plugin list --json` first and installs only
+every call, so the task reads `herdr plugin list --json` first and installs only
 what is absent or sits on another commit. Each entry says which tools its build
 needs; a host without them (the container, a box with no Rust toolchain) skips that
-plugin and reports it rather than failing. `clauth` itself comes from crates.io
-because upstream publishes no linux-arm64 asset and a binary role here has to
-checksum both targets. There is no rollback for plugins beyond `herdr plugin
+plugin and reports it rather than failing. `clauth` itself is a mise tool built
+from crates.io (`cargo:clauth`) because upstream publishes no linux-arm64 asset. There is no rollback for plugins beyond `herdr plugin
 uninstall <id>`.
 
 `herdr-automatic-rename` reads `~/.config/herdr-automatic-rename/config.sh`, a path
@@ -223,7 +229,7 @@ after a bump, then put the two hand edits back:
   The last row is the plugin's context meter, `cx ▰▱▱▱▱▱ 16%`, which it only
   publishes in its `gauges` layout, green, then yellow past 50 % used and red past
   80 %. The layout and the used-not-remaining style are two files in the plugin's
-  state directory; the role writes them directly (`dotfiles_herdr_agent_usage_prefs`)
+  state directory; the `dotfiles:herdr` task writes them directly
   because `configure` would rewrite the rows and the statusLine along with them.
   The second row is herdr's `terminal_title_stripped`, the session title Claude Code
   sets after a few turns (`Claude Code` before that, nothing for Codex), rather than
@@ -247,10 +253,11 @@ choose, across every workspace and SSH machine in the session. The state marks c
 from herdr's own `agent_status`, which is finer than the hook's: `⚡` working,
 `⏸` blocked on a permission prompt, `✓` done, `·` idle.
 
-It calls `herdr` through `wsl.exe` on the Windows side, in a non-login shell whose
-PATH covers `/usr/local/bin` but not `~/.local/bin`. So the picker only works against
-the binary `install_clis.yml` installs — a copy left in `~/.local/bin` by herdr's own
-installer is invisible to it, and `herdr update` would keep that copy, not this one.
+It calls `herdr` through `wsl.exe` on the Windows side, in a non-login shell that
+reads `.zshenv` but never `.zshrc`. `.zshenv` is where the mise shims go on PATH,
+and that is what makes the picker find the pinned herdr; a copy left in
+`~/.local/bin` by herdr's own installer is not on that PATH, and `herdr update`
+would move that copy, not the pin.
 
 The zsh and WezTerm configs work together: `~/.config/zsh/wezterm.zsh` emits OSC 133
 semantic zones and publishes the current kubectl context as a user var, which
@@ -307,7 +314,7 @@ so the scheme in force is kept in a local rather than read back from the handler
 `window-config-reloaded` applies. The glyph, not the colour, is what separates it
 from the claude icon.
 
-Unlike claude the binary is a plain `/usr/local/bin/codex`, so the process check
+Unlike claude the binary mise installs is a plain `codex`, so the process check
 recognises it by leaf name. There is no title fallback here the way `k9s` has one:
 codex overwrites the pane title with the cwd basename once its TUI is up, so
 matching the title lit the tab for the second or two before that and then dropped
@@ -354,7 +361,7 @@ Windows+WSL laptop from one file, branching on `wezterm.target_triple` for the
 handful of settings that only make sense on one side (`wsl_domains`,
 `default_prog`, `enable_wayland`). On Windows, `wezterm-gui.exe` reads its
 config from the Windows profile (`%USERPROFILE%\.wezterm.lua`), never from
-WSL's `$HOME` — this repo's ansible roles have no reach there. Point it at the
+WSL's `$HOME` — nothing in this repo reaches there. Point it at the
 repo file once, from an elevated-or-Developer-Mode PowerShell/cmd so `mklink`
 doesn't need admin:
 
@@ -386,13 +393,18 @@ on the symlink when the target distro no longer exists.
 `make help` lists everything. The common paths:
 
 ```bash
-make install     # CLI tools (sudo) — installs only what is missing
-make upgrade     # re-run every installer and upgrade in place
-make dotfiles    # deploy the dotfiles (no sudo)
+make setup       # fresh box: bootstrap (sudo), then every tool and the dotfiles
+make bootstrap   # system packages, podman, wezterm, vscode, mise (sudo); ARGS="--skip podman,wezterm,vscode"
+make install     # every pinned tool from mise.lock, then the krew plugins
+make upgrade     # the packages the bootstrap owns to their latest (sudo), then every pin to upstream's latest
+make bump        # the pins only: upstream's latest, refresh the lock, install (no sudo)
+make bump-mise   # the mise pin itself (version + sha256) in scripts/bootstrap.sh, then make bootstrap
+make dotfiles    # deploy the dotfiles (asks your password once, for chsh)
 make rollback    # remove the symlinks, restore the backups
-make test        # deploy in a container, assert idempotence
-make lint        # yamllint + ansible-lint + syntax check + checksum audit
-make checksums   # refetch every pinned asset and record its sha256
+make test        # bootstrap + dotfiles in a container, assert idempotence
+make lint        # shellcheck + yamllint + config parse + lock audit
+make lock        # refresh mise.lock after editing a pin
+make drift       # which pins upstream has moved past
 make scan        # scan the tree and history for secrets
 make hooks       # enable the pre-commit secret scan
 ```
@@ -400,54 +412,25 @@ make hooks       # enable the pre-commit secret scan
 The underlying commands, when you need finer control:
 
 ```bash
-ansible-playbook playbooks/install_clis.yml -c local --ask-become-pass
-ansible-playbook playbooks/dotfiles.yml -c local --ask-become-pass
+scripts/bootstrap.sh --skip podman,wezterm,vscode   # only what mise needs
+mise run bootstrap -- --upgrade                         # the bootstrap's packages to their latest, nothing else
+mise install kubectl helm                               # two tools
+mise run dotfiles:starship                              # one dotfiles group
+mise tasks                                              # every task, with its description
 ```
 
-### Ubuntu 26.04: sudo-rs breaks `--ask-become-pass`
-
-Ubuntu 25.10 and later ship `sudo-rs` as `/usr/bin/sudo`. Ansible's `sudo` become
-plugin hands the password to the child on stdin, which sudo-rs does not take the way
-`sudo -S` does — it re-prints a prompt of its own and keeps waiting, so every play
-dies on the first task:
-
-```
-[ERROR]: Task failed: Timed out waiting for become success or become password prompt.
->>> Standard Error
-[sudo: [sudo via ansible, key=...] password:] Password:
-```
-
-`sudo --version` tells them apart — `sudo-rs 0.2.x` versus `Sudo version 1.9.x`.
-Having the `sudo` package installed proves nothing: sudo-rs owns the path either way.
-Swap it back, and keep a root shell open in a second terminal until the new binary
-answers, since the removal takes away the `sudo` in use:
-
-```bash
-sudo apt-get install --reinstall -y sudo
-sudo apt-get remove -y sudo-rs
-sudo --version | head -1
-```
-
-A `NOPASSWD` drop-in in `/etc/sudoers.d` is the other way out — sudo-rs reads it — but
-it trades one interactive password for permanent passwordless root on the account.
-
-One tool or one group, either by variable or by tag:
-
-```bash
-ansible-playbook playbooks/install_clis.yml -e install_only=kubectl -c local -K
-ansible-playbook playbooks/install_clis.yml --tags kubectl,helm -c local -K
-ansible-playbook playbooks/dotfiles.yml --tags starship -c local
-```
-
-Useful variables:
+Useful knobs:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `clis_state` | `present` | `latest` re-runs every installer and upgrades |
-| `<tool>_version` | `latest` | pin one tool, e.g. `-e kubectl_version=v1.30.0` |
-| `install_only` | *(unset)* | install a single tool |
-| `dotfiles_only` | *(unset)* | deploy a single group |
-| `dotfiles_set_default_shell` | `true` | `chsh` to zsh — needs `--ask-become-pass`, on that run only |
+| `DOTFILES_SET_DEFAULT_SHELL` | `true` | `false` skips the `chsh` to zsh |
+| `DOTFILES_HERDR_PLUGINS` | `true` | `false` skips the herdr plugin installs (memex cannot be built on Ubuntu 22.04) |
+| `MISE_GITHUB_TOKEN` | *(unset)* | a GitHub token for the `github:` backend tools; the anonymous API quota is 60 calls/hour per IP |
+| `BASE_IMAGE` | `ubuntu:26.04` | the distro the container tests run against (`ubuntu:22.04`, `fedora:43`) |
+| `KREW_ROOT` | `~/.krew` | where `mise run krew-plugins` installs the kubectl plugins |
+
+The tools live under your user, not in `/usr/local/bin`: `sudo kubectl` does not
+find them. `sudo env "PATH=$PATH" kubectl` does, when root really has to run one.
 
 ## Containers: podman, not docker
 
@@ -455,123 +438,121 @@ There is no Docker Engine. `podman-docker` provides `docker` as a shim over podm
 daemonless, rootless, and no `docker0` bridge — whose default 172.17.0.0/16 route
 cut SSH on a VM whose client sat in that range.
 
-On a machine provisioned before the switch, the podman role removes the Docker
-packages, apt source and leftover `docker0`. `/var/lib/docker` is kept; delete it
+On a machine provisioned before the switch, the bootstrap removes the Docker
+packages, repository and leftover `docker0`. `/var/lib/docker` is kept; delete it
 by hand once nothing in it is needed.
 
 - `docker compose` needs a provider: `podman compose` delegates to `docker-compose`
   or `podman-compose`, neither installed here.
-- kind: `KIND_EXPERIMENTAL_PROVIDER=podman`.
+- kind: `KIND_EXPERIMENTAL_PROVIDER=podman`, set in `[env]`.
 
 ## Reproducibility
 
-Every tool installed from a release binary is pinned to a concrete version in
-`playbooks/roles/<tool>/defaults/main.yml`, so two machines provisioned months apart
-get the same binary. The list is not repeated here, or in the test suite: both derive
-it from the `<role>_version` defaults, so a role added later is covered without
-anyone remembering to register it.
-
-Override per run, or edit the default to bump:
+Every tool is pinned to a concrete version in `mise/config.toml`, so two machines
+provisioned months apart get the same binary. Override per run, or edit the pin:
 
 ```bash
-ansible-playbook playbooks/install_clis.yml -c local -K -e kubectl_version=v1.30.0
-ansible-playbook playbooks/install_clis.yml -c local -K -e kubectl_version=latest
+mise install kubectl@1.30.0          # once, outside the config
+mise use -g kubectl@1.30.0           # edits mise/config.toml (global = this repo)
 ```
 
-A re-run is idempotent: each role probes the installed version first and skips when it
-already matches. Moving a pin is detected and reinstalls. `clis_state=latest` is the
-explicit opt-in to upgrade everything past its pin — the same semantics as
-`state: present` versus `state: latest` on the apt module.
+A re-run is idempotent: `mise install` skips every tool already at its pin.
+Moving a pin is detected and reinstalls. `make bump` (`mise upgrade --bump`)
+is the explicit opt-in to move every pin past what is written — it rewrites the
+config and the lock, so the result is a diff to review, not a surprise. `make
+upgrade` does the same after `scripts/bootstrap.sh --upgrade`, which moves the
+packages the bootstrap installed (and only those) to their latest.
 
-### The pin says which version, the checksum says which bytes
+### The pin says which version, the lock says which bytes
 
 A version pin alone buys reproducibility, not integrity: a git tag is mutable, a
-release asset can be replaced under it, and a download that goes through a proxy or a
-compromised mirror arrives with nobody the wiser. So every binary download also
-carries the sha256 it must hash to, next to the version that names it:
+release asset can be replaced under it, and a download that goes through a proxy
+or a compromised mirror arrives with nobody the wiser. `mise.lock` is where the
+bytes are named: for every tool and both Linux platforms, the exact URL and the
+sha256 it must hash to.
 
-```yaml
-kind_version: "v0.33.0"
-kind_sha256:
-  amd64: "aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d"
-  arm64: "20022bee6cfcd5086cb7234d218e3454e6090022f2a8f55d1fa7fcf42c3867a2"
+```toml
+[[tools.kind]]
+version = "0.33.0"
+backend = "aqua:kubernetes-sigs/kind"
+
+[tools.kind."platforms.linux-arm64"]
+checksum = "sha256:20022bee6cfcd5086cb7234d218e3454e6090022f2a8f55d1fa7fcf42c3867a2"
+url = "https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-linux-arm64"
 ```
 
-`get_url` verifies before the file is installed, so a mismatch fails the run instead
-of landing in `/usr/local/bin`. Bumping a version means refreshing the digests:
+mise verifies before the file is installed, so a mismatch fails the run instead
+of landing on disk. Bumping a version means refreshing the lock:
 
 ```bash
-make checksums            # refetch every pinned asset, write its digest back
-make checksums-audit      # offline: assert no pinned version is missing one
+make lock          # mise lock: resolve every URL and digest again
+make lock-audit    # offline: assert every tool is locked for both platforms with a sha256
 ```
 
 Digests are never edited by hand — a hand-copied digest is one nobody rechecked.
-`make lint` runs the offline audit, CI runs it on every PR, and a weekly job refetches
-every asset and reports any that no longer hashes to what the repo says: an artefact
+`make lint` runs the offline audit, CI runs it on every PR, and a weekly job
+re-resolves every asset and fails when the lock no longer matches: an artefact
 that was supposed to be immutable and was not is worth knowing about.
 
-A version pinned to `latest` cannot be checksummed ahead of time, and its digest is
-blanked to say so. That is the cost of not pinning, made visible rather than implied.
+Two entries carry no digest: `rust` (rustup verifies the toolchain it downloads)
+and `clauth` (cargo verifies the crate against the registry index). The audit
+exempts those two backends by name, not the tools.
 
-The digest proves the bytes are the ones upstream published; it says nothing about
-whether they run on this machine. So each role also executes what it just installed.
-A musl build on a host that needs glibc, or a wrong architecture slug in a map, both
-download perfectly and then fail on first use — which is a worse place to find out.
-
-The apt-installed tools are outside this: their packages are verified against the
-repository signing key in `/etc/apt/keyrings`, which is the same guarantee by
-another route.
+Beyond the checksum, mise verifies what the upstream publishes: cosign
+signatures and SLSA provenance through the aqua registry, GitHub artifact
+attestations for the `github:` backend. aqua is preferred for that reason, and
+because it downloads straight from the release URL. The `github:` backend is
+used only where the registry has no entry (argo9s, gitlogue, certigo) or where
+one release holds several tools (codex, krew, kwok); it reads release metadata
+from `api.github.com`, which is why `MISE_GITHUB_TOKEN` exists.
 
 ### Architectures
 
-`x86_64` and `aarch64`. Every role maps those onto whatever its upstream calls them —
-there is no agreement whatsoever (`linux-amd64`, `x86_64-unknown-linux-gnu`,
-`Linux_x86_64`, and starship publishes a gnu build for x86_64 and only a musl one for
-aarch64) — so the mapping lives in each role's `<role>_arch` default. A host that is
-neither fails with a named error rather than a 404 mid-download. CI installs the whole
-set on both.
+`x86_64` and `aarch64`. mise maps those onto whatever each upstream calls them,
+and `lockfile_platforms` restricts the lock to the two Linux targets — the
+`matching_regex` entries name no macOS or Windows asset, and locking them would
+fail. A host that is neither fails with a named error. CI installs the whole set
+on both.
 
-Not pinned, and why:
+**Dependabot does not watch these pins** — no ecosystem understands versions
+living in `mise/config.toml`. It covers the GitHub Actions only, which are pinned
+by commit SHA with the version in a trailing comment. What guards the pins is
+the `clis` CI job, which installs every locked version in a container and fails
+on a yanked tag or a changed asset URL.
 
-| Tool | Reason |
-|---|---|
-| gh, podman, jq, wezterm, vscode, rust_clis | installed from apt repositories, which track whatever apt has at install time; the distro decides the version, and apt's signature check is what guards the download |
-| claude | self-updating, and installed per user by the dotfiles play; pick a train with `dotfiles_claude_channel` |
-
-**Dependabot does not watch these pins** — no ecosystem understands versions living in
-Ansible defaults. It covers the GitHub Actions only, which are pinned by commit SHA
-with the version in a trailing comment: a tag is mutable and an action runs with the
-workflow's permissions. What
-guards the pins is `make test-pins`, which installs every pinned version in a
-container and fails on a yanked tag or a changed asset URL. It runs in CI.
-
-`make test-pins` answers "does this pin still install", not "is this pin current" —
-a tool can sit three minors behind and stay green forever. `make drift` answers the
-second question: it reads the latest release of each tool and prints what has moved
-on. CI runs it every Monday and keeps a single `pin-drift` issue in sync with the
-result — opened when something lags, edited on later runs, closed when everything
-matches again. The upstream repo is read out of each role's own download URL, so a
-new role is covered without registering it anywhere; the three tools that do not
-download from GitHub (kubectl, helm, starship) are named in the script, and a role
-with neither is reported as unknown rather than quietly skipped.
+That answers "does this pin still install", not "is this pin current". `make
+drift` (`mise outdated`) answers the second question. CI runs it every Monday
+and keeps a single `pin-drift` issue in sync with the result — opened when
+something lags, edited on later runs, closed when everything matches again.
 
 ## Bootstrap on a new machine
 
 ```bash
+sudo apt install -y git make      # dnf on Fedora
 git clone <this-repo> && cd ansible-init-tools
 
-# 1. Tools (sudo)
-ansible-playbook playbooks/install_clis.yml -c local --ask-become-pass
+# 1-3 in one go: make setup. Step by step:
+# 1. What needs root: base packages, podman, wezterm, vscode, mise
+scripts/bootstrap.sh         # from now on: mise run bootstrap
 
-# 2. Dotfiles + set zsh as the login shell
-ansible-playbook playbooks/dotfiles.yml -c local --ask-become-pass
+# 2. Every pinned tool, then the krew plugins
+make install
 
-# 3. Fill in the local, non-versioned files
+# 3. Dotfiles + set zsh as the login shell (asks your password once)
+make dotfiles
+exec zsh
+
+# 4. Fill in the local, non-versioned files
 $EDITOR ~/.zshenv.local     # secrets, tokens, proxy (mode 0600)
 $EDITOR ~/.gitconfig.local  # git identity, credential helper
 ```
 
-The repo must stay in place after deployment: `$HOME` symlinks point into it.
+The repo must stay in place after deployment: `$HOME` symlinks point into it,
+`~/.config/mise` among them.
+
+On WSL, the `herd-publish` user unit needs systemd: `systemd=true` under
+`[boot]` in `/etc/wsl.conf`, then `wsl --shutdown`. Without it the task skips
+the unit and says so.
 
 ## Local overrides
 
@@ -585,87 +566,71 @@ overwritten by a re-run:
 | `~/.zshenv.local` | tokens, proxy | by **every** zsh shell, before `.zshrc` |
 | `~/.zshrc.local` | interactive aliases and overrides | at the end of `.zshrc` |
 | `~/.gitconfig.local` | git identity, credential helper | via `[include]` from `.gitconfig` |
+| `mise/config.local.toml` | machine-local tools or env, next to the versioned config | by mise, after `config.toml` |
 
 Secrets go in `~/.zshenv.local`, not `~/.zshrc.local`: a process spawned outside an
 interactive shell never reads `.zshrc`, so an export placed there would be invisible
-to it.
+to it. The same file puts the mise shims on PATH, which is what makes every pinned
+tool reachable from those processes — MCP servers, `wsl.exe -- herdr`, cron.
 
 The HTTP proxy is opt-in. `.zshrc` exports `http_proxy`/`https_proxy` only when
 `_PROXY` is set in `~/.zshenv.local` — a wrong default would break every outbound
-call on a network that has none.
+call on a network that has none. mise reads the same variables.
 
 Where a password store is available, prefer indirection over literals — see the
 commented `pass` example in `.zshenv.local.example`.
 
-## Testing in Docker
+## Testing in containers
 
-The playbooks can be exercised against a throwaway Ubuntu container, which is the
+The whole flow can be exercised against a throwaway container, which is the
 only honest way to check what happens on a machine that has never been touched:
 
 ```bash
-./test/run.sh dotfiles        # full dotfiles.yml, twice, asserts idempotence
-./test/run.sh clis [role]     # install_clis.yml twice, asserts nothing refetches
+./test/run.sh dotfiles        # bootstrap + `mise run dotfiles` twice, asserts idempotence
+./test/run.sh clis            # bootstrap + `mise run install` twice + `mise run bootstrap -- --upgrade`, asserts every tool runs
 ./test/run.sh rollback        # deploy then roll back, asserts the restore
-./test/run.sh pins            # every pinned tool version still installs
 ./test/run.sh wezterm         # installs wezterm and parses the versioned config
 ./test/run.sh shell           # interactive shell in the test bed
 ```
 
-The repo is bind-mounted **read-only**, so a playbook that tried to write into the
-working tree would fail loudly instead of polluting it silently. The host proxy
-variables are carried through to the build and the run.
+The repo is bind-mounted **read-only** and copied inside the container, because
+`mise install` writes `mise.lock` next to its config: a `git status` on the copy at
+the end is what proves a run changed nothing in the tree, the lock included. The host
+proxy variables and `MISE_GITHUB_TOKEN` are carried through.
 
-The base image is selectable, and CI runs the suite across both LTS releases:
+The base image is selectable, and CI runs the suite across three distros:
 
 ```bash
-UBUNTU_VERSION=22.04 ./test/run.sh dotfiles
+BASE_IMAGE=ubuntu:22.04 ./test/run.sh dotfiles
+BASE_IMAGE=fedora:43 ./test/run.sh clis
 ```
 
-CI also runs the container targets on an `arm64` runner, on the current LTS only: the
-second LTS axis exists to cover the ansible-core version, not the CPU, so crossing the
-two in full would buy nothing for three times the minutes.
-
-This is not cosmetic. 22.04 ships ansible-core 2.12 and 26.04 ships 2.16, and they do
-not behave the same — an `include_role` whose `apply.tags` referenced `item` worked on
-2.16 and failed on 2.12, because `item` resolves inside the included role, against
-that role's own loop. Only the older release surfaced it.
+The bootstrap branches on the package manager, and the glibc each release ships
+is what the downloaded binaries link against — Ubuntu 22.04 is the oldest one
+anything here has to run on. CI also runs the container targets on an `arm64`
+runner, on the current Ubuntu LTS only.
 
 What `dotfiles` asserts:
 
-- run 1 completes on a pristine `$HOME`
-- run 2 reports `changed=0` — both runs happen in the **same** container, since a
-  fresh one would make any playbook look idempotent
-- every symlink and local template lands where expected
-- the deployed `.zshrc` parses and an interactive zsh loads it
-- the preflight refuses to run when a prerequisite is missing
+- run 1 completes on a pristine `$HOME` (and installs every tool on the way: `mise run` does)
+- run 2 prints no `changed:` line — both runs happen in the **same** container, since a
+  fresh one would make any deployment look idempotent
+- every symlink and local template lands where expected, `~/.config/mise` included
+- the deployed `.zshrc` parses and an interactive zsh loads it with mise on PATH
+- the Claude Code hooks are registered, the font is visible to fontconfig, the login shell is zsh
 - nothing was written into the repo
-
-The playbooks run as the unprivileged user and escalate per task, which is how the
-README tells you to run them. Running the whole playbook under `sudo -E` instead
-leaves a root-owned `~/.ansible/tmp` behind that then breaks the unprivileged
-dotfiles play.
-
-The container runs `bash -c`, not `bash -lc`: a login shell executes `~/.bash_logout`
-on the way out, and Ubuntu's ends with a test that returns 1 when `clear_console` is
-absent — under `set -e` that status silently overrides an explicit `exit 0` and turns a
-passing target into a failure.
 
 What `clis` asserts:
 
-- `install_clis.yml` completes on a machine with none of the tools present
-- a second pass refetches nothing — again in the **same** container
+- `mise run install` completes on a machine with none of the tools present, podman, wezterm and vscode included
+- a second pass installs nothing — again in the **same** container
+- every installed tool answers `--version`, `version` or `--help` with exit 0: a musl build on a host that
+  needs glibc, or a wrong asset picked for the architecture, both download perfectly and fail on first use
+- the krew plugins are in, and `mise.lock` came out of it unchanged
 
-`changed=0` is deliberately not the assertion there. gh, vscode and wezterm
-delete their apt source before `apt_repository` recreates it, so the play reports
-`changed` on every run by design. What must hold is that no tool is downloaded twice,
-which is what each role's probe decides and prints, and a probe that misreads its own
-tool's `--version` output is exactly the bug this catches: `pins` cannot, because it
-only ever runs each role once.
-
-Caveat: daemons install but do not start in a container. The
-`chsh` does run — the test user holds a `NOPASSWD` sudoers entry — and it is part
-of what the second run proves, since a task that re-applied it would show up as
-`changed=1`.
+Caveat: daemons install but do not start in a container. The `chsh` does run — the
+test user holds a `NOPASSWD` sudoers entry — and it is part of what the second run
+proves.
 
 ## Backups and rollback
 
@@ -681,7 +646,10 @@ make rollback
 
 It removes only the symlinks that point into this repo — anything else in those paths
 predates the deploy and is left alone — then restores the most recent backup of each
-file. The backups stay on disk, and the three `*.local` files are never touched.
+file, and takes the five hook events back out of `~/.claude/settings.json`. The
+backups stay on disk, and the three `*.local` files are never touched. `~/.config/mise`
+is unlinked last: the tools stay installed under `~/.local/share/mise`, they just stop
+being on PATH until a config names them again.
 
 The login shell is **not** reverted: `chsh` overwrote the previous value rather than
 saving it, so `chsh -s /bin/bash` is the manual step if you want it back.
@@ -702,7 +670,6 @@ passing silently. CI runs the same scan over the full history on every push and 
 False positives go in `.gitleaks.toml` as a narrow rule — never by disabling the hook.
 
 ## Notes
-- Debian/Ubuntu only. Both playbooks refuse to run elsewhere rather than failing halfway.
-- apt-based tools (gh, podman, jq, wezterm) go through the `apt`
-  module and its repositories; the rest are binary downloads gated by a version probe.
-- - Daemons install but are not started or enabled — that is left to the machine's owner.
+- Debian/Ubuntu, Fedora/RHEL and WSL. The bootstrap refuses any other family rather than failing halfway.
+- Daemons install but are not started or enabled — that is left to the machine's owner.
+- Ansible is gone. [MIGRATION.md](MIGRATION.md) covers moving a machine it provisioned, and removing it.

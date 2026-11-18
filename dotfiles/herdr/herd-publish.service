@@ -3,6 +3,8 @@ Description=Publish herdr agent counts for the WezTerm status bar
 
 [Service]
 Type=simple
+# herdr and jq are mise tools; a user unit's PATH has no shell to find them with.
+Environment=PATH=%h/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin
 ExecStart=%h/.config/herdr/herd-publish.sh
 Restart=always
 RestartSec=5

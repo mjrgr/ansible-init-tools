@@ -1,5 +1,10 @@
 # .zshenv — sourced by EVERY zsh shell (interactive or not), before .zshrc.
-# Versioned in ansible-init-tools.
+# Versioned in ansible-init-tools — deployed by `mise run dotfiles`.
+
+# The mise shims: what makes every pinned tool reachable from a shell that
+# never reads .zshrc — MCP servers spawned by Claude, `wsl.exe -- herdr` from
+# the Windows WezTerm, cron. .zshrc swaps them for the real paths on activate.
+[[ -d "$HOME/.local/share/mise/shims" ]] && export PATH="$HOME/.local/share/mise/shims:$PATH"
 
 [[ -s "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
 

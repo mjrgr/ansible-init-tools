@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+#MISE description="JetBrainsMono Nerd Font into ~/.local/share/fonts"
+#MISE depends=["dotfiles:common"]
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../../scripts/lib/dotfiles.sh"
+
+# starship.toml and wezterm.lua use Private Use Area glyphs: without the font
+# the prompt and the tab bar render tofu, so it is part of the config.
+name=JetBrainsMono
+version=v3.5.1
+sha256=fab782a66f7d3019da64f6572db9fc5d3a4bcb19f9fa13e2d8a62e3693d6396e
+faces=(JetBrainsMonoNerdFont-Regular.ttf JetBrainsMonoNerdFont-Bold.ttf
+       JetBrainsMonoNerdFont-Italic.ttf JetBrainsMonoNerdFont-BoldItalic.ttf)
+fontdir="$HOME/.local/share/fonts"
+
+if compgen -G "$fontdir/$name*.ttf" >/dev/null; then exit 0; fi
+
+ensure_dir "$fontdir"
+tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 \
+  -o "$tmp/$name.zip" "https://github.com/ryanoasis/nerd-fonts/releases/download/$version/$name.zip"
+echo "$sha256  $tmp/$name.zip" | sha256sum -c --quiet - || die "checksum mismatch for $name.zip"
+unzip -q -o "$tmp/$name.zip" "${faces[@]}" -d "$fontdir"
+fc-cache -f "$fontdir"
+changed "installed $name Nerd Font $version"

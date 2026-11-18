@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+#MISE description="herdr config, pinned plugins, Claude Code wiring, status publisher unit"
+#MISE depends=["dotfiles:common"]
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../../scripts/lib/dotfiles.sh"
+
+ensure_dir "$HOME/.config/systemd/user"
+ensure_dir "$HOME/.claude/skills/herdr"
+ensure_dir "$HOME/.config/herdr-automatic-rename"
+
+link_dotfile "$DOTFILES/herdr/config.toml"          "$HOME/.config/herdr/config.toml"
+link_dotfile "$DOTFILES/herdr/herd-publish.sh"      "$HOME/.config/herdr/herd-publish.sh"
+link_dotfile "$DOTFILES/herdr/claude-statusline.sh" "$HOME/.config/herdr/claude-statusline.sh"
+link_dotfile "$DOTFILES/herdr/quota-status.sh"      "$HOME/.config/herdr/quota-status.sh"
+link_dotfile "$DOTFILES/herdr/herd-publish.service" "$HOME/.config/systemd/user/herd-publish.service"
+link_dotfile "$DOTFILES/herdr/automatic-rename.sh"  "$HOME/.config/herdr-automatic-rename/config.sh"
+
+# ---- Plugins ----
+# Pinned to a commit, not a tag: a plugin runs as you with your whole
+# environment, so --ref must name bytes someone read. Each entry lists the tools
+# its build needs; a host without them skips that plugin and says so.
+plugins=(
+  "qu8n/herdr-automatic-rename 081489b4d961d0d9c0c8b6a02d472e5cfe125ad5 -"
+  "persiyanov/herdr-reviewr    dca1fb88a56c0d6246a2e9004ecbe27fd11a4436 -"
+  "nicosuave/memex             649355e4b442de9b63c24a3702f5c765233a84e4 -"
+  "mjrgr/herdr-agent-usage     1c2bae4cb440dddb4296af4eeb1ef5bd7dbd8455 cargo"
+  "thanhdat77/herdr-navigator  9bdf30f03f53730e6232377a3fca3bdc6ed9f3ca cargo"
+  "uwuclxdy/clauth/herdr-plugin e6f6cdb50b53fc516c90f7a6b3b72b1a0187039a clauth"
+)
+
+if ! have herdr; then
+  say "herdr not installed — plugins, skill and Claude Code wiring skipped (mise install, then re-run)"
+  exit 0
+fi
+
+# `plugin install` always re-clones and replaces, so the guard is here:
+# install only when the source is absent or sits on another commit.
+# DOTFILES_HERDR_PLUGINS=false skips them: memex has no prebuilt binary for the
+# glibc of Ubuntu 22.04 and its source build needs a gcc newer than 11.
+installed="$(herdr plugin list --json 2>/dev/null || echo '{}')"
+[[ "${DOTFILES_HERDR_PLUGINS:-true}" == "true" ]] || { say "herdr plugins skipped (DOTFILES_HERDR_PLUGINS=false)"; plugins=(); }
+for entry in "${plugins[@]}"; do
+  read -r source ref requires <<<"$entry"
+  owner="${source%%/*}"; repo="${source#*/}"; repo="${repo%%/*}"
+  if [[ "$requires" != "-" ]] && ! have "$requires"; then
+    say "$source: needs $requires — skipped"; continue
+  fi
+  current="$(jq -r --arg o "$owner" --arg r "$repo" \
+    '.result.plugins[]? | select(.source.kind=="github" and .source.owner==$o and .source.repo==$r) | .source.resolved_commit' \
+    <<<"$installed" | head -1)"
+  [[ "$current" == "$ref" ]] && continue
+  # GIT_CONFIG_GLOBAL: same reason as clone_once — the deployed ~/.gitconfig
+  # carries zdiff3, fatal for the git 2.34 Ubuntu 22.04 ships.
+  GIT_CONFIG_GLOBAL=/dev/null herdr plugin install "$source" --ref "$ref" --yes >/dev/null
+  changed "herdr plugin $source @ ${ref:0:12}"
+done
+
+# agent-usage keeps these in its state dir; `configure` would also rewrite the
+# sidebar rows and the statusLine, so the two files are written directly.
+state="$HOME/.local/state/herdr/plugins/herdr-agent-usage"
+if [[ -d "$state" ]]; then
+  for kv in "sidebar-layout=gauges" "quota-percent=used"; do
+    k="${kv%%=*}"; v="${kv#*=}"
+    if [[ "$(cat "$state/$k" 2>/dev/null)" != "$v" ]]; then
+      printf '%s' "$v" > "$state/$k"; changed "herdr-agent-usage $k=$v"
+    fi
+  done
+fi
+
+# The server caches config.toml at startup; rc != 0 just means no server runs.
+herdr server reload-config >/dev/null 2>&1 || true
+
+# ---- Claude Code wiring ----
+# The SessionStart hook is what tells herdr which pane holds which Claude
+# session; without it agent-usage cannot attribute a pane. `integration
+# install` prints the same lines whether or not anything changed, hence the probe.
+settings="$HOME/.claude/settings.json"
+if ! grep -q 'herdr-agent-state.sh' "$settings" 2>/dev/null; then
+  herdr integration install claude >/dev/null
+  changed "herdr Claude Code integration installed"
+else
+  herdr integration install claude >/dev/null 2>&1 || true
+fi
+
+# The statusLine feeds agent-usage its quota data; chained, not replaced, so a
+# project's own status line (or ccstatusline) still draws.
+if [[ "$(python3 "$REPO/scripts/lib/claude-settings.py" statusline "$settings" "$HOME/.config/herdr/claude-statusline.sh")" == "changed" ]]; then
+  changed "herdr statusLine wrapper chained into $settings"
+fi
+
+# `herdr --skill` documents the CLI of the herdr that printed it, so it is
+# rendered at deploy time rather than versioned.
+skill="$HOME/.claude/skills/herdr/SKILL.md"
+if rendered="$(herdr --skill 2>/dev/null)"; then
+  if [[ "$(cat "$skill" 2>/dev/null)" != "$rendered" ]]; then
+    printf '%s\n' "$rendered" > "$skill"; changed "rendered $skill"
+  fi
+fi
+
+# ---- Status publisher ----
+# A user unit, not a .zshrc loop: it must outlive the shell and restart when it
+# dies. The manager's socket is the gate: `is-system-running` answers "degraded"
+# with rc 1 on a healthy WSL, and a container has no manager at all.
+if [[ -S "/run/user/$(id -u)/systemd/private" ]]; then
+  if ! systemctl --user is-enabled --quiet herd-publish.service 2>/dev/null; then
+    systemctl --user daemon-reload
+    systemctl --user enable --now herd-publish.service
+    changed "enabled herd-publish.service"
+  elif ! systemctl --user is-active --quiet herd-publish.service; then
+    systemctl --user daemon-reload
+    systemctl --user start herd-publish.service
+    changed "started herd-publish.service"
+  elif [[ "$(systemctl --user show -p NeedDaemonReload --value herd-publish.service)" == yes ]]; then
+    systemctl --user daemon-reload
+    systemctl --user try-restart herd-publish.service
+    changed "reloaded herd-publish.service (unit changed on disk)"
+  fi
+fi

@@ -1,79 +1,109 @@
 # CLAUDE.md — ansible-init-tools
 
-Bootstrap d'un poste Debian/Ubuntu (WSL2 ou natif, x86_64/aarch64) en `localhost`/`-c local` :
-CLIs système (`install_clis.yml`, sudo) + dotfiles en symlinks vers le repo (`dotfiles.yml`, sans sudo sauf `chsh`).
-Les deux playbooks refusent de tourner hors apt et hors x86_64/aarch64.
+Bootstrap d'un poste Debian/Ubuntu, Fedora/RHEL ou WSL (x86_64/aarch64) : `scripts/bootstrap.sh` (sudo : paquets de base,
+podman, wezterm, vscode, binaire mise pinné ; `--upgrade` ne remonte que ses propres paquets) puis **tout le reste par mise** —
+outils pinnés (`mise/config.toml` + `mise.lock`), `[env]`, et tâches de dotfiles (symlinks vers le repo, sans sudo sauf `chsh`).
+Le bootstrap est aussi une tâche (`mise run bootstrap`, wrapper `sudo` + `raw=true`) : une seule UX après le premier run, qui est
+forcément `make setup` (prérequis `git make`, car `mise run` installe les outils avant toute tâche et rust a besoin du toolchain
+du bootstrap). Plus aucun Ansible ; `MIGRATION.md` pour un poste provisionné par l'ancien setup.
 
 ## Layout (non évident)
 
-- `playbooks/roles/<tool>/` : un rôle par CLI ; nom du rôle = entrée de `install_list` = tag = préfixe des variables.
-- `playbooks/roles/clis_common/tasks/` : bibliothèque partagée, jamais exécutée seule — `resolve.yml` → `probe.yml` → `install_binary.yml` | `install_archive.yml`.
-- `playbooks/roles/dotfiles_<group>/` : un rôle par groupe de `dotfiles_list` ; `dotfiles_common/tasks/link.yml` fait backup + symlink.
+- `mise/config.toml` : config **globale** — `mise run dotfiles:mise` symlinke `~/.config/mise` → `mise/`, donc `[tools]`, `[env]`
+  et les tâches s'appliquent partout. Depuis le clone sans ce lien, c'est une config projet (`mise trust` requis).
+- `mise/mise.lock` : URLs + sha256 par outil pour `linux-x64` et `linux-arm64` (`lockfile_platforms`). Jamais édité à la main :
+  `make lock` ; `make lock-audit` (offline) exige les deux plateformes avec digest, sauf backends `core:`/`cargo:` (rustup/cargo vérifient).
+- `[tool_alias]` : noms courts pour les outils hors registry (`github:`) ou réassignés (`helmfile`, `neovim`). Deux outils d'une même
+  release (codex / codex-code-mode-host, kwok / kwokctl, krew) = alias + `matching_regex` ; jamais `asset_pattern` templaté
+  (le lock fige l'asset rendu sur l'hôte, donc amd64 pour arm64).
+- aqua d'abord (URL de release directe, checksums/cosign/SLSA du registry) ; `github:` seulement sans entrée registry — il passe par
+  `api.github.com` (quota anonyme 60/h) → `MISE_GITHUB_TOKEN` en CI et derrière un proxy partagé.
+- `mise/tasks/` : file tasks auto-découvertes (`bootstrap`, `dotfiles/<group>` = `mise run dotfiles:<group>`, `krew-plugins`,
+  `rollback`). Chaque script (sauf `bootstrap`) source `scripts/lib/dotfiles.sh` (`REPO` via `readlink -f $0`, `link_dotfile` backup+symlink, `changed` = seul signal de
+  changement). cwd d'une tâche = `$HOME` (config root global), pas le repo.
+- `scripts/lib/claude-settings.py` : merge/strip des hooks et chaînage statusLine dans `~/.claude/settings.json` (fichier de l'utilisateur,
+  jamais templaté). Par event, seule l'entrée dont la commande contient le basename du script est à nous (`is_ours`) : les autres
+  (herdr, context-mode…) restent, à l'enregistrement comme au rollback ; un fichier déjà à jour ressort identique. `scripts/uninstall-ansible.sh`, `scripts/cleanup-legacy.sh` : dry-run par défaut, `--yes` pour appliquer.
 - `dotfiles/` : sources versionnées, liées (pas copiées) dans `$HOME`. `*.local` gitignorés, seuls les `*.local.example` sont versionnés.
-- `playbooks/dotfiles_rollback.yml` : liste **autoritative** `dotfiles_links` + `rb_claude_hook_events`.
-- `test/` : `run.sh` (banc Docker Ubuntu, repo monté en `:ro`), `checksums.py`, `pin-drift.sh`, `bump-pins.sh`, `Dockerfile`.
-- Variables de play (`install_list`, `common_packages`, `clis_state`, `dotfiles_list`…) dans les playbooks eux-mêmes ; pas de `group_vars`, pas de `vars/` dans les rôles.
+  `.zshenv` met les shims mise sur PATH (shells non interactifs : MCP, `wsl.exe -- herdr`, unit systemd) ; `.zshrc` active mise **avant**
+  OMZ, car tous les `command -v` qui suivent en dépendent.
+- `mise/tasks/rollback` : liste **autoritative** `links` ; `EVENTS` de `claude-settings.py` pour les hooks Claude.
+- `test/` : `run.sh` (banc conteneur, repo monté `:ro` puis copié ; `BASE_IMAGE=ubuntu:22.04|fedora:43`), `Dockerfile` (sudo + git +
+  user, le bootstrap fait le reste), `lock-audit.py`.
 
 ## Commandes
 
 ```bash
-make lint                 # yamllint + ansible-lint playbooks/ + checksums --audit + --syntax-check
-make install | upgrade    # install_clis.yml (-K) ; upgrade = -e clis_state=latest
-make dotfiles | rollback
-ansible-playbook playbooks/install_clis.yml -c local -i localhost, -K -e install_only=k9s
-ansible-playbook playbooks/install_clis.yml -c local -i localhost, -K --tags kubectl,helm
-ansible-playbook playbooks/dotfiles.yml -c local -i localhost, --tags starship   # ou -e dotfiles_only=starship
-make test                 # dotfiles x2 en conteneur, 2e run doit être changed=0 (UBUNTU_VERSION=22.04 pour l'autre LTS)
-make test-clis [ROLE=x]   # install_clis x2 ; assertion = aucun "-> install" au 2e run (pas changed=0)
-make test-rollback | test-pins | test-wezterm | shell
-make checksums [ROLE]     # recalcule les sha256 dans defaults ; jamais de digest copié à la main
-make drift | bump-pins    # écart pins vs upstream (gh requis) ; bump-pins modifie le working tree, ne commit pas
+make lint                 # shellcheck + yamllint + parse config mise + lock-audit
+make setup                # premier run : bootstrap (sudo) + trust + install + dotfiles ; ensuite `mise run setup`
+make bootstrap            # scripts/bootstrap.sh  (ARGS="--skip podman,wezterm,vscode" | "--upgrade") = mise run bootstrap
+make install | bump       # mise run install (lock + krew plugins) | mise upgrade --bump (réécrit config + lock, installe)
+make upgrade              # bootstrap --upgrade (sudo, paquets du bootstrap seulement) + bump = mise run upgrade
+make bump-mise            # pin mise (version + sha256 x64/arm64) dans scripts/bootstrap.sh → latest (VERSION=vX pour choisir), puis make bootstrap
+make dotfiles | rollback  # mise run dotfiles | mise run rollback
+mise run dotfiles:starship                      # un seul groupe
+mise install kubectl helm                        # deux outils
+make test                 # bootstrap + dotfiles x2 en conteneur ; 2e run = aucune ligne "changed:" (BASE_IMAGE pour changer d'OS)
+make test-clis            # bootstrap complet + mise run install x2 + `mise run bootstrap -- --upgrade` (doit ne rien remonter) ;
+                          # chaque outil doit répondre --version|version|--help ; lock inchangé
+make test-rollback | test-wezterm | shell
+make lock | lock-audit    # régénère mise.lock | audit offline
+make drift                # mise outdated
 make scan | hooks         # gitleaks (image pinnée par digest) ; hooks = core.hooksPath .githooks
 ```
 
-`--check --diff` : non outillé pour `install_clis.yml` — `probe.yml` est un `shell` sans `check_mode: false`, son `rc` manquera en check mode (à confirmer). Seul `dotfiles_herdr` porte des `check_mode: false` explicites. Valider plutôt en conteneur (`make test*`).
+`mise run` installe les outils manquants avant d'exécuter une tâche : `make test` installe donc aussi les 59 outils.
 
-Tags : un tag par outil / groupe (`apply.tags`), plus `common` (paquets apt de base), `tools`, `dotfiles`, `always` (garde-fous, `set_fact` de sélection).
+Pas de `--check` : valider en conteneur. `mise lock` et `mise install` ont besoin du réseau ; `mise.lock` doit être en 0644 (mise
+l'écrit en 0600, le conteneur ne le lirait pas).
 
-## Conventions des rôles CLI
+## Conventions
 
-- Rôle binaire : `defaults/main.yml` = `<role>_version` (tag concret, pinné), `<role>_arch` (`{amd64,arm64}` → slug upstream), `<role>_url` (placeholders `{version}`, `{version_nov}`, `{arch}`), `<role>_sha256` par arch.
-- `meta/argument_specs.yml` obligatoire pour ces rôles (valide les overrides à l'include). Les rôles apt (gh, jq, podman, vscode, wezterm) n'en ont pas.
-- Idempotence = probe de version (`clis_need_install`) : `present` n'installe que si absent ou version ≠ pin ; `latest` réinstalle tout. Apt : `state: "{{ 'latest' if clis_state == 'latest' else 'present' }}"`.
-- Les faits `clis_*` sont volontairement non préfixés → `# noqa: var-naming[no-role-prefix]` ; les autres variables/`register` sont préfixées par le rôle.
-- Install sous `/usr/local/bin`, `get_url` avec `checksum`, `retries: 5 / delay: 5`, puis un `--version` (ou `clis_verify_cmd`) prouve que le binaire tourne.
-- Sources apt : keyring dans `/etc/apt/keyrings`, `signed-by`, source supprimée puis recréée → `changed` à chaque run **par design** (gh, vscode, wezterm).
-- `command-instead-of-shell` et `no-changed-when` sont skip dans `.ansible-lint` : tout `shell`/`command` doit quand même porter `changed_when` ou `creates`/`removes`.
-- yamllint : pas de `---` exigé sur les plays, truthy `true|false` seulement, octal implicite interdit, lignes > 160 = warning.
+- Pins concrets partout ; `claude = "latest"` est l'exception (figé par le lock, `mise upgrade claude`).
+- Une tâche imprime `changed: …` pour chaque action réelle et rien sinon — c'est l'assertion d'idempotence du banc.
+- Tâche interactive (`chsh`) : `#MISE raw=true`. Dépendances : `#MISE depends=["dotfiles:common"]`.
+- Outil qui a besoin d'un paquet système (linker, lib) → `scripts/bootstrap.sh`, branché apt/dnf, jamais dans mise.
+- `command-instead-of-shell`-like : tout `curl` passe par `fetch_if_changed` ou vérifie un sha256 ; pas de `curl | sh` non pinné sauf
+  l'installeur oh-my-zsh (comportement historique, `creates`-guardé).
+- yamllint ne couvre plus que `.github/` (`truthy.check-keys: false` pour `on:`).
 
 ## Ajouter un outil
 
-1. `playbooks/roles/<tool>/{defaults,meta,tasks}` en copiant un rôle du même type (`k9s` archive, `kubectl`/`yq` binaire, `jq`/`gh` apt).
-2. `tasks/main.yml` : `include_tasks: "{{ role_path }}/../clis_common/tasks/resolve.yml"` puis `probe.yml`, puis install avec `when: clis_need_install | bool`. `clis_name` identique sur les trois includes (garde `clis_resolved_for`).
-3. Ajouter `<tool>` à `install_list` dans `playbooks/install_clis.yml`.
-4. `make checksums ROLE=<tool>` puis `make lint` et `make test-clis ROLE=<tool>`.
-5. Upstream hors github.com : ajouter l'entrée dans `UPSTREAM` de `test/pin-drift.sh` **et** `test/bump-pins.sh`. `test-pins`/`drift` découvrent le rôle seuls via `<role>_version`.
-6. Mettre à jour la table « Included CLIs » du README.
+1. Entrée dans `[tools]` de `mise/config.toml` (`mise ls-remote <tool>` pour la version ; registry = `mise registry | grep`). Hors registry :
+   alias `github:owner/repo` + `matching_regex` couvrant amd64 **et** arm64.
+2. `make lock` puis `make lock-audit` et `make lint`.
+3. `make test-clis` (ou `mise install <tool>` + `<tool> --version` sur les deux archs en CI).
+4. Table « Included CLIs » du README ; `scripts/cleanup-legacy.sh` si l'outil avait une copie Ansible sous `/usr/local/bin`.
 
 ## Ajouter un dotfile
 
-Source sous `dotfiles/<group>/`, rôle `dotfiles_<group>` qui inclut `link.yml` (`loop_var: dl`), groupe dans `dotfiles_list`,
-répertoire cible dans `dotfiles_common_dirs` si nouveau, **et** chemin dans `dotfiles_links` de `dotfiles_rollback.yml` — sinon le rollback ne le restaure pas.
-Nouvel event de hook Claude dans `dotfiles_wezterm_claude_hooks` → le reporter dans `rb_claude_hook_events`.
+Source sous `dotfiles/<group>/`, tâche `mise/tasks/dotfiles/<group>` (source `dotfiles.sh`, `link_dotfile`), groupe dans `depends` de
+`[tasks.dotfiles]`, répertoire cible dans `dotfiles/common` si nouveau, **et** chemin dans `links` de `mise/tasks/rollback` — sinon le
+rollback ne le restaure pas. Nouvel event de hook Claude → `EVENTS` + `hooks_for` dans `claude-settings.py`.
 
 ## CI (`.github/workflows/ci.yml`)
 
 push `main`, PR, `workflow_dispatch`, cron lundi 06:17 UTC. Actions pinnées par SHA (Dependabot `github-actions` uniquement).
-Jobs : `lint`, `secrets` (gitleaks sur l'historique), `checksum-audit`, `dotfiles`/`rollback`/`pins` (22.04 + 26.04 + 26.04 arm64), `clis` (26.04 amd64/arm64), `wezterm-config`.
-Hors gate : `checksum-drift` (cron/dispatch, re-télécharge tout) et `pin-drift` (hors PR, tient une issue unique label `pin-drift`).
+`MISE_GITHUB_TOKEN: ${{ github.token }}` global. Jobs : `lint`, `secrets` (gitleaks historique), `dotfiles`/`rollback`/`clis`
+(ubuntu 22.04, 26.04, fedora 43, 26.04 arm64), `wezterm-config`. Hors gate : `lock-drift` (cron/dispatch : `mise lock` puis
+`git diff --exit-code`) et `pin-drift` (hors PR, `mise outdated --json`, issue unique label `pin-drift`).
 
 ## Pièges
 
-- Ansible-core diffère par LTS (2.12 sur 22.04, 2.16 sur 26.04) : tester les deux avant de conclure.
-- Ubuntu ≥ 25.10 : `sudo-rs` casse `--ask-become-pass` (timeout become) — voir README.
-- Proxy : `sudo` strippe l'env, `install_clis.yml` réinjecte `HTTP(S)_PROXY`/`NO_PROXY` via `environment` ; `test/run.sh` les propage au conteneur.
-- `include_role` en boucle : `loop_var` explicite (`clis_tool`, `dotfiles_group`), `item` entre en collision avec les boucles des rôles.
-- WSL : `~/.kube` peut être un symlink vers drvfs (chmod → EPERM) ; ne jamais réimposer un `mode` sur un répertoire existant.
-- Pas de `cache_valid_time` sur l'apt de base (lists purgées mais mtime récent) ; l'échec de cache est diagnostiqué par le `rescue`.
-- `ansible.cfg` : log dans `/tmp/ansible-clis.log`. Lint CI installe `ansible-lint`/`yamllint` non pinnés (pipx/pip).
+- Lock généré sur un hôte : `mise lock` résout **toutes** les plateformes de `lockfile_platforms` ; un `matching_regex` qui n'en couvre
+  qu'une fait échouer le lock entier.
+- GitHub 500/403 transitoires sur `mise lock` : relancer (403 = quota API → token).
+- `mise upgrade --bump` réécrit `config.toml` **avant** le lock : s'il échoue sur un outil, les autres pins sont bumpés sans lock
+  (lock-audit le signale) → `make lock` puis `make test-clis`. Sur l'hôte migré, `~/.config/mise` → repo = config globale :
+  `make lock` passe `--global` tout seul.
+- `aqua.baked_registry = true` : mise embarque le registry aqua de sa date de build. Un fix registry plus récent (vu : kyverno 1.20.0,
+  nouveau workflow signataire, cosign refuse au lock) n'est visible qu'avec une mise buildée après → `make bump-mise` puis
+  `make bootstrap`. Sinon l'outil va dans `BUMP_EXCLUDE` (Makefile, et `--exclude` dans `[tasks.upgrade]`) le temps que mise suive.
+- `sudo mise …` (self-update, install) : sudo nu perd le proxy → timeouts sur mise.jdx.dev/GitHub. mise n'est jamais mis à jour par
+  `self-update` : c'est le pin du bootstrap qui compte, et `mise run bootstrap` porte le proxy.
+- `mise run` cwd = `$HOME` : chemins relatifs interdits dans les tâches, tout passe par `$REPO`/`$DOTFILES`.
+- Les outils sont par utilisateur : `sudo kubectl` ne les voit pas (`sudo env "PATH=$PATH" …`).
+- WSL : `~/.kube` peut être un drvfs (chmod → EPERM) ; ne jamais réimposer un `mode` sur un répertoire existant. Unit systemd user
+  → `systemd=true` dans `/etc/wsl.conf`.
 - Les démons (podman…) sont installés, jamais démarrés ni activés.
+- Ubuntu 22.04 (glibc 2.35) est la plus vieille cible : un binaire qui ne tourne pas dessus casse `test-clis`.

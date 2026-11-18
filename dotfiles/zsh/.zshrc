@@ -3,7 +3,7 @@
 # ║                oh-my-zsh + Starship + fzf                    ║
 # ╚══════════════════════════════════════════════════════════════╝
 #
-# Versioned in ansible-init-tools — deployed by `playbooks/dotfiles.yml`.
+# Versioned in ansible-init-tools — deployed by `mise run dotfiles`.
 # Secrets and machine specifics: ~/.zshenv.local and ~/.zshrc.local (not versioned).
 
 # ─── PATH ────────────────────────────────────────────────────────────────────
@@ -18,6 +18,11 @@ export PATH="$PATH:/usr/local/go/bin:$GOPATH/bin"
 # Rust / Cargo
 export PATH="$PATH:$HOME/.cargo/bin"
 
+# ─── MISE ────────────────────────────────────────────────────────────────────
+# Before everything that probes for a tool: every CLI here is a mise tool, and
+# `mise activate` puts them on PATH at once, not only at the first prompt.
+command -v mise &>/dev/null && eval "$(mise activate zsh)"
+
 # ─── OH-MY-ZSH ───────────────────────────────────────────────────────────────
 export ZSH="$HOME/.oh-my-zsh"
 export ZSH_CUSTOM="${ZSH_CUSTOM:-$ZSH/custom}"
@@ -29,7 +34,7 @@ zstyle ':omz:update' mode auto
 zstyle ':omz:update' frequency 7
 
 # ─── PLUGINS ─────────────────────────────────────────────────────────────────
-# The 3 external plugins are cloned by the `dotfiles_zsh` Ansible role.
+# The external plugins are cloned by the `dotfiles:zsh` mise task.
 plugins=(
   # ── Shell UX
   fzf-tab                       # fzf-powered tab completion — load before widget-wrapping plugins
@@ -103,7 +108,6 @@ export KUBE_EDITOR="vim"
 export GPG_TTY="$(tty)"
 
 # ─── KUBERNETES ──────────────────────────────────────────────────────────────
-export K9S_FEATURE_GATE_NODE_SHELL=true
 [[ -f "$HOME/.kube/k8s-clusters.sh" ]] && source "$HOME/.kube/k8s-clusters.sh"
 
 # Multi-target tunnel via krelay; targets in ~/.config/krelay/<context>.targets (not versioned)
@@ -138,6 +142,8 @@ if [[ -n "$_PROXY" ]] && { [[ -z "$_PROXY_ROUTE" ]] || [[ -n "$(ip route show "$
   export HTTP_PROXY="$_PROXY" HTTPS_PROXY="$_PROXY"
   export no_proxy="$_NO_PROXY" NO_PROXY="$_NO_PROXY"
 fi
+# WSL autoProxy injects HTTP(S)_PROXY from Windows without NO_PROXY: loopback MCPs then hit the proxy.
+[[ -n "${http_proxy}${HTTP_PROXY}" && -z "${no_proxy}${NO_PROXY}" ]] && export no_proxy="$_NO_PROXY" NO_PROXY="$_NO_PROXY"
 
 proxy-off() {
   unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY no_proxy NO_PROXY
@@ -158,8 +164,8 @@ proxy-on() {
 export ANSIBLE_HOST_KEY_CHECKING=False
 
 # ─── ALIASES — NAVIGATION ────────────────────────────────────────────────────
-# eza when the `eza` role has run, coreutils otherwise: this file is deployed by
-# dotfiles.yml, which does not depend on install_clis.yml having run first.
+# eza once `mise install` has run, coreutils otherwise: `mise run dotfiles`
+# does not depend on the tools being installed first.
 if command -v eza &>/dev/null; then
   alias ll="eza -lah --icons --group-directories-first --git"
   alias la="eza -a  --icons --group-directories-first"
@@ -200,8 +206,7 @@ alias dprune="docker system prune -af --volumes"
 
 # ─── ALIASES — OPENTOFU ──────────────────────────────────────────────────────
 # The OMZ terraform plugin's tf* aliases and completion call `terraform`
-# directly; this makes them resolve to the tofu binary installed by the
-# `opentofu` role instead.
+# directly; this makes them resolve to the tofu binary mise installs instead.
 alias terraform="tofu"
 
 # ─── ALIASES — GIT ───────────────────────────────────────────────────────────
@@ -244,19 +249,13 @@ export FZF_DEFAULT_OPTS="
 export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git 2>/dev/null || find . -type f"
 
 # Previews, when the tools that render them are installed. Guarded the same way
-# as the ll aliases: dotfiles.yml can run before install_clis.yml.
+# as the ll aliases: the dotfiles can land before `mise install` has run.
 if command -v bat &>/dev/null; then
   export FZF_CTRL_T_OPTS="--preview 'bat --style=numbers --color=always --line-range :300 {} 2>/dev/null'"
 fi
 if command -v eza &>/dev/null; then
   export FZF_ALT_C_OPTS="--preview 'eza --tree --level=2 --icons --color=always {}'"
 fi
-
-# ─── BAT ─────────────────────────────────────────────────────────────────────
-# base16 renders through the terminal's own 16 colours instead of shipping its
-# own palette, so bat follows whatever scheme wezterm.lua is on rather than
-# fighting it. Catppuccin Mocha and Latte both stay coherent.
-export BAT_THEME="base16"
 
 # ─── ZOXIDE ──────────────────────────────────────────────────────────────────
 # Adds `z` and `zi`; `cd` is deliberately left alone. Must come after compinit —
@@ -271,7 +270,7 @@ ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 if command -v starship &>/dev/null; then
   eval "$(starship init zsh)"
 else
-  print "⚠️  Starship not installed → ansible-playbook playbooks/install_clis.yml -e install_only=starship -c local -K"
+  print "⚠️  Starship not installed → mise install starship"
 fi
 
 # ─── WEZTERM ─────────────────────────────────────────────────────────────────
@@ -301,10 +300,6 @@ nvm() {
   [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
   nvm "$@"
 }
-
-# ─── MISE ────────────────────────────────────────────────────────────────────
-# After bun/nvm: mise re-prepends its tool paths on each prompt, so a pinned mise tool wins.
-command -v mise &>/dev/null && eval "$(mise activate zsh)"
 
 # ─── MISC ────────────────────────────────────────────────────────────────────
 mywatch() {

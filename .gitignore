@@ -13,3 +13,7 @@ __pycache__
 
 # Transient files written by the Claude Code harness
 .claude/*.tmp.*
+
+# mise: machine-local overrides next to the versioned config and lock
+mise/*.local.toml
+mise/*.local.lock

@@ -1,27 +1,21 @@
-# Test bed for the playbooks: a clean Ubuntu with ansible and an unprivileged user.
-# zsh/git/curl are baked in because install_clis.yml provides them on a real host;
-# dotfiles.yml checks for them up front and refuses to run otherwise.
-# UBUNTU_VERSION is what lets CI run the same suite across LTS releases: the apt
-# ansible-core differs per release (2.12 on 22.04, 2.16 on 26.04) and they do not
-# behave identically.
-# The repo itself is bind-mounted read-only at run time, so the image does not need
-# a rebuild between iterations and the run proves the playbooks never write to it.
-ARG UBUNTU_VERSION=26.04
-FROM ubuntu:${UBUNTU_VERSION}
+# Test bed: a clean distro image with sudo, git (for the tree snapshot) and an unprivileged user, nothing
+# else. scripts/bootstrap.sh installs the rest, which is the point: the run
+# proves the bootstrap works on a machine that has never been touched.
+# BASE_IMAGE is what lets CI run the suite across Ubuntu LTS releases and Fedora.
+# The repo is bind-mounted read-only at run time, so the image needs no rebuild
+# between iterations and the run proves nothing writes into it.
+ARG BASE_IMAGE=ubuntu:26.04
+FROM ${BASE_IMAGE}
 
 ARG USERNAME=tester
-
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-      ansible-core \
-      sudo git curl wget ca-certificates gnupg unzip locales \
-      python3 python3-apt \
-      zsh fontconfig \
- && rm -rf /var/lib/apt/lists/*
-
-RUN locale-gen en_US.UTF-8
+RUN if command -v apt-get >/dev/null; then \
+      apt-get update && apt-get install -y --no-install-recommends sudo git locales \
+      && locale-gen en_US.UTF-8 && rm -rf /var/lib/apt/lists/*; \
+    else \
+      dnf install -y sudo git shadow-utils glibc-langpack-en && dnf clean all; \
+    fi
 ENV LANG=en_US.UTF-8
 
 RUN useradd --create-home --shell /bin/bash "$USERNAME" \

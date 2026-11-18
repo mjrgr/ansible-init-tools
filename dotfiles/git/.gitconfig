@@ -1,4 +1,4 @@
-# Versioned in ansible-init-tools — deployed by playbooks/dotfiles.yml.
+# Versioned in ansible-init-tools — deployed by `mise run dotfiles`.
 # Identity, credential helper and machine settings live in ~/.gitconfig.local.
 
 [include]
@@ -14,7 +14,7 @@
 	directory = *
 
 # ─── DELTA ───────────────────────────────────────────────────────────────────
-# The `delta` role installs it, but dotfiles.yml does not require install_clis.yml
+# mise installs delta, but `mise run dotfiles` does not require `mise install`
 # to have run — and a core.pager naming a missing binary breaks every command
 # that paginates, not just diffs. Hence the guard: git hands the value to sh, so
 # an `if` is enough, and unlike `delta || less` it cannot fall through to less

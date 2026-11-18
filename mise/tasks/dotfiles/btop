@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+#MISE description="btop config and the themes shipped with the mise-installed btop"
+#MISE depends=["dotfiles:common"]
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../../scripts/lib/dotfiles.sh"
+link_dotfile "$DOTFILES/btop/btop.conf" "$HOME/.config/btop/btop.conf"
+# btop looks for themes next to its binary or under ~/.config/btop/themes; the
+# release tarball mise unpacks keeps them at <install>/btop/themes.
+if themes="$(mise where btop 2>/dev/null)/btop/themes" && [[ -d "$themes" ]]; then
+  link_dotfile "$themes" "$HOME/.config/btop/themes"
+else
+  say "btop not installed yet — themes link skipped (mise install, then re-run)"
+fi

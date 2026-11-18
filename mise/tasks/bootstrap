@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="System packages, podman, wezterm, vscode and the mise binary (sudo; = make bootstrap)"
+#MISE raw=true
+# Arguments go to scripts/bootstrap.sh (which asks for sudo): mise run bootstrap -- --upgrade | --skip podman,wezterm,vscode
+set -euo pipefail
+REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
+exec "$REPO/scripts/bootstrap.sh" "$@"

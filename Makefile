@@ -1,7 +1,3 @@
-ANSIBLE ?= ansible-playbook
-LOCAL   := -c local -i localhost,
-BECOME  ?= --ask-become-pass
-
 .DEFAULT_GOAL := help
 
 .PHONY: help
@@ -11,55 +7,60 @@ help: ## Show this help
 
 # ─── Provisioning ────────────────────────────────────────────────────────────
 
+.PHONY: setup
+setup: ## Fresh box, the whole thing: bootstrap (sudo), trust, every tool, dotfiles
+	scripts/bootstrap.sh
+	mise trust -q mise/config.toml
+	mise run install
+	mise run dotfiles
+
+.PHONY: bootstrap
+bootstrap: ## System packages, podman, wezterm, vscode and the mise binary (sudo; ARGS="--skip podman,wezterm,vscode")
+	scripts/bootstrap.sh $(ARGS)
+
 .PHONY: install
-install: ## Install the CLI tools (sudo; only what is missing)
-	$(ANSIBLE) playbooks/install_clis.yml $(LOCAL) $(BECOME)
+install: ## Install every pinned tool from mise.lock, then the krew plugins
+	mise trust -q mise/config.toml
+	mise run install
+
+# A tool the aqua registry baked into the pinned mise cannot verify yet (see CLAUDE.md); empty when none.
+BUMP_EXCLUDE :=
 
 .PHONY: upgrade
-upgrade: ## Upgrade every CLI tool in place (sudo)
-	$(ANSIBLE) playbooks/install_clis.yml $(LOCAL) $(BECOME) -e clis_state=latest
+upgrade: ## Owned system packages to their latest (sudo), then every pin to upstream's latest, lock, install
+	scripts/bootstrap.sh --upgrade
+	mise upgrade --bump $(BUMP_EXCLUDE:%=--exclude %)
+
+.PHONY: bump
+bump: ## Only the pins: move each to upstream's latest, refresh mise.lock, install (edits mise/config.toml)
+	mise upgrade --bump $(BUMP_EXCLUDE:%=--exclude %)
+
+.PHONY: bump-mise
+bump-mise: ## Move the mise pin in scripts/bootstrap.sh to the latest release (VERSION=v2026.11.9 to pick one), then `make bootstrap`
+	scripts/bump-mise.sh $(VERSION)
 
 .PHONY: dotfiles
-dotfiles: ## Deploy the dotfiles (sudo only to chsh to zsh, once)
-	$(ANSIBLE) playbooks/dotfiles.yml $(LOCAL) $(BECOME)
+dotfiles: ## Deploy the dotfiles (asks your password once, to chsh to zsh)
+	mise trust -q mise/config.toml
+	mise run dotfiles
 
 .PHONY: rollback
 rollback: ## Remove the dotfiles symlinks and restore the backups
-	$(ANSIBLE) playbooks/dotfiles_rollback.yml $(LOCAL)
+	mise run rollback
 
 # ─── Testing ─────────────────────────────────────────────────────────────────
 
 .PHONY: test
-test: ## Deploy the dotfiles in a container and assert idempotence (UBUNTU_VERSION=22.04 to switch LTS)
+test: ## Bootstrap + dotfiles twice in a container, assert the second run changes nothing (BASE_IMAGE=fedora:43 to switch)
 	./test/run.sh dotfiles
 
 .PHONY: test-clis
-test-clis: ## Run install_clis.yml twice in a container (ROLE=<name> for one role, single run)
-	./test/run.sh clis $(ROLE)
+test-clis: ## Bootstrap + mise install twice + bootstrap --upgrade in a container, assert every tool runs and nothing reinstalls
+	./test/run.sh clis
 
 .PHONY: test-rollback
 test-rollback: ## Deploy then roll back in a container, assert the restore
 	./test/run.sh rollback
-
-.PHONY: test-pins
-test-pins: ## Check every pinned tool version still installs
-	./test/run.sh pins
-
-.PHONY: drift
-drift: ## Report which pinned versions upstream has moved past (needs gh)
-	./test/pin-drift.sh
-
-.PHONY: bump-pins
-bump-pins: ## Bump pinned tools to upstream's latest and refresh checksums (ROLE=<name> to limit, needs gh)
-	./test/bump-pins.sh $(ROLE)
-
-.PHONY: checksums
-checksums: ## Refetch every pinned asset and write its sha256 into the role defaults (ROLE=<name> to limit)
-	./test/checksums.py $(ROLE)
-
-.PHONY: checksums-audit
-checksums-audit: ## Offline: assert every pinned version carries a sha256
-	./test/checksums.py --audit
 
 .PHONY: test-wezterm
 test-wezterm: ## Install wezterm in a container and parse the versioned config
@@ -69,14 +70,31 @@ test-wezterm: ## Install wezterm in a container and parse the versioned config
 shell: ## Interactive shell in the test bed
 	./test/run.sh shell
 
+.PHONY: drift
+drift: ## Report which pins upstream has moved past
+	mise outdated
+
+# Once ~/.config/mise links here, mise reads mise/config.toml as the global
+# config, and a bare `mise lock` finds no project to lock.
+LOCK_SCOPE := $(shell [ "$$(readlink -f ~/.config/mise 2>/dev/null)" = "$$(readlink -f mise)" ] && echo --global)
+
+.PHONY: lock
+lock: ## Refresh mise.lock (URLs and sha256 for linux x64/arm64) after editing a pin
+	mise lock $(LOCK_SCOPE)
+
+.PHONY: lock-audit
+lock-audit: ## Offline: assert every tool is locked for both platforms with a checksum
+	./test/lock-audit.py
+
 # ─── Quality ─────────────────────────────────────────────────────────────────
 
 .PHONY: lint
-lint: ## yamllint + ansible-lint + syntax check + checksum audit
+lint: ## shellcheck + yamllint + mise config parse + lock audit
+	shellcheck -S warning scripts/*.sh scripts/lib/dotfiles.sh test/run.sh mise/tasks/bootstrap mise/tasks/krew-plugins mise/tasks/rollback mise/tasks/dotfiles/*
 	yamllint .
-	ansible-lint playbooks/
-	./test/checksums.py --audit
-	@for pb in playbooks/*.yml; do $(ANSIBLE) "$$pb" --syntax-check $(LOCAL) >/dev/null && echo "syntax OK $$pb"; done
+	python3 -m py_compile scripts/lib/claude-settings.py test/lock-audit.py
+	mise --cd mise tasks ls >/dev/null && echo "mise config OK"
+	./test/lock-audit.py
 
 # Pinned by digest, like the actions in CI: :latest is a moving target that runs
 # with a bind mount of the whole repo.

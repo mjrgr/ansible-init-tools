@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#MISE description="wezterm config, Claude state hook and its registration in ~/.claude/settings.json"
+#MISE depends=["dotfiles:common"]
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../../scripts/lib/dotfiles.sh"
+
+link_dotfile "$DOTFILES/wezterm/wezterm.lua"          "$HOME/.config/wezterm/wezterm.lua"
+link_dotfile "$DOTFILES/wezterm/claude-state-hook.sh" "$HOME/.config/wezterm/claude-state-hook.sh"
+
+# settings.json is the user's own file (tokens, machine-local preferences), so
+# the five hook events are merged into it, never templated over it.
+settings="$HOME/.claude/settings.json"
+if [[ -f "$settings" ]]; then
+  before="$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1])), sort_keys=True))' "$settings")" \
+    || die "$settings did not parse as JSON — fix or move it, refusing to overwrite"
+else
+  before=""
+fi
+result="$(python3 "$REPO/scripts/lib/claude-settings.py" hooks "$settings" "$HOME/.config/wezterm/claude-state-hook.sh" --dry-run)"
+if [[ "$result" == "changed" ]]; then
+  if [[ -n "$before" ]]; then
+    install -m 0600 -- "$settings" "$BACKUP_DIR/settings.json.$STAMP"
+    changed "backed up $settings"
+  fi
+  python3 "$REPO/scripts/lib/claude-settings.py" hooks "$settings" "$HOME/.config/wezterm/claude-state-hook.sh" >/dev/null
+  changed "registered the Claude Code state hooks in $settings"
+fi

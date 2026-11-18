@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#MISE description="oh-my-zsh, external plugins, zsh symlinks, local templates, login shell"
+#MISE depends=["dotfiles:common"]
+#MISE raw=true
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../../scripts/lib/dotfiles.sh"
+
+if [[ ! -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ]]; then
+  log="$(mktemp)"
+  RUNZSH=no CHSH=no KEEP_ZSHRC=yes GIT_CONFIG_GLOBAL=/dev/null \
+    sh -c "$(curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 \
+      https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" >"$log" 2>&1 \
+    || { cat "$log"; rm -f "$log"; die "oh-my-zsh installer failed"; }
+  rm -f "$log"
+  changed "installed oh-my-zsh"
+fi
+
+custom="$HOME/.oh-my-zsh/custom/plugins"
+for p in zsh-autosuggestions zsh-syntax-highlighting zsh-history-substring-search; do
+  clone_once "https://github.com/zsh-users/$p" "$custom/$p"
+done
+clone_once "https://github.com/Aloxaf/fzf-tab" "$custom/fzf-tab"
+
+link_dotfile "$DOTFILES/zsh/.zshrc"               "$HOME/.zshrc"
+link_dotfile "$DOTFILES/zsh/.zshenv"              "$HOME/.zshenv"
+link_dotfile "$DOTFILES/zsh/config/wezterm.zsh"   "$HOME/.config/zsh/wezterm.zsh"
+link_dotfile "$DOTFILES/kube/k8s-clusters.sh"     "$HOME/.kube/k8s-clusters.sh"
+link_dotfile "$DOTFILES/kube/krelay-patch-hardened.json" "$HOME/.config/krelay/patch-hardened.json"
+
+# Left by an earlier deploy; `fzf --zsh` in .zshrc replaced it.
+if [[ -e "$HOME/.fzf-key-bindings.zsh" ]]; then
+  rm -f "$HOME/.fzf-key-bindings.zsh"; changed "removed ~/.fzf-key-bindings.zsh"
+fi
+fetch_if_changed https://raw.githubusercontent.com/junegunn/fzf-git.sh/main/fzf-git.sh "$HOME/.fzf-git.sh"
+
+copy_template "$DOTFILES/zsh/.zshenv.local.example" "$HOME/.zshenv.local" 0600
+copy_template "$DOTFILES/zsh/.zshrc.local.example"  "$HOME/.zshrc.local"  0644
+
+# DOTFILES_SET_DEFAULT_SHELL=false skips the chsh. Guarded on passwd so an
+# already-migrated host never prompts again.
+if [[ "${DOTFILES_SET_DEFAULT_SHELL:-true}" == "true" ]]; then
+  zsh_bin="$(command -v zsh)"
+  me="$(id -un)"
+  current="$(getent passwd "$me" | cut -d: -f7)"
+  if [[ "$current" != "$zsh_bin" && "$current" != "/bin/zsh" && "$current" != "/usr/bin/zsh" ]]; then
+    # chsh asks for the user's own password; a NOPASSWD sudo (the test bed) avoids the prompt.
+    if sudo -n true 2>/dev/null; then sudo chsh -s "$zsh_bin" "$me"; else chsh -s "$zsh_bin"; fi
+    changed "login shell -> $zsh_bin"
+  fi
+fi

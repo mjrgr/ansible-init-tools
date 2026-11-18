@@ -1,7 +1,0 @@
----
-# role: jq
-- name: "Install jq"
-  ansible.builtin.apt:
-    name: jq
-    state: "{{ 'latest' if clis_state == 'latest' else 'present' }}"
-    update_cache: true

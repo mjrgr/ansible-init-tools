@@ -335,7 +335,7 @@ local function runs_claude(panes)
   end)
 end
 
--- Codex is a static musl binary at /usr/local/bin/codex, so the leaf name is the
+-- Codex is a static musl binary installed by mise as `codex`, so the leaf name is the
 -- command name — where the process is visible at all. No title fallback: codex
 -- overwrites the title with the cwd basename a few seconds in.
 local function runs_codex(panes)
