@@ -157,16 +157,19 @@ jobs:
         run: |
           ./scripts/bootstrap.sh --skip podman,wezterm,vscode
           mise trust -q mise/config.toml
+          # Nothing is installed on the runner, so every tool is listed; only a
+          # latest that differs from the pin is drift.
+          mise outdated --json > /tmp/outdated.json
           {
             echo "| tool | pinned | latest |"
             echo "|---|---|---|"
-            # Nothing is installed on the runner, so every tool is listed; only a
-            # latest that differs from the pin is drift.
-            mise outdated --json | python3 -c '
+            python3 - /tmp/outdated.json <<'PY'
           import json, sys
-          for name, t in sorted(json.load(sys.stdin).items()):
-              if t.get("latest") and t.get("requested") not in (t["latest"], "latest"):
-                  print(f"| {name} | {t.get(\"requested\")} | {t[\"latest\"]} |")'
+          for name, t in sorted(json.load(open(sys.argv[1])).items()):
+              requested, latest = t.get("requested"), t.get("latest")
+              if latest and requested not in (latest, "latest"):
+                  print(f"| {name} | {requested} | {latest} |")
+          PY
           } > /tmp/drift.md
           cat /tmp/drift.md >> "$GITHUB_STEP_SUMMARY"
           echo "behind=$(( $(wc -l < /tmp/drift.md) - 2 ))" >> "$GITHUB_OUTPUT"
