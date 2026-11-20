@@ -54,10 +54,8 @@ echo "== native Claude Code install (claude is a mise tool now)"
 rm_path "$HOME/.local/bin/claude"
 rm_path "$HOME/.local/share/claude"
 
-echo "== krew's own copy of itself (kubectl-krew is a mise tool now)"
-rm_path "${KREW_ROOT:-$HOME/.krew}/store/krew"
-rm_path "${KREW_ROOT:-$HOME/.krew}/receipts/krew.yaml"
-rm_path "${KREW_ROOT:-$HOME/.krew}/bin/kubectl-krew"
+echo "== krew and its plugins (stern, kubectl-cnpg, krelay, kubectl-whoami are mise tools now)"
+rm_path "${KREW_ROOT:-$HOME/.krew}"
 
 echo "== kept on purpose"
 echo "  /var/lib/docker (delete by hand once nothing in it is needed)"

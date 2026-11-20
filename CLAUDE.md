@@ -14,11 +14,13 @@ du bootstrap). Plus aucun Ansible ; `MIGRATION.md` pour un poste provisionné pa
 - `mise/mise.lock` : URLs + sha256 par outil pour `linux-x64` et `linux-arm64` (`lockfile_platforms`). Jamais édité à la main :
   `make lock` ; `make lock-audit` (offline) exige les deux plateformes avec digest, sauf backends `core:`/`cargo:` (rustup/cargo vérifient).
 - `[tool_alias]` : noms courts pour les outils hors registry (`github:`) ou réassignés (`helmfile`, `neovim`). Deux outils d'une même
-  release (codex / codex-code-mode-host, kwok / kwokctl, krew) = alias + `matching_regex` ; jamais `asset_pattern` templaté
-  (le lock fige l'asset rendu sur l'hôte, donc amd64 pour arm64).
+  release (codex / codex-code-mode-host, kwok / kwokctl) = alias + `matching_regex` ; jamais `asset_pattern` templaté (le lock
+  fige l'asset rendu sur l'hôte, donc amd64 pour arm64).
+- Plugins kubectl sans krew : `kubectl-<nom>` sur PATH suffit (`kubectl-cnpg`, `krelay` → `kubectl-relay`, `kubectl-whoami` ;
+  `stern` seul). `access-matrix` (rakkess) abandonné : v0.5.1 sans asset, v0.5.0 sans arm64 → le lock 2 plateformes refuse.
 - aqua d'abord (URL de release directe, checksums/cosign/SLSA du registry) ; `github:` seulement sans entrée registry — il passe par
   `api.github.com` (quota anonyme 60/h) → `MISE_GITHUB_TOKEN` en CI et derrière un proxy partagé.
-- `mise/tasks/` : file tasks auto-découvertes (`bootstrap`, `dotfiles/<group>` = `mise run dotfiles:<group>`, `krew-plugins`,
+- `mise/tasks/` : file tasks auto-découvertes (`bootstrap`, `dotfiles/<group>` = `mise run dotfiles:<group>`, `check`,
   `rollback`). Chaque script (sauf `bootstrap`) source `scripts/lib/dotfiles.sh` (`REPO` via `readlink -f $0`, `link_dotfile` backup+symlink, `changed` = seul signal de
   changement). cwd d'une tâche = `$HOME` (config root global), pas le repo.
 - `scripts/lib/claude-settings.py` : merge/strip des hooks et chaînage statusLine dans `~/.claude/settings.json` (fichier de l'utilisateur,
@@ -26,7 +28,8 @@ du bootstrap). Plus aucun Ansible ; `MIGRATION.md` pour un poste provisionné pa
   (herdr, context-mode…) restent, à l'enregistrement comme au rollback ; un fichier déjà à jour ressort identique. `scripts/uninstall-ansible.sh`, `scripts/cleanup-legacy.sh` : dry-run par défaut, `--yes` pour appliquer.
 - `dotfiles/` : sources versionnées, liées (pas copiées) dans `$HOME`. `*.local` gitignorés, seuls les `*.local.example` sont versionnés.
   `.zshenv` met les shims mise sur PATH (shells non interactifs : MCP, `wsl.exe -- herdr`, unit systemd) ; `.zshrc` active mise **avant**
-  OMZ, car tous les `command -v` qui suivent en dépendent.
+  OMZ, car tous les `command -v` qui suivent en dépendent. `~/bin`, `~/.local/bin`, `~/go/bin` et `GOPATH` viennent de `[env]`
+  (`_.path`, placé **devant** les outils mise : `~/.cargo/bin` n'y va pas, `.zshenv` source `~/.cargo/env`).
 - `mise/tasks/rollback` : liste **autoritative** `links` ; `EVENTS` de `claude-settings.py` pour les hooks Claude.
 - `test/` : `run.sh` (banc conteneur, repo monté `:ro` puis copié ; `BASE_IMAGE=ubuntu:22.04|fedora:43`), `Dockerfile` (sudo + git +
   user, le bootstrap fait le reste), `lock-audit.py`.
@@ -37,22 +40,24 @@ du bootstrap). Plus aucun Ansible ; `MIGRATION.md` pour un poste provisionné pa
 make lint                 # shellcheck + yamllint + parse config mise + lock-audit
 make setup                # premier run : bootstrap (sudo) + trust + install + dotfiles ; ensuite `mise run setup`
 make bootstrap            # scripts/bootstrap.sh  (ARGS="--skip podman,wezterm,vscode" | "--upgrade") = mise run bootstrap
-make install | bump       # mise run install (lock + krew plugins) | mise upgrade --bump (réécrit config + lock, installe)
-make upgrade              # bootstrap --upgrade (sudo, paquets du bootstrap seulement) + bump = mise run upgrade
+make install | bump       # mise run install (depuis le lock) | mise run bump = mise upgrade --bump (réécrit config + lock, installe)
+make upgrade              # bootstrap --upgrade (sudo, paquets du bootstrap seulement) + bump + check = mise run upgrade
+make check                # mise run check : chaque outil répond, lock-audit, mise doctor sans problème, unit herd-publish active
 make bump-mise            # pin mise (version + sha256 x64/arm64) dans scripts/bootstrap.sh → latest (VERSION=vX pour choisir), puis make bootstrap
 make dotfiles | rollback  # mise run dotfiles | mise run rollback
 mise run dotfiles:starship                      # un seul groupe
 mise install kubectl helm                        # deux outils
 make test                 # bootstrap + dotfiles x2 en conteneur ; 2e run = aucune ligne "changed:" (BASE_IMAGE pour changer d'OS)
 make test-clis            # bootstrap complet + mise run install x2 + `mise run bootstrap -- --upgrade` (doit ne rien remonter) ;
-                          # chaque outil doit répondre --version|version|--help ; lock inchangé
+                          # puis `mise run check` (CHECK_VERBOSE=1) ; lock inchangé
 make test-rollback | test-wezterm | shell
 make lock | lock-audit    # régénère mise.lock | audit offline
 make drift                # mise outdated
 make scan | hooks         # gitleaks (image pinnée par digest) ; hooks = core.hooksPath .githooks
 ```
 
-`mise run` installe les outils manquants avant d'exécuter une tâche : `make test` installe donc aussi les 59 outils.
+`mise run` installe les outils manquants avant d'exécuter une tâche : `make test` installe donc aussi les 62 outils
+(`MISE_TASK_RUN_AUTO_INSTALL=false` pour l'éviter, comme le job `pin-bump`).
 
 Pas de `--check` : valider en conteneur. `mise lock` et `mise install` ont besoin du réseau ; `mise.lock` doit être en 0644 (mise
 l'écrit en 0600, le conteneur ne le lirait pas).
@@ -86,7 +91,9 @@ rollback ne le restaure pas. Nouvel event de hook Claude → `EVENTS` + `hooks_f
 push `main`, PR, `workflow_dispatch`, cron lundi 06:17 UTC. Actions pinnées par SHA (Dependabot `github-actions` uniquement).
 `MISE_GITHUB_TOKEN: ${{ github.token }}` global. Jobs : `lint`, `secrets` (gitleaks historique), `dotfiles`/`rollback`/`clis`
 (ubuntu 22.04, 26.04, fedora 43, 26.04 arm64), `wezterm-config`. Hors gate : `lock-drift` (cron/dispatch : `mise lock` puis
-`git diff --exit-code`) et `pin-drift` (hors PR, `mise outdated --json`, issue unique label `pin-drift`).
+`git diff --exit-code`) et `pin-bump` (cron/dispatch depuis `main` seulement : `mise run bump`, branche `bump/pins` force-pushée,
+PR unique créée/éditée, CI dispatchée dessus car un push au token du workflow ne déclenche pas `pull_request` ; fermée quand plus rien
+ne bouge).
 
 ## Pièges
 
@@ -98,7 +105,11 @@ push `main`, PR, `workflow_dispatch`, cron lundi 06:17 UTC. Actions pinnées par
   `make lock` passe `--global` tout seul.
 - `aqua.baked_registry = true` : mise embarque le registry aqua de sa date de build. Un fix registry plus récent (vu : kyverno 1.20.0,
   nouveau workflow signataire, cosign refuse au lock) n'est visible qu'avec une mise buildée après → `make bump-mise` puis
-  `make bootstrap`. Sinon l'outil va dans `BUMP_EXCLUDE` (Makefile, et `--exclude` dans `[tasks.upgrade]`) le temps que mise suive.
+  `make bootstrap`. Sinon l'outil va dans `BUMP_EXCLUDE` (`env` de `[tasks.bump]`, seul endroit) le temps que mise suive.
+- `aqua:openai/codex` (un paquet = codex + codex-code-mode-host) ne lock pas avec mise 2026.11.9 : la résolution de l'autre
+  plateforme ignore le `version_prefix` `rust-v` du registry et demande le tag `v0.170.0` (404). Mettre `version_prefix` sur l'entrée
+  ne fait que basculer sur `github:` sans regex → premier asset venu. Le lock mémorise le backend : changer un alias sans relock
+  ne change rien (`mise backends switch <tool> --global`). codex reste donc en `github:` + `matching_regex`.
 - `sudo mise …` (self-update, install) : sudo nu perd le proxy → timeouts sur mise.jdx.dev/GitHub. mise n'est jamais mis à jour par
   `self-update` : c'est le pin du bootstrap qui compte, et `mise run bootstrap` porte le proxy.
 - `mise run` cwd = `$HOME` : chemins relatifs interdits dans les tâches, tout passe par `$REPO`/`$DOTFILES`.

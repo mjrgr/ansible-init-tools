@@ -8,15 +8,7 @@
 
 # ─── PATH ────────────────────────────────────────────────────────────────────
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-export PATH="$HOME/bin:$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
-export PATH="$HOME/.local/bin:/usr/local/py-utils/bin:${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
-
-# Go
-export GOPATH="$HOME/go"
-export PATH="$PATH:/usr/local/go/bin:$GOPATH/bin"
-
-# Rust / Cargo
-export PATH="$PATH:$HOME/.cargo/bin"
+# ~/bin, ~/.local/bin, GOPATH come from [env] in mise/config.toml; ~/.cargo/bin from .zshenv.
 
 # ─── MISE ────────────────────────────────────────────────────────────────────
 # Before everything that probes for a tool: every CLI here is a mise tool, and
@@ -188,7 +180,7 @@ alias kl="kubectl logs -f"
 alias kaf="kubectl apply -f"
 alias kdf="kubectl delete -f"
 alias krr="kubectl rollout restart deployment"
-alias krelay="kubectl relay --patch-file ~/.config/krelay/patch-hardened.json"  # requires krew relay plugin
+alias krelay="kubectl relay --patch-file ~/.config/krelay/patch-hardened.json"  # krelay mise tool
 
 # ─── ALIASES — HELM ──────────────────────────────────────────────────────────
 alias h="helm"

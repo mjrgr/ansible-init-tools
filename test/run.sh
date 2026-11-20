@@ -154,28 +154,9 @@ case "$TARGET" in
       echo "    nothing to upgrade"
 
       echo
-      echo "==> every tool runs (--version, version or --help must exit 0)"
-      fail=0
-      for t in $(mise ls --json | python3 -c "import json,sys; print(\" \".join(json.load(sys.stdin)))"); do
-        case "$t" in
-          rust) bin=cargo ;; neovim) bin=nvim ;; ripgrep) bin=rg ;; krew) bin=kubectl-krew ;; opentofu) bin=tofu ;; *) bin=$t ;;
-        esac
-        ok=0
-        for flag in --version version --help; do
-          if out=$("$bin" $flag 2>&1); then ok=1; break; fi
-        done
-        if [ "$ok" = 1 ]; then
-          printf "    %-22s %s\n" "$t" "$(printf "%s" "$out" | head -1 | cut -c1-60)"
-        else
-          printf "    %-22s FAILED: %s\n" "$t" "$(printf "%s" "$out" | tail -1 | cut -c1-80)"; fail=1
-        fi
-      done
-      kubectl-krew list | sed "s/^/    krew plugin: /"
-      [ "$fail" = 0 ] || exit 1
-
-      echo
-      echo "==> mise doctor"
-      mise doctor 2>&1 | grep -iE "problem|warn|error" | sed "s/^/    /" || echo "    no problems reported"
+      echo "==> mise run check (every tool answers, lock audited, mise doctor clean)"
+      CHECK_VERBOSE=1 mise run check 2>&1 | sed "s/^/    /"
+      [ "${PIPESTATUS[0]}" = 0 ] || exit 1
 
       echo
       echo "==> repo tree (mise.lock must be stable)"

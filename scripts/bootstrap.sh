@@ -200,7 +200,7 @@ cat <<MSG
 
 Done. As your user, from the clone (make setup runs these for you):
   mise trust mise/config.toml
-  mise run install          # every pinned tool + krew plugins
+  mise run install          # every pinned tool
   mise run dotfiles         # symlinks, oh-my-zsh, fonts, herdr, login shell
 Later: mise run bootstrap -- --upgrade, or make upgrade for the tools as well.
 $($WSL && echo "WSL: the herd-publish user unit needs systemd=true in /etc/wsl.conf (then wsl --shutdown).")

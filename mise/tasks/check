@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+#MISE description="This host: every tool installed and answering, lock audited, mise doctor clean, herd-publish unit up (= make check)"
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../scripts/lib/dotfiles.sh"
+
+fail=0
+verbose="${CHECK_VERBOSE:-0}"
+
+missing="$(mise ls --missing --json | python3 -c 'import json,sys; print(" ".join(json.load(sys.stdin)))')"
+if [[ -n "$missing" ]]; then say "missing: $missing (mise install)"; fail=1; fi
+
+# A binary built for the wrong libc or arch downloads fine and dies here, not later.
+n=0
+while read -r t; do
+  case "$t" in
+    rust) bin=cargo ;; neovim) bin=nvim ;; ripgrep) bin=rg ;; opentofu) bin=tofu ;; krelay) bin=kubectl-relay ;; *) bin=$t ;;
+  esac
+  ok=0
+  for flag in --version version --help; do
+    if out="$("$bin" $flag 2>&1)"; then ok=1; break; fi
+  done
+  if (( ok )); then
+    n=$((n + 1))
+    (( verbose )) && printf '  %-22s %s\n' "$t" "$(head -1 <<<"$out" | cut -c1-60)"
+  else
+    printf '  %-22s FAILED: %s\n' "$t" "$(tail -1 <<<"$out" | cut -c1-80)"; fail=1
+  fi
+done < <(mise ls --current --json | python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin)))')
+say "$n tool(s) answer"
+
+# tomllib is 3.11+: Ubuntu 22.04 ships 3.10, and the lint job audits the lock anyway.
+if python3 -c 'import tomllib' 2>/dev/null; then
+  python3 "$REPO/test/lock-audit.py" || fail=1
+else
+  say "lock audit skipped (python < 3.11)"
+fi
+
+if doctor="$(mise doctor 2>&1)"; then
+  say "mise doctor: no problem"
+else
+  sed -n '/problems found/,$p' <<<"$doctor"; fail=1
+fi
+
+# Only where the unit is installed and systemd runs (not in the container bench).
+if systemctl --user show -p LoadState herd-publish.service 2>/dev/null | grep -q '=loaded$'; then
+  state="$(systemctl --user is-active herd-publish.service || true)"
+  say "herd-publish.service: $state"
+  [[ "$state" == active ]] || fail=1
+fi
+
+(( fail == 0 )) || die "check failed"

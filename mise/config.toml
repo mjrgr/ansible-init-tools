@@ -18,6 +18,9 @@ BAT_THEME = "base16"
 KIND_EXPERIMENTAL_PROVIDER = "podman"
 # mise owns the Claude Code version; its self-updater would fight the pin.
 DISABLE_AUTOUPDATER = "1"
+GOPATH = "{{env.HOME}}/go"
+# These land ahead of the tool dirs, so ~/.cargo/bin (rustup proxies) stays out: .zshenv sources ~/.cargo/env.
+_.path = ["{{env.HOME}}/bin", "{{env.HOME}}/.local/bin", "{{env.HOME}}/go/bin"]
 
 # Registry overrides and names for tools the registry lacks or routes elsewhere
 # (helmfile -> packslip, neovim -> vfox). aqua is preferred: it downloads from
@@ -28,13 +31,16 @@ certigo = "github:square/certigo"
 cilium = "aqua:cilium/cilium-cli"
 clauth = "cargo:clauth"
 cloud-provider-kind = "aqua:kubernetes-sigs/cloud-provider-kind"
+# Not aqua: `mise lock` ignores the registry's rust-v prefix on the other platform and 404s on tag v<x.y.z>.
 codex = "github:openai/codex"
 codex-code-mode-host = "github:openai/codex"
 gitlogue = "github:unhappychoice/gitlogue"
 helm-schema = "aqua:dadav/helm-schema"
 helmfile = "aqua:helmfile/helmfile"
 hubble = "aqua:cilium/hubble"
-krew = "github:kubernetes-sigs/krew"
+krelay = "github:knight42/krelay"
+kubectl-cnpg = "github:cloudnative-pg/cloudnative-pg"
+kubectl-whoami = "aqua:rajatjindal/kubectl-whoami"
 kwok = "github:kubernetes-sigs/kwok"
 neovim = "aqua:neovim/neovim"
 
@@ -48,10 +54,13 @@ kwok = { version = "0.8.0", matching_regex = '^kwok-linux-(amd64|arm64)$', bin =
 kwokctl = "0.8.0"
 k9s = "0.51.0"
 popeye = "0.22.1"
-sofka = "0.36.0"
+sofka = "0.37.0"
 argo9s = "0.1.0"
-# Installed as kubectl-krew so `kubectl krew` resolves; plugins come from `mise run krew-plugins`.
-krew = { version = "0.5.0", matching_regex = '^krew-linux_(amd64|arm64)\.tar\.gz$', rename_exe = "kubectl-krew" }
+# kubectl plugins, formerly krew: `kubectl <name>` finds kubectl-<name> on PATH (stern runs on its own).
+stern = "1.35.0"
+kubectl-whoami = "0.0.48"
+kubectl-cnpg = { version = "1.30.2", matching_regex = '^kubectl-cnpg_.*_linux_(x86_64|arm64)\.tar\.gz$' }
+krelay = { version = "0.2.0", matching_regex = '^kubectl-relay_v.*_linux-(amd64|arm64)\.tar\.gz$' }
 helmfile = "1.8.4"
 nerdctl = "2.4.2"
 crictl = "1.37.0"
@@ -62,10 +71,10 @@ kubie = "0.28.0"
 cilium = "0.20.3"
 hubble = "1.20.4"
 kyverno = "1.20.0"
-vcluster = "0.37.6"
+vcluster = "0.38.0"
 cmctl = "2.6.2"
 k0sctl = "0.33.1"
-telepresence = "2.33.0"
+telepresence = "2.33.1"
 cloud-provider-kind = "0.12.0"
 helm-schema = "0.24.0"
 
@@ -73,7 +82,7 @@ helm-schema = "0.24.0"
 opentofu = "1.13.9"
 trivy = "0.76.2"
 cosign = "3.1.4"
-oras = "1.3.6"
+oras = "1.4.0"
 dive = "0.13.1"
 ko = "0.19.1"
 
@@ -106,8 +115,8 @@ neovim = "0.12.6"
 # ── Coding agents ───────────────────────────────────────────────────────────
 # Static musl build from the GitHub release, tagged rust-v<x.y.z>. Two tools
 # from one release: code_mode_host ships enabled and fails without its helper.
-codex = { version = "0.169.0", version_prefix = "rust-v", matching_regex = '^codex-(x86_64|aarch64)-unknown-linux-musl\.tar\.gz$', rename_exe = "codex" }
-codex-code-mode-host = { version = "0.169.0", version_prefix = "rust-v", matching_regex = '^codex-code-mode-host-(x86_64|aarch64)-unknown-linux-musl\.tar\.gz$', rename_exe = "codex-code-mode-host" }
+codex = { version = "0.170.0", version_prefix = "rust-v", matching_regex = '^codex-(x86_64|aarch64)-unknown-linux-musl\.tar\.gz$', rename_exe = "codex" }
+codex-code-mode-host = { version = "0.170.0", version_prefix = "rust-v", matching_regex = '^codex-code-mode-host-(x86_64|aarch64)-unknown-linux-musl\.tar\.gz$', rename_exe = "codex-code-mode-host" }
 # "latest" at lock time: mise.lock pins it, `mise upgrade claude` moves it.
 claude = "latest"
 herdr = "0.9.5"
@@ -129,12 +138,18 @@ description = "Bootstrap (sudo), every tool, every dotfiles group (= make setup,
 run = ["mise run bootstrap", "mise run install", "mise run dotfiles"]
 
 [tasks.upgrade]
-description = "Owned system packages to their latest (sudo), then every pin to upstream's latest (= make upgrade)"
-run = ["mise run bootstrap -- --upgrade", "mise upgrade --bump"]
+description = "Owned system packages to their latest (sudo), every pin to upstream's latest, then check (= make upgrade)"
+run = ["mise run bootstrap -- --upgrade", "mise run bump", "mise run check"]
+
+[tasks.bump]
+description = "Every pin to upstream's latest, refresh mise.lock, install (= make bump; edits config.toml)"
+# A tool the aqua registry baked into the pinned mise cannot verify yet (see CLAUDE.md); empty when none.
+env = { BUMP_EXCLUDE = "" }
+run = 'set --; for t in $BUMP_EXCLUDE; do set -- "$@" --exclude "$t"; done; exec mise upgrade --bump "$@"'
 
 [tasks.install]
-description = "Install every pinned tool, then the krew plugins (= make install)"
-run = ["mise install", "mise run krew-plugins"]
+description = "Install every pinned tool from mise.lock (= make install)"
+run = "mise install"
 
 [tasks.dotfiles]
 description = "Deploy every dotfiles group (= make dotfiles)"

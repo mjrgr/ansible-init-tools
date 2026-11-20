@@ -13,7 +13,7 @@ Fresh machine: skip this, follow the README.
 | cargo | rustup-init to `/opt/rust`, `cargo`/`rustc` symlinked into `/usr/local/bin` | `rust` core tool, toolchain in `~/.rustup`, `~/.cargo` |
 | clauth | `cargo install` from the dotfiles play | `cargo:clauth` mise tool |
 | Claude Code | native installer into `~/.local/share/claude`, self-updating | `aqua:anthropics/claude-code`, pinned by the lock, `DISABLE_AUTOUPDATER=1` |
-| krew | bootstrapped into `~/.krew`, plugins from the clis play (as the user) | `kubectl-krew` mise tool, plugins from `mise run krew-plugins` |
+| krew | bootstrapped into `~/.krew`, plugins from the clis play (as the user) | no krew: `stern`, `kubectl-cnpg`, `krelay`, `kubectl-whoami` are mise tools |
 | System packages, podman, wezterm, vscode | apt roles | `scripts/bootstrap.sh` (apt and dnf) |
 | mise | `mise` role | `scripts/bootstrap.sh`, pinned and checksummed |
 | Dotfiles | `dotfiles.yml`, one role per group | `mise run dotfiles`, one task per group under `mise/tasks/dotfiles/` |
@@ -106,7 +106,7 @@ mise doctor                       # no problem reported; shims dir and activate 
 mise ls --missing                 # empty
 type -a kubectl                   # mise's path first, /usr/local/bin/kubectl second (until step 6)
 kubectl version --client && k9s version -s && codex --version && claude --version
-kubectl krew list                 # the eight plugins
+kubectl cnpg version && kubectl whoami --version && stern --version
 herdr --version && systemctl --user status herd-publish.service
 zsh -ic 'echo $KIND_EXPERIMENTAL_PROVIDER $BAT_THEME'   # [env] applied
 ```
@@ -139,8 +139,8 @@ scripts/cleanup-legacy.sh --yes
 Removes the `/usr/local/bin` binaries the roles placed (every tool now in mise,
 plus the `cargo`/`rustc`/`fd`/`bat` symlinks), `/usr/local/{share,lib}/nvim`,
 `/usr/local/share/btop`, `/opt/rust`, the apt packages now pinned in mise and
-the GitHub CLI apt source, the native Claude Code install, and krew's own copy
-of itself under `~/.krew`. `/var/lib/docker`, `~/.cargo` and `~/.rustup` stay.
+the GitHub CLI apt source, the native Claude Code install, and `~/.krew` (the
+plugins are mise tools). `/var/lib/docker`, `~/.cargo` and `~/.rustup` stay.
 
 Run it only after step 4 passed: until then the old copies are the fallback.
 

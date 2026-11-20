@@ -15,7 +15,7 @@ permissions:
 # runs with this workflow's permissions. Dependabot bumps the SHAs and keeps the
 # version in the trailing comment honest.
 #
-# MISE_GITHUB_TOKEN: the github backend (codex, krew, kwok, gitlogue, argo9s)
+# MISE_GITHUB_TOKEN: the github backend (kwok, kubectl-cnpg, krelay, gitlogue, argo9s)
 # reads release metadata from api.github.com, whose anonymous quota a shared
 # runner egress burns through. The workflow token costs nothing and is scoped
 # to this run.
@@ -141,62 +141,80 @@ jobs:
           mise lock
           git diff --exit-code mise/mise.lock
 
-  # Not part of the CI gate: it reports what upstream has moved on to, on a
-  # schedule, and keeps a single issue in sync with the answer.
-  pin-drift:
-    if: github.event_name != 'pull_request'
+  # Not part of the CI gate. On the schedule (from main only: a dispatch on the
+  # bump branch must not bump it again), it moves every pin to upstream's latest
+  # and keeps one PR carrying the diff. A push made with the workflow token
+  # triggers no pull_request run, so CI is dispatched on the branch by hand.
+  pin-bump:
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      issues: write
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      BRANCH: bump/pins
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - name: Compare the pins against upstream
-        id: drift
+      - name: Move every pin to upstream's latest
+        id: bump
+        env:
+          MISE_YES: '1'
+          # The task would first install all the tools; the bump installs what moved.
+          MISE_TASK_RUN_AUTO_INSTALL: 'false'
         run: |
           ./scripts/bootstrap.sh --skip podman,wezterm,vscode
           mise trust -q mise/config.toml
-          # Nothing is installed on the runner, so every tool is listed; only a
-          # latest that differs from the pin is drift.
-          mise outdated --json > /tmp/outdated.json
+          mise run bump
           {
-            echo "| tool | pinned | latest |"
+            echo "| tool | from | to |"
             echo "|---|---|---|"
-            python3 - /tmp/outdated.json <<'PY'
-          import json, sys
-          for name, t in sorted(json.load(open(sys.argv[1])).items()):
-              requested, latest = t.get("requested"), t.get("latest")
-              if latest and requested not in (latest, "latest"):
-                  print(f"| {name} | {requested} | {latest} |")
+            git diff -U0 mise/config.toml | python3 - <<'PY'
+          import re, sys
+          old, new = {}, {}
+          for line in sys.stdin:
+              m = re.match(r'^([-+])([\w-]+) = (?:"([^"]+)"|\{ version = "([^"]+)")', line)
+              if m:
+                  (old if m[1] == "-" else new)[m[2]] = m[3] or m[4]
+          for tool in sorted(new):
+              print(f"| {tool} | {old.get(tool, '?')} | {new[tool]} |")
           PY
-          } > /tmp/drift.md
-          cat /tmp/drift.md >> "$GITHUB_STEP_SUMMARY"
-          echo "behind=$(( $(wc -l < /tmp/drift.md) - 2 ))" >> "$GITHUB_OUTPUT"
+          } > /tmp/bump.md
+          cat /tmp/bump.md >> "$GITHUB_STEP_SUMMARY"
+          if git diff --quiet mise/; then echo "changed=false"; else echo "changed=true"; fi >> "$GITHUB_OUTPUT"
 
-      # One issue, edited in place. A weekly comment on the same issue would bury
-      # the current state under a history nobody reads.
-      - name: Open or update the drift issue
+      - name: Push the branch and open or update the PR
+        if: steps.bump.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          TITLE: Pinned CLI versions are behind upstream
+          TITLE: 'chore: bump pins to upstream'
         run: |
           set -euo pipefail
-          gh label create pin-drift --color ededed --description "Pinned tool versions lag upstream" --force
-          existing=$(gh issue list --label pin-drift --state open --json number --jq '.[0].number // empty')
-          if [ "${{ steps.drift.outputs.behind }}" -le 0 ]; then
-            [ -n "$existing" ] && gh issue close "$existing" --comment "Every pin matches upstream again." || true
-            exit 0
-          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git commit -qam "$TITLE"
+          git push -f -u origin "$BRANCH"
           {
-            echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            cat /tmp/bump.md
             echo
-            cat /tmp/drift.md
-            echo
-            echo "Bump with \`make bump\` (rewrites mise/config.toml and mise.lock), then \`make test-clis\`."
-          } > /tmp/issue.md
+            echo "Bumped by run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }};"
+            echo "the CI run dispatched on this branch is what validates it on the four targets."
+            echo "Merge when green (ff-only), then \`git pull && make install\` on each host."
+          } > /tmp/pr.md
+          existing=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
           if [ -n "$existing" ]; then
-            gh issue edit "$existing" --body-file /tmp/issue.md
+            gh pr edit "$existing" --body-file /tmp/pr.md
           else
-            gh issue create --title "$TITLE" --label pin-drift --body-file /tmp/issue.md
+            gh pr create --title "$TITLE" --body-file /tmp/pr.md --base main --head "$BRANCH"
           fi
+          gh workflow run ci.yml --ref "$BRANCH"
+
+      - name: Close the PR when every pin matches upstream again
+        if: steps.bump.outputs.changed == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          [ -z "$existing" ] || gh pr close "$existing" --delete-branch --comment "Every pin matches upstream again."

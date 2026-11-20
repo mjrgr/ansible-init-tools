@@ -44,7 +44,8 @@ scripts/bootstrap.sh` would drop them before the first `curl`.
 
 Pinned in `mise/config.toml`, installed under `~/.local/share/mise`:
 
-- kubectl, helm, kind, kwok/kwokctl, k9s, popeye, sofka, argo9s, krew (+ the plugins), helmfile
+- kubectl, helm, kind, kwok/kwokctl, k9s, popeye, sofka, argo9s, helmfile
+- kubectl plugins: cnpg, relay (krelay), whoami; stern
 - argocd, kubectx/kubens, kubie, cilium, hubble, kyverno, vcluster, cmctl, k0sctl, telepresence, cloud-provider-kind, helm-schema
 - nerdctl, crictl
 - opentofu
@@ -69,7 +70,9 @@ Codex CLI is installed from the GitHub release asset (`github:openai/codex`,
 tagged `rust-v<x.y.z>`) rather than `npm i -g @openai/codex`: the npm and pip
 packages only wrap the same static binary. It is a ~250 MB binary — it embeds
 its sandbox helpers and its own ripgrep — and it does not self-update, so it is
-pinned like every other tool.
+pinned like every other tool. The registry's `aqua:openai/codex` would do the
+same in one package, but `mise lock` resolves the other platform without the
+registry's `rust-v` tag prefix and fails on a 404.
 
 A second tool comes from the same release, `codex-code-mode-host` (~69 MB). It
 is not optional in practice: `codex features list` reports `code_mode_host` as
@@ -395,10 +398,11 @@ on the symlink when the target distro no longer exists.
 ```bash
 make setup       # fresh box: bootstrap (sudo), then every tool and the dotfiles
 make bootstrap   # system packages, podman, wezterm, vscode, mise (sudo); ARGS="--skip podman,wezterm,vscode"
-make install     # every pinned tool from mise.lock, then the krew plugins
-make upgrade     # the packages the bootstrap owns to their latest (sudo), then every pin to upstream's latest
+make install     # every pinned tool from mise.lock
+make upgrade     # the packages the bootstrap owns to their latest (sudo), every pin to upstream's latest, then check
 make bump        # the pins only: upstream's latest, refresh the lock, install (no sudo)
 make bump-mise   # the mise pin itself (version + sha256) in scripts/bootstrap.sh, then make bootstrap
+make check       # this host: every tool answers, lock audited, mise doctor clean, herd-publish unit up
 make dotfiles    # deploy the dotfiles (asks your password once, for chsh)
 make rollback    # remove the symlinks, restore the backups
 make test        # bootstrap + dotfiles in a container, assert idempotence
@@ -427,7 +431,6 @@ Useful knobs:
 | `DOTFILES_HERDR_PLUGINS` | `true` | `false` skips the herdr plugin installs (memex cannot be built on Ubuntu 22.04) |
 | `MISE_GITHUB_TOKEN` | *(unset)* | a GitHub token for the `github:` backend tools; the anonymous API quota is 60 calls/hour per IP |
 | `BASE_IMAGE` | `ubuntu:26.04` | the distro the container tests run against (`ubuntu:22.04`, `fedora:43`) |
-| `KREW_ROOT` | `~/.krew` | where `mise run krew-plugins` installs the kubectl plugins |
 
 The tools live under your user, not in `/usr/local/bin`: `sudo kubectl` does not
 find them. `sudo env "PATH=$PATH" kubectl` does, when root really has to run one.
@@ -461,7 +464,10 @@ Moving a pin is detected and reinstalls. `make bump` (`mise upgrade --bump`)
 is the explicit opt-in to move every pin past what is written — it rewrites the
 config and the lock, so the result is a diff to review, not a surprise. `make
 upgrade` does the same after `scripts/bootstrap.sh --upgrade`, which moves the
-packages the bootstrap installed (and only those) to their latest.
+packages the bootstrap installed (and only those) to their latest, and ends
+with `make check`: every tool answers, the lock is audited, `mise doctor` is
+clean, the herd-publish unit is up. `make check` on its own is the thing to run
+when a shell looks wrong after a `git pull`.
 
 ### The pin says which version, the lock says which bytes
 
@@ -502,9 +508,10 @@ Beyond the checksum, mise verifies what the upstream publishes: cosign
 signatures and SLSA provenance through the aqua registry, GitHub artifact
 attestations for the `github:` backend. aqua is preferred for that reason, and
 because it downloads straight from the release URL. The `github:` backend is
-used only where the registry has no entry (argo9s, gitlogue, certigo) or where
-one release holds several tools (codex, krew, kwok); it reads release metadata
-from `api.github.com`, which is why `MISE_GITHUB_TOKEN` exists.
+used only where the registry has no entry (argo9s, gitlogue, certigo,
+kubectl-cnpg, krelay) or where one release holds several tools (codex, kwok); it
+reads release metadata from `api.github.com`, which is why `MISE_GITHUB_TOKEN`
+exists.
 
 ### Architectures
 
@@ -521,9 +528,11 @@ the `clis` CI job, which installs every locked version in a container and fails
 on a yanked tag or a changed asset URL.
 
 That answers "does this pin still install", not "is this pin current". `make
-drift` (`mise outdated`) answers the second question. CI runs it every Monday
-and keeps a single `pin-drift` issue in sync with the result — opened when
-something lags, edited on later runs, closed when everything matches again.
+drift` (`mise outdated`) answers the second question. Every Monday the
+`pin-bump` job runs `make bump` on a runner and keeps a single PR (`bump/pins`)
+carrying the resulting diff, with CI dispatched on the branch to validate it on
+the four targets; merge it when green, close it or let it close itself when
+nothing lags any more.
 
 ## Bootstrap on a new machine
 
@@ -535,7 +544,7 @@ git clone <this-repo> && cd ansible-init-tools
 # 1. What needs root: base packages, podman, wezterm, vscode, mise
 scripts/bootstrap.sh         # from now on: mise run bootstrap
 
-# 2. Every pinned tool, then the krew plugins
+# 2. Every pinned tool
 make install
 
 # 3. Dotfiles + set zsh as the login shell (asks your password once)
@@ -587,7 +596,7 @@ only honest way to check what happens on a machine that has never been touched:
 
 ```bash
 ./test/run.sh dotfiles        # bootstrap + `mise run dotfiles` twice, asserts idempotence
-./test/run.sh clis            # bootstrap + `mise run install` twice + `mise run bootstrap -- --upgrade`, asserts every tool runs
+./test/run.sh clis            # bootstrap + `mise run install` twice + `mise run bootstrap -- --upgrade` + `mise run check`
 ./test/run.sh rollback        # deploy then roll back, asserts the restore
 ./test/run.sh wezterm         # installs wezterm and parses the versioned config
 ./test/run.sh shell           # interactive shell in the test bed
@@ -624,9 +633,10 @@ What `clis` asserts:
 
 - `mise run install` completes on a machine with none of the tools present, podman, wezterm and vscode included
 - a second pass installs nothing — again in the **same** container
-- every installed tool answers `--version`, `version` or `--help` with exit 0: a musl build on a host that
-  needs glibc, or a wrong asset picked for the architecture, both download perfectly and fail on first use
-- the krew plugins are in, and `mise.lock` came out of it unchanged
+- `mise run check` passes: every installed tool answers `--version`, `version` or `--help` with exit 0 (a
+  musl build on a host that needs glibc, or a wrong asset picked for the architecture, both download
+  perfectly and fail on first use), the lock audit is clean, `mise doctor` reports no problem
+- `mise.lock` came out of it unchanged
 
 Caveat: daemons install but do not start in a container. The `chsh` does run — the
 test user holds a `NOPASSWD` sudoers entry — and it is part of what the second run

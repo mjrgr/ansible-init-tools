@@ -19,21 +19,21 @@ bootstrap: ## System packages, podman, wezterm, vscode and the mise binary (sudo
 	scripts/bootstrap.sh $(ARGS)
 
 .PHONY: install
-install: ## Install every pinned tool from mise.lock, then the krew plugins
+install: ## Install every pinned tool from mise.lock
 	mise trust -q mise/config.toml
 	mise run install
 
-# A tool the aqua registry baked into the pinned mise cannot verify yet (see CLAUDE.md); empty when none.
-BUMP_EXCLUDE :=
-
 .PHONY: upgrade
-upgrade: ## Owned system packages to their latest (sudo), then every pin to upstream's latest, lock, install
-	scripts/bootstrap.sh --upgrade
-	mise upgrade --bump $(BUMP_EXCLUDE:%=--exclude %)
+upgrade: ## Owned system packages to their latest (sudo), every pin to upstream's latest, then check
+	mise run upgrade
 
 .PHONY: bump
 bump: ## Only the pins: move each to upstream's latest, refresh mise.lock, install (edits mise/config.toml)
-	mise upgrade --bump $(BUMP_EXCLUDE:%=--exclude %)
+	mise run bump
+
+.PHONY: check
+check: ## This host: every tool answers, lock audited, mise doctor clean, herd-publish unit up
+	mise run check
 
 .PHONY: bump-mise
 bump-mise: ## Move the mise pin in scripts/bootstrap.sh to the latest release (VERSION=v2026.11.9 to pick one), then `make bootstrap`
@@ -90,7 +90,7 @@ lock-audit: ## Offline: assert every tool is locked for both platforms with a ch
 
 .PHONY: lint
 lint: ## shellcheck + yamllint + mise config parse + lock audit
-	shellcheck -S warning scripts/*.sh scripts/lib/dotfiles.sh test/run.sh mise/tasks/bootstrap mise/tasks/krew-plugins mise/tasks/rollback mise/tasks/dotfiles/*
+	shellcheck -S warning scripts/*.sh scripts/lib/dotfiles.sh test/run.sh mise/tasks/bootstrap mise/tasks/check mise/tasks/rollback mise/tasks/dotfiles/*
 	yamllint .
 	python3 -m py_compile scripts/lib/claude-settings.py test/lock-audit.py
 	mise --cd mise tasks ls >/dev/null && echo "mise config OK"
