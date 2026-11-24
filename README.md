@@ -532,7 +532,8 @@ drift` (`mise outdated`) answers the second question. Every Monday the
 `pin-bump` job runs `make bump` on a runner and keeps a single PR (`bump/pins`)
 carrying the resulting diff, with CI dispatched on the branch to validate it on
 the four targets; merge it when green, close it or let it close itself when
-nothing lags any more.
+nothing lags any more. The job needs the repository setting "Allow GitHub
+Actions to create and approve pull requests" (Settings → Actions → General).
 
 ## Bootstrap on a new machine
 

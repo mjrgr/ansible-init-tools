@@ -94,7 +94,8 @@ push `main`, PR, `workflow_dispatch`, cron lundi 06:17 UTC. Actions pinnées par
 (ubuntu 22.04, 26.04, fedora 43, 26.04 arm64), `wezterm-config`. Hors gate : `lock-drift` (cron/dispatch : `mise lock` puis
 `git diff --exit-code`) et `pin-bump` (cron/dispatch depuis `main` seulement : `mise run bump`, branche `bump/pins` force-pushée,
 PR unique créée/éditée, CI dispatchée dessus car un push au token du workflow ne déclenche pas `pull_request` ; fermée quand plus rien
-ne bouge).
+ne bouge). Prérequis repo : Settings → Actions → « Allow GitHub Actions to create and approve pull requests », sinon
+`gh pr create` échoue (`not permitted to create or approve pull requests`).
 
 ## Pièges
 
