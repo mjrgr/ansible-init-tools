@@ -174,43 +174,20 @@ provenance = "cosign"
 
 [[tools.codex]]
 version = "0.171.0"
-backend = "github:openai/codex"
+backend = "aqua:openai/codex"
 specifiers = ["0.171.0"]
-
-[tools.codex.options]
-matching_regex = '^codex-(x86_64|aarch64)-unknown-linux-musl\.tar\.gz$'
-version_prefix = "rust-v"
 
 [tools.codex."platforms.linux-arm64"]
-checksum = "sha256:bcf50b836385e51bd2976ab2bbe92b1b08a1cbe37712eb8dbe378aa78d24871c"
+checksum = "sha256:d8c43bee6cf11b01eb18b95f4d7961092bc40228180808859e70dabb7784c1c9"
 checksum_source = "mise-versions"
-url = "https://github.com/openai/codex/releases/download/rust-v0.171.0/codex-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/769864956"
+url = "https://github.com/openai/codex/releases/download/rust-v0.171.0/codex-package-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/769865205"
 
 [tools.codex."platforms.linux-x64"]
-checksum = "sha256:01baa2e47809f8597be5b2f8abd4e4dfe3fb5bcb6e504c2fbaaad97056c15e8d"
-url = "https://github.com/openai/codex/releases/download/rust-v0.171.0/codex-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/769869206"
-
-[[tools.codex-code-mode-host]]
-version = "0.171.0"
-backend = "github:openai/codex"
-specifiers = ["0.171.0"]
-
-[tools.codex-code-mode-host.options]
-matching_regex = '^codex-code-mode-host-(x86_64|aarch64)-unknown-linux-musl\.tar\.gz$'
-version_prefix = "rust-v"
-
-[tools.codex-code-mode-host."platforms.linux-arm64"]
-checksum = "sha256:7669c881b78669b5f13ddb99996b5cef3fb10dab5b69f43be31d19e82e9cd62b"
+checksum = "sha256:8391d67757496bfd14893eca6cbf0c96994bf2627566ff1f018f70600c9ef6b3"
 checksum_source = "mise-versions"
-url = "https://github.com/openai/codex/releases/download/rust-v0.171.0/codex-code-mode-host-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/769865013"
-
-[tools.codex-code-mode-host."platforms.linux-x64"]
-checksum = "sha256:d78619030c1b8d0a4d9c9c67667c1bfa23ad9d9edc63d87ffeaa86796f3d868c"
-url = "https://github.com/openai/codex/releases/download/rust-v0.171.0/codex-code-mode-host-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/769869023"
+url = "https://github.com/openai/codex/releases/download/rust-v0.171.0/codex-package-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/769869089"
 
 [[tools.cosign]]
 version = "3.1.4"

@@ -15,7 +15,7 @@ du bootstrap). Plus aucun Ansible ; `MIGRATION.md` pour un poste provisionné pa
   `make lock` ; `make lock-audit` (offline) exige les deux plateformes avec digest (sha256, ou sha512 que `mise upgrade --bump` écrit pour
   la plateforme native), sauf backends `core:`/`cargo:` (rustup/cargo vérifient).
 - `[tool_alias]` : noms courts pour les outils hors registry (`github:`) ou réassignés (`helmfile`, `neovim`). Deux outils d'une même
-  release (codex / codex-code-mode-host, kwok / kwokctl) = alias + `matching_regex` ; jamais `asset_pattern` templaté (le lock
+  release (kwok / kwokctl) = alias + `matching_regex` ; jamais `asset_pattern` templaté (le lock
   fige l'asset rendu sur l'hôte, donc amd64 pour arm64).
 - Plugins kubectl sans krew : `kubectl-<nom>` sur PATH suffit (`kubectl-cnpg`, `krelay` → `kubectl-relay`, `kubectl-whoami` ;
   `stern` seul). `access-matrix` (rakkess) abandonné : v0.5.1 sans asset, v0.5.0 sans arm64 → le lock 2 plateformes refuse.
@@ -57,7 +57,7 @@ make drift                # mise outdated
 make scan | hooks         # gitleaks (image pinnée par digest) ; hooks = core.hooksPath .githooks
 ```
 
-`mise run` installe les outils manquants avant d'exécuter une tâche : `make test` installe donc aussi les 62 outils
+`mise run` installe les outils manquants avant d'exécuter une tâche : `make test` installe donc aussi les 61 outils
 (`MISE_TASK_RUN_AUTO_INSTALL=false` pour l'éviter, comme le job `pin-bump`).
 
 Pas de `--check` : valider en conteneur. `mise lock` et `mise install` ont besoin du réseau ; `mise.lock` doit être en 0644 (mise
@@ -108,10 +108,10 @@ ne bouge). Prérequis repo : Settings → Actions → « Allow GitHub Actions to
 - `aqua.baked_registry = true` : mise embarque le registry aqua de sa date de build. Un fix registry plus récent (vu : kyverno 1.20.0,
   nouveau workflow signataire, cosign refuse au lock) n'est visible qu'avec une mise buildée après → `make bump-mise` puis
   `make bootstrap`. Sinon l'outil va dans `BUMP_EXCLUDE` (`env` de `[tasks.bump]`, seul endroit) le temps que mise suive.
-- `aqua:openai/codex` (un paquet = codex + codex-code-mode-host) ne lock pas avec mise 2026.11.9 : la résolution de l'autre
-  plateforme ignore le `version_prefix` `rust-v` du registry et demande le tag `v0.170.0` (404). Mettre `version_prefix` sur l'entrée
-  ne fait que basculer sur `github:` sans regex → premier asset venu. Le lock mémorise le backend : changer un alias sans relock
-  ne change rien (`mise backends switch <tool> --global`). codex reste donc en `github:` + `matching_regex`.
+- Le backend d'un outil installé est figé dans `installs/<tool>/.mise.backend.toml` : changer l'alias puis `make lock` met le lock à
+  jour, mais `mise install` garde le dossier existant → `mise uninstall --all <tool> && mise install <tool>` (codex `github:` → `aqua:`,
+  2026-11-24 ; `aqua:openai/codex` = codex + codex-code-mode-host + codex-exec-server). Un lock qui 404 sur l'autre plateforme (vu
+  codex 0.170.0) vient de mise-versions pas encore à jour pour ce tag, pas de la version de mise : réessayer au bump suivant.
 - `sudo mise …` (self-update, install) : sudo nu perd le proxy → timeouts sur mise.jdx.dev/GitHub. mise n'est jamais mis à jour par
   `self-update` : c'est le pin du bootstrap qui compte, et `mise run bootstrap` porte le proxy.
 - `mise run` cwd = `$HOME` : chemins relatifs interdits dans les tâches, tout passe par `$REPO`/`$DOTFILES`.

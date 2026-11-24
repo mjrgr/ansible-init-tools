@@ -14,13 +14,16 @@ while read -r t; do
   case "$t" in
     rust) bin=cargo ;; neovim) bin=nvim ;; ripgrep) bin=rg ;; opentofu) bin=tofu ;; krelay) bin=kubectl-relay ;; *) bin=$t ;;
   esac
+  flags="--version version --help"
+  [[ $t == popeye ]] && flags=version  # `popeye --version` prints an error and exits 0
   ok=0
-  for flag in --version version --help; do
+  # shellcheck disable=SC2086
+  for flag in $flags; do
     if out="$("$bin" $flag 2>&1)"; then ok=1; break; fi
   done
   if (( ok )); then
     n=$((n + 1))
-    (( verbose )) && printf '  %-22s %s\n' "$t" "$(head -1 <<<"$out" | cut -c1-60)"
+    (( verbose )) && printf '  %-22s %s\n' "$t" "$( (grep -m1 -E '[0-9]+\.[0-9]+' <<<"$out" || head -1 <<<"$out") | cut -c1-60)"
   else
     printf '  %-22s FAILED: %s\n' "$t" "$(tail -1 <<<"$out" | cut -c1-80)"; fail=1
   fi

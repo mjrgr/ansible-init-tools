@@ -66,20 +66,13 @@ applications or need root:
 - wezterm, vscode (their official repositories: the distro packages lag)
 - mise itself
 
-Codex CLI is installed from the GitHub release asset (`github:openai/codex`,
-tagged `rust-v<x.y.z>`) rather than `npm i -g @openai/codex`: the npm and pip
-packages only wrap the same static binary. It is a ~250 MB binary — it embeds
-its sandbox helpers and its own ripgrep — and it does not self-update, so it is
-pinned like every other tool. The registry's `aqua:openai/codex` would do the
-same in one package, but `mise lock` resolves the other platform without the
-registry's `rust-v` tag prefix and fails on a 404.
-
-A second tool comes from the same release, `codex-code-mode-host` (~69 MB). It
-is not optional in practice: `codex features list` reports `code_mode_host` as
-stable and enabled, and the feature fails at runtime with *install
-`codex-code-mode-host`* when the helper is missing. mise treats two entries for
-one repository as one tool, so the two are declared through `[tool_alias]`,
-each selecting its own asset with `matching_regex`.
+Codex CLI is installed from the GitHub release (`aqua:openai/codex`, tagged
+`rust-v<x.y.z>`) rather than `npm i -g @openai/codex`: the npm and pip packages
+only wrap the same static binaries. The package holds `codex` (~300 MB: it
+embeds its sandbox helpers and its own ripgrep), `codex-code-mode-host` (the
+helper `codex features list` reports as stable and enabled, and which the
+feature needs at runtime) and `codex-exec-server`. None self-updates, so the
+package is pinned like every other tool.
 
 Claude Code is a mise tool too (`aqua:anthropics/claude-code`, the native
 binary). It is the one entry pinned to `latest`: the lockfile fixes the version
@@ -509,7 +502,7 @@ signatures and SLSA provenance through the aqua registry, GitHub artifact
 attestations for the `github:` backend. aqua is preferred for that reason, and
 because it downloads straight from the release URL. The `github:` backend is
 used only where the registry has no entry (argo9s, gitlogue, certigo,
-kubectl-cnpg, krelay) or where one release holds several tools (codex, kwok); it
+kubectl-cnpg, krelay) or where one release holds several tools (kwok); it
 reads release metadata from `api.github.com`, which is why `MISE_GITHUB_TOKEN`
 exists.
 

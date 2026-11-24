@@ -31,9 +31,7 @@ certigo = "github:square/certigo"
 cilium = "aqua:cilium/cilium-cli"
 clauth = "cargo:clauth"
 cloud-provider-kind = "aqua:kubernetes-sigs/cloud-provider-kind"
-# Not aqua: `mise lock` ignores the registry's rust-v prefix on the other platform and 404s on tag v<x.y.z>.
-codex = "github:openai/codex"
-codex-code-mode-host = "github:openai/codex"
+codex = "aqua:openai/codex"
 gitlogue = "github:unhappychoice/gitlogue"
 helm-schema = "aqua:dadav/helm-schema"
 helmfile = "aqua:helmfile/helmfile"
@@ -113,10 +111,8 @@ gitlogue = "0.12.2"
 neovim = "0.12.6"
 
 # ── Coding agents ───────────────────────────────────────────────────────────
-# Static musl build from the GitHub release, tagged rust-v<x.y.z>. Two tools
-# from one release: code_mode_host ships enabled and fails without its helper.
-codex = { version = "0.171.0", version_prefix = "rust-v", matching_regex = '^codex-(x86_64|aarch64)-unknown-linux-musl\.tar\.gz$', rename_exe = "codex" }
-codex-code-mode-host = { version = "0.171.0", version_prefix = "rust-v", matching_regex = '^codex-code-mode-host-(x86_64|aarch64)-unknown-linux-musl\.tar\.gz$', rename_exe = "codex-code-mode-host" }
+# One package: codex, codex-code-mode-host (code_mode_host ships enabled, fails without it), codex-exec-server.
+codex = "0.171.0"
 # "latest" at lock time: mise.lock pins it, `mise upgrade claude` moves it.
 claude = "latest"
 herdr = "0.9.5"

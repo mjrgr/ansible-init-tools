@@ -68,10 +68,21 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
+      # clauth is a cargo build (~6 min per job): the bench mounts this dir as mise's install dir for it.
+      - id: clauth
+        run: |
+          pins=$(sed -nE 's/^(clauth|rust) = "(.*)"/\2/p' mise/config.toml | paste -sd-)
+          echo "key=clauth-${{ matrix.image }}-${{ runner.arch }}-$pins" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/ansible-init-tools/clauth
+          key: ${{ steps.clauth.outputs.key }}
+
       # Deploys onto a pristine $HOME and asserts a second run changes nothing.
       - name: Bootstrap, deploy and assert idempotence
         run: ./test/run.sh dotfiles
         env:
+          CLAUTH_CACHE: ~/.cache/ansible-init-tools/clauth
           BASE_IMAGE: ${{ matrix.image }}
           DOTFILES_HERDR_PLUGINS: ${{ matrix.herdr_plugins || 'true' }}
 
@@ -88,11 +99,22 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
+      # clauth is a cargo build (~6 min per job): the bench mounts this dir as mise's install dir for it.
+      - id: clauth
+        run: |
+          pins=$(sed -nE 's/^(clauth|rust) = "(.*)"/\2/p' mise/config.toml | paste -sd-)
+          echo "key=clauth-${{ matrix.image }}-${{ runner.arch }}-$pins" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/ansible-init-tools/clauth
+          key: ${{ steps.clauth.outputs.key }}
+
       # Seeds real files, deploys, rolls back, asserts the originals came back
       # to the right directories.
       - name: Deploy and roll back
         run: ./test/run.sh rollback
         env:
+          CLAUTH_CACHE: ~/.cache/ansible-init-tools/clauth
           BASE_IMAGE: ${{ matrix.image }}
           DOTFILES_HERDR_PLUGINS: ${{ matrix.herdr_plugins || 'true' }}
 
@@ -111,9 +133,20 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
+      # clauth is a cargo build (~6 min per job): the bench mounts this dir as mise's install dir for it.
+      - id: clauth
+        run: |
+          pins=$(sed -nE 's/^(clauth|rust) = "(.*)"/\2/p' mise/config.toml | paste -sd-)
+          echo "key=clauth-${{ matrix.image }}-${{ runner.arch }}-$pins" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/ansible-init-tools/clauth
+          key: ${{ steps.clauth.outputs.key }}
+
       - name: Install every tool, twice
         run: ./test/run.sh clis
         env:
+          CLAUTH_CACHE: ~/.cache/ansible-init-tools/clauth
           BASE_IMAGE: ${{ matrix.image }}
 
   wezterm-config:
@@ -212,6 +245,10 @@ jobs:
             gh pr create --title "$TITLE" --body-file /tmp/pr.md --base main --head "$BRANCH"
           fi
           gh workflow run ci.yml --ref "$BRANCH"
+          # The PR also queues a pull_request run that waits for approval forever (bot author): drop it.
+          sleep 20
+          gh run list --branch "$BRANCH" --event pull_request --status action_required --json databaseId --jq '.[].databaseId' \
+            | xargs -r -n1 gh run delete
 
       - name: Close the PR when every pin matches upstream again
         if: steps.bump.outputs.changed == 'false'

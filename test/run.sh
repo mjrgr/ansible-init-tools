@@ -38,7 +38,12 @@ docker build -q -t "$IMAGE" --build-arg "BASE_IMAGE=$BASE_IMAGE" "${BUILD_ARGS[@
 # Ubuntu's returns 1 when clear_console is absent, which under set -e turns a
 # passing target into a failure.
 run() {
-  docker run --rm -v "$REPO:/repo:ro" "${PASS_ENV[@]}" "$IMAGE" bash -c "$1"
+  local cache=()
+  if [[ -n "${CLAUTH_CACHE:-}" ]]; then
+    local dir="${CLAUTH_CACHE/#\~/$HOME}"  # a workflow env value is not tilde-expanded
+    mkdir -p "$dir"; cache=(-v "$dir:/home/tester/.local/share/mise/installs/clauth")
+  fi
+  docker run --rm -v "$REPO:/repo:ro" "${cache[@]}" "${PASS_ENV[@]}" "$IMAGE" bash -c "$1"
 }
 
 # Snapshot the working tree into a writable copy and stage it, so the worktree
@@ -53,6 +58,8 @@ tree_untouched() {
   echo "    tree untouched"
 }
 export PATH="$HOME/.local/share/mise/shims:$PATH"
+# docker creates the mount path as root: hand the tree to the bench user before mise writes in it.
+[ ! -d ~/.local/share/mise/installs/clauth ] || sudo chown -R "$(id -u):$(id -g)" ~/.local
 '
 
 case "$TARGET" in

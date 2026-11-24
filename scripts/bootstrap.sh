@@ -16,10 +16,10 @@
 # packages listed in this file, never the rest of the system.
 set -euo pipefail
 
-MISE_VERSION="v2026.11.9"
+MISE_VERSION="v2026.11.14"
 # From SHASUMS256.txt on the release page; bump both lines with the version.
-MISE_SHA256_X64="f13f3e5ec88807e0161669b3aa07a91d84478cdf1e95b5b92b63f85a25d42395"
-MISE_SHA256_ARM64="b8dd05af6447cee933928664982a8cb2fa646e6951cfc8539db23ce2554a7b04"
+MISE_SHA256_X64="6fa596291e9758106f761fea4f8e7fac6c3e7ff4714d5c0b9a76e16068db14f6"
+MISE_SHA256_ARM64="7bd3b2d5ffff077a7662ba186c09600e5b40c1eee9df0c264ed67642ce0a8698"
 MISE_DEST=/usr/local/bin/mise
 
 ARGS=("$@")

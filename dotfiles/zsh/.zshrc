@@ -271,7 +271,8 @@ fi
 
 # ─── BUN ─────────────────────────────────────────────────────────────────────
 export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
+# Appended, like nvm below: mise keeps a later prepend ahead of its tool dirs (`mise doctor` warns).
+export PATH="$PATH:$BUN_INSTALL/bin"
 [[ -s "$BUN_INSTALL/_bun" ]] && source "$BUN_INSTALL/_bun"
 
 # ─── NVM ─────────────────────────────────────────────────────────────────────
@@ -282,7 +283,7 @@ export NVM_DIR="$HOME/.nvm"
 () {
   local v=default i=0
   while [[ -f "$NVM_DIR/alias/$v" ]] && (( i++ < 10 )); do v=$(<"$NVM_DIR/alias/$v"); done
-  [[ -x "$NVM_DIR/versions/node/$v/bin/node" ]] && export PATH="$NVM_DIR/versions/node/$v/bin:$PATH"
+  [[ -x "$NVM_DIR/versions/node/$v/bin/node" ]] && export PATH="$PATH:$NVM_DIR/versions/node/$v/bin"
 }
 
 # nvm.sh and its completion are sourced on the first `nvm` call only
