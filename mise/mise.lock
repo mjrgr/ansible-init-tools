@@ -32,7 +32,6 @@ url_api = "https://api.github.com/repos/vvrnv/argo9s/releases/assets/548843983"
 
 [tools.argo9s."platforms.linux-x64"]
 checksum = "sha256:560bc0e4bb8f26c5dc8f9b8d95a3323b398f0340ae5d01c5bed400abd9712e7d"
-checksum_source = "mise-versions"
 url = "https://github.com/vvrnv/argo9s/releases/download/v0.1.0/argo9s_0.1.0_linux_amd64.tar.gz"
 url_api = "https://api.github.com/repos/vvrnv/argo9s/releases/assets/548843982"
 
@@ -65,7 +64,6 @@ url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/323548647"
 
 [tools.bat."platforms.linux-x64"]
 checksum = "sha256:726f04c8f576a7fd18b7634f1bbf2f915c43494c1c0f013baa3287edb0d5a2a3"
-checksum_source = "mise-versions"
 url = "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-x86_64-unknown-linux-gnu.tar.gz"
 url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/323549181"
 
@@ -82,7 +80,6 @@ url_api = "https://api.github.com/repos/aristocratos/btop/releases/assets/674452
 
 [tools.btop."platforms.linux-x64"]
 checksum = "sha256:af589cf82cc9ea9c29ce050b9239a13bef2d1492256d476156e1054a42ce89ad"
-checksum_source = "mise-versions"
 url = "https://github.com/aristocratos/btop/releases/download/v1.4.8/btop-x86_64-unknown-linux-musl.tar.gz"
 url_api = "https://api.github.com/repos/aristocratos/btop/releases/assets/674452462"
 
@@ -102,7 +99,6 @@ url_api = "https://api.github.com/repos/square/certigo/releases/assets/679634552
 
 [tools.certigo."platforms.linux-x64"]
 checksum = "sha256:ca47d1c5443d3b25aac723a88750bce86cd0cbbd537615a86caad0563d311c2c"
-checksum_source = "mise-versions"
 url = "https://github.com/square/certigo/releases/download/v1.18.2/certigo-linux-amd64"
 url_api = "https://api.github.com/repos/square/certigo/releases/assets/679634588"
 
@@ -119,25 +115,24 @@ url_api = "https://api.github.com/repos/cilium/cilium-cli/releases/assets/739456
 
 [tools.cilium."platforms.linux-x64"]
 checksum = "sha256:b987ad0d195310d3fc96553aa7bcd41d1e97b64713ecdfee3eb48dd27e1ec7d7"
-checksum_source = "mise-versions"
 url = "https://github.com/cilium/cilium-cli/releases/download/v0.20.3/cilium-linux-amd64.tar.gz"
 url_api = "https://api.github.com/repos/cilium/cilium-cli/releases/assets/739456158"
 
 [[tools.claude]]
-version = "2.1.328"
+version = "2.1.330"
 backend = "aqua:anthropics/claude-code"
 specifiers = ["latest"]
 
 [tools.claude."platforms.linux-arm64"]
-checksum = "sha256:e95be009ef9548aec0bd34fe2d2736e9b887aef7452b31a8cd3d00cfe0ed7382"
+checksum = "sha256:d14fa911fec091b5e0365fa55f900d3b596e4bf5040a9fac79ca417ec370287c"
 checksum_source = "mise-versions"
-url = "https://github.com/anthropics/claude-code/releases/download/v2.1.328/claude-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/765459532"
+url = "https://github.com/anthropics/claude-code/releases/download/v2.1.330/claude-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/773030060"
 
 [tools.claude."platforms.linux-x64"]
-checksum = "sha256:4404b3dc35afe7dde16c572197f69c210dffdb038f05ee3c532e683732f5aa9f"
-url = "https://github.com/anthropics/claude-code/releases/download/v2.1.328/claude-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/765460041"
+checksum = "sha256:4d2cde1b749a0c9badcb7ad2ac49d735eebb66b5d503b6e073b81e356ffd5f54"
+url = "https://github.com/anthropics/claude-code/releases/download/v2.1.330/claude-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/773030426"
 
 [[tools.clauth]]
 version = "0.18.2"
@@ -157,7 +152,6 @@ url_api = "https://api.github.com/repos/kubernetes-sigs/cloud-provider-kind/rele
 
 [tools.cloud-provider-kind."platforms.linux-x64"]
 checksum = "sha256:5716aca8f01a85172c12f3b6329c70f151bec02c91b6f600c9f230845ee138e6"
-checksum_source = "mise-versions"
 url = "https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.12.0/cloud-provider-kind_0.12.0_linux_amd64.tar.gz"
 url_api = "https://api.github.com/repos/kubernetes-sigs/cloud-provider-kind/releases/assets/606458624"
 
@@ -179,46 +173,44 @@ url_api = "https://api.github.com/repos/cert-manager/cmctl/releases/assets/68185
 provenance = "cosign"
 
 [[tools.codex]]
-version = "0.170.0"
+version = "0.171.0"
 backend = "github:openai/codex"
-specifiers = ["0.170.0"]
+specifiers = ["0.171.0"]
 
 [tools.codex.options]
 matching_regex = '^codex-(x86_64|aarch64)-unknown-linux-musl\.tar\.gz$'
 version_prefix = "rust-v"
 
 [tools.codex."platforms.linux-arm64"]
-checksum = "sha256:0da6b061f6b5223901a5a73e841bd1466596e2ef620d68823360febed2ff7ebc"
+checksum = "sha256:bcf50b836385e51bd2976ab2bbe92b1b08a1cbe37712eb8dbe378aa78d24871c"
 checksum_source = "mise-versions"
-url = "https://github.com/openai/codex/releases/download/rust-v0.170.0/codex-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/761750807"
+url = "https://github.com/openai/codex/releases/download/rust-v0.171.0/codex-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/769864956"
 
 [tools.codex."platforms.linux-x64"]
-checksum = "sha256:d054916ccd28a53820376b8d2f7c875184ca8f40fcd44bbabeb8ee240ce247f5"
-checksum_source = "mise-versions"
-url = "https://github.com/openai/codex/releases/download/rust-v0.170.0/codex-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/761755167"
+checksum = "sha256:01baa2e47809f8597be5b2f8abd4e4dfe3fb5bcb6e504c2fbaaad97056c15e8d"
+url = "https://github.com/openai/codex/releases/download/rust-v0.171.0/codex-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/769869206"
 
 [[tools.codex-code-mode-host]]
-version = "0.170.0"
+version = "0.171.0"
 backend = "github:openai/codex"
-specifiers = ["0.170.0"]
+specifiers = ["0.171.0"]
 
 [tools.codex-code-mode-host.options]
 matching_regex = '^codex-code-mode-host-(x86_64|aarch64)-unknown-linux-musl\.tar\.gz$'
 version_prefix = "rust-v"
 
 [tools.codex-code-mode-host."platforms.linux-arm64"]
-checksum = "sha256:8ae871c5d494aa5842fff37adbbac9ca586b0c8af40d80d90feb8d1e10f86a59"
+checksum = "sha256:7669c881b78669b5f13ddb99996b5cef3fb10dab5b69f43be31d19e82e9cd62b"
 checksum_source = "mise-versions"
-url = "https://github.com/openai/codex/releases/download/rust-v0.170.0/codex-code-mode-host-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/761750950"
+url = "https://github.com/openai/codex/releases/download/rust-v0.171.0/codex-code-mode-host-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/769865013"
 
 [tools.codex-code-mode-host."platforms.linux-x64"]
-checksum = "sha256:18ab29d970586890085c3eba1d55068fd66262154855e51a54f3708522fa4dc5"
-checksum_source = "mise-versions"
-url = "https://github.com/openai/codex/releases/download/rust-v0.170.0/codex-code-mode-host-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/761754932"
+checksum = "sha256:d78619030c1b8d0a4d9c9c67667c1bfa23ad9d9edc63d87ffeaa86796f3d868c"
+url = "https://github.com/openai/codex/releases/download/rust-v0.171.0/codex-code-mode-host-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/769869023"
 
 [[tools.cosign]]
 version = "3.1.4"
@@ -250,25 +242,24 @@ url_api = "https://api.github.com/repos/kubernetes-sigs/cri-tools/releases/asset
 
 [tools.crictl."platforms.linux-x64"]
 checksum = "sha256:67c983ee8a6bbce73d39a186e633c5fe4f8a70e62171ac3bd92a9c1b2c601670"
-checksum_source = "mise-versions"
 url = "https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.37.0/crictl-v1.37.0-linux-amd64.tar.gz"
 url_api = "https://api.github.com/repos/kubernetes-sigs/cri-tools/releases/assets/539255051"
 
 [[tools.delta]]
-version = "0.21.1"
+version = "0.22.0"
 backend = "aqua:dandavison/delta"
-specifiers = ["0.21.1"]
+specifiers = ["0.22.0"]
 
 [tools.delta."platforms.linux-arm64"]
-checksum = "sha256:efe38626967f550c1d3bbe2014990dff5c8028a0a65a3f9b9b6c4a3bb53bfa28"
+checksum = "sha256:9f462d3ffb74d188964f2f0c408619f1d63f60425f87f3dce83bab0db1c71313"
 checksum_source = "mise-versions"
-url = "https://github.com/dandavison/delta/releases/download/0.21.1/delta-0.21.1-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/dandavison/delta/releases/assets/765882036"
+url = "https://github.com/dandavison/delta/releases/download/0.22.0/delta-0.22.0-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/dandavison/delta/releases/assets/781464908"
 
 [tools.delta."platforms.linux-x64"]
-checksum = "sha256:d3fa53f78b8d63f2c0620aad591441e7d47b5c77e552869aa6fe21fd08b21ff6"
-url = "https://github.com/dandavison/delta/releases/download/0.21.1/delta-0.21.1-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/dandavison/delta/releases/assets/765880079"
+checksum = "sha256:10d20fd7b7e0350e7996ff191a68bfd52093a2361c72b08f6fa10b31dd6782ce"
+url = "https://github.com/dandavison/delta/releases/download/0.22.0/delta-0.22.0-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/dandavison/delta/releases/assets/781463517"
 
 [[tools.dive]]
 version = "0.13.1"
@@ -298,7 +289,6 @@ url_api = "https://api.github.com/repos/eza-community/eza/releases/assets/471228
 
 [tools.eza."platforms.linux-x64"]
 checksum = "sha256:35c70c5c43c29108075e58b893234c67ef585f0b53a7eaf8e9e7d4eec9f339b4"
-checksum_source = "mise-versions"
 url = "https://github.com/eza-community/eza/releases/download/v0.23.5/eza_x86_64-unknown-linux-gnu.tar.gz"
 url_api = "https://api.github.com/repos/eza-community/eza/releases/assets/471228887"
 
@@ -315,9 +305,9 @@ url_api = "https://api.github.com/repos/sharkdp/fd/releases/assets/719978299"
 
 [tools.fd."platforms.linux-x64"]
 checksum = "sha256:985e24041e9ef6e9a38e9e088743405dde23d7220aa96740f091862167d9ff28"
-checksum_source = "mise-versions"
 url = "https://github.com/sharkdp/fd/releases/download/v10.5.2/fd-v10.5.2-x86_64-unknown-linux-gnu.tar.gz"
 url_api = "https://api.github.com/repos/sharkdp/fd/releases/assets/719976301"
+provenance = "github-attestations"
 
 [[tools.fzf]]
 version = "0.75.0"
@@ -332,7 +322,6 @@ url_api = "https://api.github.com/repos/junegunn/fzf/releases/assets/720590838"
 
 [tools.fzf."platforms.linux-x64"]
 checksum = "sha256:0d6640f83582d991cf429754baad64b07e3a4e439a6019670f4b91da1314141c"
-checksum_source = "mise-versions"
 url = "https://github.com/junegunn/fzf/releases/download/v0.75.0/fzf-0.75.0-linux_amd64.tar.gz"
 url_api = "https://api.github.com/repos/junegunn/fzf/releases/assets/720590794"
 
@@ -366,7 +355,6 @@ url_api = "https://api.github.com/repos/unhappychoice/gitlogue/releases/assets/6
 
 [tools.gitlogue."platforms.linux-x64"]
 checksum = "sha256:b9953fa76141ae02be9c57d788b7a55a8e97fd7e92f74cfe896d2851987f9a08"
-checksum_source = "mise-versions"
 url = "https://github.com/unhappychoice/gitlogue/releases/download/v0.12.2/gitlogue-v0.12.2-x86_64-unknown-linux-gnu.tar.gz"
 url_api = "https://api.github.com/repos/unhappychoice/gitlogue/releases/assets/694549779"
 
@@ -430,26 +418,25 @@ url_api = "https://api.github.com/repos/dadav/helm-schema/releases/assets/654252
 
 [tools.helm-schema."platforms.linux-x64"]
 checksum = "sha256:0a075160075216d820385aa3dfb738052fee6cea56802de1551d1bda60c26f36"
-checksum_source = "mise-versions"
 url = "https://github.com/dadav/helm-schema/releases/download/0.24.0/helm-schema_0.24.0_Linux_x86_64.tar.gz"
 url_api = "https://api.github.com/repos/dadav/helm-schema/releases/assets/654252883"
 
 [[tools.helmfile]]
-version = "1.8.4"
+version = "1.8.5"
 backend = "aqua:helmfile/helmfile"
-specifiers = ["1.8.4"]
+specifiers = ["1.8.5"]
 
 [tools.helmfile."platforms.linux-arm64"]
-checksum = "sha256:96f898a9faf236e06c5e65bf39a7f4ca727f5e911be1b28e2c2f80adabc132ed"
-checksum_source = "mise-versions"
-url = "https://github.com/helmfile/helmfile/releases/download/v1.8.4/helmfile_1.8.4_linux_arm64.tar.gz"
-url_api = "https://api.github.com/repos/helmfile/helmfile/releases/assets/741828773"
+checksum = "sha256:023b28a0630b60b392407f107b336502d11fec7e901dc631cfff7d2cc86a80c2"
+url = "https://github.com/helmfile/helmfile/releases/download/v1.8.5/helmfile_1.8.5_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/helmfile/helmfile/releases/assets/780886000"
+provenance = "github-attestations"
 
 [tools.helmfile."platforms.linux-x64"]
-checksum = "sha256:1f19ced8adb0cdf2350e94ca598cf64e390d8c21d0d9b4bdc1c9f246d4591c9d"
-checksum_source = "mise-versions"
-url = "https://github.com/helmfile/helmfile/releases/download/v1.8.4/helmfile_1.8.4_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/helmfile/helmfile/releases/assets/741828694"
+checksum = "sha256:e10344a4e6121689265c8fbe8ce96977b4722a9f953db862014a08b99938c333"
+url = "https://github.com/helmfile/helmfile/releases/download/v1.8.5/helmfile_1.8.5_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/helmfile/helmfile/releases/assets/780885994"
+provenance = "github-attestations"
 
 [[tools.herdr]]
 version = "0.9.5"
@@ -464,7 +451,6 @@ url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/640898231
 
 [tools.herdr."platforms.linux-x64"]
 checksum = "sha256:14d9e8bc8b4a9e0118d77c32266f76d461f09b40342eb23752960bd89f59929d"
-checksum_source = "mise-versions"
 url = "https://github.com/herdrdev/herdr/releases/download/v0.9.5/herdr-linux-x86_64"
 url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/640898235"
 
@@ -481,7 +467,6 @@ url_api = "https://api.github.com/repos/cilium/hubble/releases/assets/718589132"
 
 [tools.hubble."platforms.linux-x64"]
 checksum = "sha256:78ed68bd56d244bf2691ae4ba186d78e87e6814df58573d6de6089d0e5d7ddd8"
-checksum_source = "mise-versions"
 url = "https://github.com/cilium/hubble/releases/download/v1.20.4/hubble-linux-amd64.tar.gz"
 url_api = "https://api.github.com/repos/cilium/hubble/releases/assets/718589147"
 
@@ -515,7 +500,6 @@ url_api = "https://api.github.com/repos/k0sproject/k0sctl/releases/assets/578938
 
 [tools.k0sctl."platforms.linux-x64"]
 checksum = "sha256:bd5cd9125c93d8d30c33f7b2f3693fed0d74140a248d433dad74f2b7015295b5"
-checksum_source = "mise-versions"
 url = "https://github.com/k0sproject/k0sctl/releases/download/v0.33.1/k0sctl-linux-amd64"
 url_api = "https://api.github.com/repos/k0sproject/k0sctl/releases/assets/578938984"
 
@@ -532,7 +516,6 @@ url_api = "https://api.github.com/repos/derailed/k9s/releases/assets/440226045"
 
 [tools.k9s."platforms.linux-x64"]
 checksum = "sha256:c3752ad51a5a4015a113819c4eeb6e55a4d0e4b8e652494797532f6fc8161dd7"
-checksum_source = "mise-versions"
 url = "https://github.com/derailed/k9s/releases/download/v0.51.0/k9s_Linux_amd64.tar.gz"
 url_api = "https://api.github.com/repos/derailed/k9s/releases/assets/440224321"
 
@@ -549,7 +532,6 @@ url_api = "https://api.github.com/repos/kubernetes-sigs/kind/releases/assets/531
 
 [tools.kind."platforms.linux-x64"]
 checksum = "sha256:aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d"
-checksum_source = "mise-versions"
 url = "https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-linux-amd64"
 url_api = "https://api.github.com/repos/kubernetes-sigs/kind/releases/assets/531396433"
 
@@ -566,7 +548,6 @@ url_api = "https://api.github.com/repos/ko-build/ko/releases/assets/461171819"
 
 [tools.ko."platforms.linux-x64"]
 checksum = "sha256:635ac6ea3fd376c935fee597fbb29ab2c2449f49ef1655085fe3aa9c25fed7a5"
-checksum_source = "mise-versions"
 url = "https://github.com/ko-build/ko/releases/download/v0.19.1/ko_0.19.1_Linux_x86_64.tar.gz"
 url_api = "https://api.github.com/repos/ko-build/ko/releases/assets/461171792"
 
@@ -619,7 +600,6 @@ url_api = "https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/a
 
 [tools.kubectl-cnpg."platforms.linux-x64"]
 checksum = "sha256:a926584a2506f2beff624af03d22eb742d6227e259e364e603ea2f88a791a507"
-checksum_source = "mise-versions"
 url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.30.2/kubectl-cnpg_1.30.2_linux_x86_64.tar.gz"
 url_api = "https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/assets/758814501"
 
@@ -636,7 +616,6 @@ url_api = "https://api.github.com/repos/rajatjindal/kubectl-whoami/releases/asse
 
 [tools.kubectl-whoami."platforms.linux-x64"]
 checksum = "sha256:e4fc36490d91fb5e55b7392a4ecd4fa13cc9a50ae0d48b6a3e1f8cbef417b49e"
-checksum_source = "mise-versions"
 url = "https://github.com/rajatjindal/kubectl-whoami/releases/download/v0.0.48/kubectl-whoami_v0.0.48_linux_amd64.tar.gz"
 url_api = "https://api.github.com/repos/rajatjindal/kubectl-whoami/releases/assets/360123064"
 
@@ -653,7 +632,6 @@ url_api = "https://api.github.com/repos/ahmetb/kubectx/releases/assets/382590945
 
 [tools.kubectx."platforms.linux-x64"]
 checksum = "sha256:08e031c54fbffb3f100e904e4eae94bba2730fedf4869921fda79e4d7a8f5d4c"
-checksum_source = "mise-versions"
 url = "https://github.com/ahmetb/kubectx/releases/download/v0.11.0/kubectx_v0.11.0_linux_x86_64.tar.gz"
 url_api = "https://api.github.com/repos/ahmetb/kubectx/releases/assets/382590978"
 
@@ -670,7 +648,6 @@ url_api = "https://api.github.com/repos/ahmetb/kubectx/releases/assets/382591002
 
 [tools.kubens."platforms.linux-x64"]
 checksum = "sha256:326c021c7b35468ed9a187b361198d0f22ae32828139c65eb6670c0d8301cc09"
-checksum_source = "mise-versions"
 url = "https://github.com/ahmetb/kubectx/releases/download/v0.11.0/kubens_v0.11.0_linux_x86_64.tar.gz"
 url_api = "https://api.github.com/repos/ahmetb/kubectx/releases/assets/382591017"
 
@@ -687,7 +664,6 @@ url_api = "https://api.github.com/repos/kubie-org/kubie/releases/assets/42901215
 
 [tools.kubie."platforms.linux-x64"]
 checksum = "sha256:73c33bf140e3a6bf4cb603c371d1189f5bcce85ccc4e48fcfef9cd64642ffead"
-checksum_source = "mise-versions"
 url = "https://github.com/kubie-org/kubie/releases/download/v0.28.0/kubie-linux-amd64"
 url_api = "https://api.github.com/repos/kubie-org/kubie/releases/assets/429011717"
 
@@ -707,7 +683,6 @@ url_api = "https://api.github.com/repos/kubernetes-sigs/kwok/releases/assets/455
 
 [tools.kwok."platforms.linux-x64"]
 checksum = "sha256:f5a4385a2ae1b9dd7f8acae18e002a75c0ebba124ae9d7259aa8dadb50711f46"
-checksum_source = "mise-versions"
 url = "https://github.com/kubernetes-sigs/kwok/releases/download/v0.8.0/kwok-linux-amd64"
 url_api = "https://api.github.com/repos/kubernetes-sigs/kwok/releases/assets/455233219"
 
@@ -724,7 +699,6 @@ url_api = "https://api.github.com/repos/kubernetes-sigs/kwok/releases/assets/455
 
 [tools.kwokctl."platforms.linux-x64"]
 checksum = "sha256:f5a4385a2ae1b9dd7f8acae18e002a75c0ebba124ae9d7259aa8dadb50711f46"
-checksum_source = "mise-versions"
 url = "https://github.com/kubernetes-sigs/kwok/releases/download/v0.8.0/kwok-linux-amd64"
 url_api = "https://api.github.com/repos/kubernetes-sigs/kwok/releases/assets/455233219"
 
@@ -758,7 +732,6 @@ url_api = "https://api.github.com/repos/jesseduffield/lazygit/releases/assets/72
 
 [tools.lazygit."platforms.linux-x64"]
 checksum = "sha256:0a23f429a95f0d09db298b3c291536d818de066aa5a85c255806f0490ff6656b"
-checksum_source = "mise-versions"
 url = "https://github.com/jesseduffield/lazygit/releases/download/v0.66.3/lazygit_0.66.3_linux_x86_64.tar.gz"
 url_api = "https://api.github.com/repos/jesseduffield/lazygit/releases/assets/722268995"
 
@@ -775,7 +748,6 @@ url_api = "https://api.github.com/repos/neovim/neovim/releases/assets/625399160"
 
 [tools.neovim."platforms.linux-x64"]
 checksum = "sha256:474430d53e6264f6d6dd18db42d6dc9df3a1b56ca9e88a325bbf860e1a811d87"
-checksum_source = "mise-versions"
 url = "https://github.com/neovim/neovim/releases/download/v0.12.6/nvim-linux-x86_64.tar.gz"
 url_api = "https://api.github.com/repos/neovim/neovim/releases/assets/625399155"
 
@@ -809,7 +781,6 @@ url_api = "https://api.github.com/repos/opentofu/opentofu/releases/assets/714326
 
 [tools.opentofu."platforms.linux-x64"]
 checksum = "sha256:b34b327cc1ef07178207b6f2cd1f5276537d3e5b7be316500f6dac50d4c0a857"
-checksum_source = "mise-versions"
 url = "https://github.com/opentofu/opentofu/releases/download/v1.13.9/tofu_1.13.9_linux_amd64.tar.gz"
 url_api = "https://api.github.com/repos/opentofu/opentofu/releases/assets/714326349"
 
@@ -845,21 +816,20 @@ url = "https://github.com/derailed/popeye/releases/download/v0.22.1/popeye_linux
 url_api = "https://api.github.com/repos/derailed/popeye/releases/assets/224311016"
 
 [[tools.ripgrep]]
-version = "15.2.0"
+version = "16.0.0"
 backend = "aqua:BurntSushi/ripgrep"
-specifiers = ["15.2.0"]
+specifiers = ["16.0.0"]
 
 [tools.ripgrep."platforms.linux-arm64"]
-checksum = "sha256:a740b91c82eaf9914cfedd353572f2791cbe0162c84101ee0951058f4dcbc90d"
+checksum = "sha256:0b0bddcfaf42be1f3c56bf929d70defd1a2d96f2577aecbd7029a3734ddb4740"
 checksum_source = "mise-versions"
-url = "https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/BurntSushi/ripgrep/releases/assets/478119579"
+url = "https://github.com/BurntSushi/ripgrep/releases/download/16.0.0/ripgrep-16.0.0-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/BurntSushi/ripgrep/releases/assets/780739969"
 
 [tools.ripgrep."platforms.linux-x64"]
-checksum = "sha256:33e15bcf1624b25cdd2a55813a47a2f95dbe126268203e76aa6a585d1e7b149c"
-checksum_source = "mise-versions"
-url = "https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/BurntSushi/ripgrep/releases/assets/478120097"
+checksum = "sha256:165451eaf35f977c0bd6cff1fb93e4fcce0ebd87e90a4b5e976507baf50f4a03"
+url = "https://github.com/BurntSushi/ripgrep/releases/download/16.0.0/ripgrep-16.0.0-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/BurntSushi/ripgrep/releases/assets/780739448"
 
 [[tools.rust]]
 version = "1.100.0"
@@ -912,7 +882,6 @@ url_api = "https://api.github.com/repos/starship/starship/releases/assets/650074
 
 [tools.starship."platforms.linux-x64"]
 checksum = "sha256:3b94758850901717eb36aa1b53f8492c1322506ec6d41273bc6151e79ed8e4a1"
-checksum_source = "mise-versions"
 url = "https://github.com/starship/starship/releases/download/v1.27.0/starship-x86_64-unknown-linux-gnu.tar.gz"
 url_api = "https://api.github.com/repos/starship/starship/releases/assets/650074501"
 
@@ -929,25 +898,24 @@ url_api = "https://api.github.com/repos/stern/stern/releases/assets/666034789"
 
 [tools.stern."platforms.linux-x64"]
 checksum = "sha256:03729b01a8fcfab25f6ea53389bd38bc37400ff86d90cd2dcda541f248cf843e"
-checksum_source = "mise-versions"
 url = "https://github.com/stern/stern/releases/download/v1.35.0/stern_1.35.0_linux_amd64.tar.gz"
 url_api = "https://api.github.com/repos/stern/stern/releases/assets/666034794"
 
 [[tools.telepresence]]
-version = "2.33.2"
+version = "2.33.4"
 backend = "aqua:telepresenceio/telepresence"
-specifiers = ["2.33.2"]
+specifiers = ["2.33.4"]
 
 [tools.telepresence."platforms.linux-arm64"]
-checksum = "sha256:128873bf93112adf4c3a5677fb474bea141c8850fe8b5a35d4d11762beadbdf8"
+checksum = "sha256:647d652a656348824ef580d5e3bb0a872e4e3cbcdce620992c9eb7ee75470e9b"
 checksum_source = "mise-versions"
-url = "https://github.com/telepresenceio/telepresence/releases/download/v2.33.2/telepresence-linux-arm64"
-url_api = "https://api.github.com/repos/telepresenceio/telepresence/releases/assets/764429591"
+url = "https://github.com/telepresenceio/telepresence/releases/download/v2.33.4/telepresence-linux-arm64"
+url_api = "https://api.github.com/repos/telepresenceio/telepresence/releases/assets/777807959"
 
 [tools.telepresence."platforms.linux-x64"]
-checksum = "sha256:58fc9fb8286390a23a28485aa837557232d47e603cb9701ab62082504172e0d8"
-url = "https://github.com/telepresenceio/telepresence/releases/download/v2.33.2/telepresence-linux-amd64"
-url_api = "https://api.github.com/repos/telepresenceio/telepresence/releases/assets/764430266"
+checksum = "sha256:0e640c20c7e4c2005917d0d927116e622d4a274dc014c557185079968d8a2e29"
+url = "https://github.com/telepresenceio/telepresence/releases/download/v2.33.4/telepresence-linux-amd64"
+url_api = "https://api.github.com/repos/telepresenceio/telepresence/releases/assets/777808297"
 
 [[tools.trivy]]
 version = "0.76.2"
@@ -1011,7 +979,7 @@ url_api = "https://api.github.com/repos/mikefarah/yq/releases/assets/726219924"
 provenance = "cosign"
 
 [tools.yq."platforms.linux-x64"]
-checksum = "sha256:129534601871538efe0ba4c5e62a34fb1d5f469bcb975c4fddeb467d82974973"
+checksum = "sha512:878ae8d298d3e1159b9272a093618f4aee78fa118b2d4c2947c90e54f80defda9914e7a42ce5465af523d704b15aeaef9b36b88347bc65d21c13ad6339bf54b7"
 url = "https://github.com/mikefarah/yq/releases/download/v4.54.3/yq_linux_amd64"
 url_api = "https://api.github.com/repos/mikefarah/yq/releases/assets/726219936"
 provenance = "cosign"
@@ -1029,6 +997,5 @@ url_api = "https://api.github.com/repos/ajeetdsouza/zoxide/releases/assets/46631
 
 [tools.zoxide."platforms.linux-x64"]
 checksum = "sha256:2d93385b99f3e82cf2701609a1bffcad863fbeb75aa3fe7eb6be4d29be68b1ae"
-checksum_source = "mise-versions"
 url = "https://github.com/ajeetdsouza/zoxide/releases/download/v0.10.0/zoxide-0.10.0-x86_64-unknown-linux-musl.tar.gz"
 url_api = "https://api.github.com/repos/ajeetdsouza/zoxide/releases/assets/466316293"

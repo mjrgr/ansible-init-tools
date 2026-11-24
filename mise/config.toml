@@ -61,7 +61,7 @@ stern = "1.35.0"
 kubectl-whoami = "0.0.48"
 kubectl-cnpg = { version = "1.30.2", matching_regex = '^kubectl-cnpg_.*_linux_(x86_64|arm64)\.tar\.gz$' }
 krelay = { version = "0.2.0", matching_regex = '^kubectl-relay_v.*_linux-(amd64|arm64)\.tar\.gz$' }
-helmfile = "1.8.4"
+helmfile = "1.8.5"
 nerdctl = "2.4.2"
 crictl = "1.37.0"
 argocd = "3.6.2"
@@ -74,7 +74,7 @@ kyverno = "1.20.0"
 vcluster = "0.38.0"
 cmctl = "2.6.2"
 k0sctl = "0.33.1"
-telepresence = "2.33.2"
+telepresence = "2.33.4"
 cloud-provider-kind = "0.12.0"
 helm-schema = "0.24.0"
 
@@ -100,11 +100,11 @@ starship = "1.27.0"
 fzf = "0.75.0"
 btop = "1.4.8"
 eza = "0.23.5"
-ripgrep = "15.2.0"
+ripgrep = "16.0.0"
 fd = "10.5.2"
 bat = "0.26.1"
 zoxide = "0.10.0"
-delta = "0.21.1"
+delta = "0.22.0"
 lazygit = "0.66.3"
 glow = "3.0.0"
 gum = "2.0.2"
@@ -115,8 +115,8 @@ neovim = "0.12.6"
 # ── Coding agents ───────────────────────────────────────────────────────────
 # Static musl build from the GitHub release, tagged rust-v<x.y.z>. Two tools
 # from one release: code_mode_host ships enabled and fails without its helper.
-codex = { version = "0.170.0", version_prefix = "rust-v", matching_regex = '^codex-(x86_64|aarch64)-unknown-linux-musl\.tar\.gz$', rename_exe = "codex" }
-codex-code-mode-host = { version = "0.170.0", version_prefix = "rust-v", matching_regex = '^codex-code-mode-host-(x86_64|aarch64)-unknown-linux-musl\.tar\.gz$', rename_exe = "codex-code-mode-host" }
+codex = { version = "0.171.0", version_prefix = "rust-v", matching_regex = '^codex-(x86_64|aarch64)-unknown-linux-musl\.tar\.gz$', rename_exe = "codex" }
+codex-code-mode-host = { version = "0.171.0", version_prefix = "rust-v", matching_regex = '^codex-code-mode-host-(x86_64|aarch64)-unknown-linux-musl\.tar\.gz$', rename_exe = "codex-code-mode-host" }
 # "latest" at lock time: mise.lock pins it, `mise upgrade claude` moves it.
 claude = "latest"
 herdr = "0.9.5"
