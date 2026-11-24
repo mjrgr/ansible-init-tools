@@ -492,7 +492,7 @@ of landing on disk. Bumping a version means refreshing the lock:
 
 ```bash
 make lock          # mise lock: resolve every URL and digest again
-make lock-audit    # offline: assert every tool is locked for both platforms with a sha256
+make lock-audit    # offline: assert every tool is locked for both platforms with a digest
 ```
 
 Digests are never edited by hand — a hand-copied digest is one nobody rechecked.

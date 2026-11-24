@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Offline: every tool in mise/config.toml is locked for linux-x64 and
-linux-arm64 with a sha256. A pin without a digest is a download nobody
+linux-arm64 with a sha256 or sha512 digest. A pin without one is a download nobody
 verifies, and a platform missing from the lock is one `mise install --locked`
 refuses on. Exit 1 on the first gap."""
 import pathlib
+import re
 import sys
 import tomllib
 
@@ -35,8 +36,9 @@ for tool, spec in config["tools"].items():
             info = entry.get(f"platforms.{platform}") or entry.get("platforms", {}).get(platform)
             if not info:
                 errors.append(f"{tool}@{entry.get('version')}: no {platform} entry")
-            elif not str(info.get("checksum", "")).startswith("sha256:"):
-                errors.append(f"{tool}@{entry.get('version')}: no sha256 for {platform}")
+            # `mise upgrade --bump` records sha512 for the native platform where the registry publishes one.
+            elif not re.fullmatch(r"sha(256|512):[0-9a-f]{64,128}", str(info.get("checksum", ""))):
+                errors.append(f"{tool}@{entry.get('version')}: no digest for {platform}")
 
 for e in errors:
     print(e)

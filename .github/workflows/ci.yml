@@ -170,10 +170,12 @@ jobs:
           {
             echo "| tool | from | to |"
             echo "|---|---|---|"
-            git diff -U0 mise/config.toml | python3 - <<'PY'
+            # The heredoc takes stdin, so the diff goes through a file.
+            git diff -U0 mise/config.toml > /tmp/config.diff
+            python3 - /tmp/config.diff <<'PY'
           import re, sys
           old, new = {}, {}
-          for line in sys.stdin:
+          for line in open(sys.argv[1]):
               m = re.match(r'^([-+])([\w-]+) = (?:"([^"]+)"|\{ version = "([^"]+)")', line)
               if m:
                   (old if m[1] == "-" else new)[m[2]] = m[3] or m[4]

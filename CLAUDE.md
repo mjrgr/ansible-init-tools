@@ -12,7 +12,8 @@ du bootstrap). Plus aucun Ansible ; `MIGRATION.md` pour un poste provisionné pa
 - `mise/config.toml` : config **globale** — `mise run dotfiles:mise` symlinke `~/.config/mise` → `mise/`, donc `[tools]`, `[env]`
   et les tâches s'appliquent partout. Depuis le clone sans ce lien, c'est une config projet (`mise trust` requis).
 - `mise/mise.lock` : URLs + sha256 par outil pour `linux-x64` et `linux-arm64` (`lockfile_platforms`). Jamais édité à la main :
-  `make lock` ; `make lock-audit` (offline) exige les deux plateformes avec digest, sauf backends `core:`/`cargo:` (rustup/cargo vérifient).
+  `make lock` ; `make lock-audit` (offline) exige les deux plateformes avec digest (sha256, ou sha512 que `mise upgrade --bump` écrit pour
+  la plateforme native), sauf backends `core:`/`cargo:` (rustup/cargo vérifient).
 - `[tool_alias]` : noms courts pour les outils hors registry (`github:`) ou réassignés (`helmfile`, `neovim`). Deux outils d'une même
   release (codex / codex-code-mode-host, kwok / kwokctl) = alias + `matching_regex` ; jamais `asset_pattern` templaté (le lock
   fige l'asset rendu sur l'hôte, donc amd64 pour arm64).
