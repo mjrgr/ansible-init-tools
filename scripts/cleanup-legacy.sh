@@ -35,6 +35,7 @@ referenced_by() {
   local rel="${1#"$HOME"/}" f pre
   for f in "$HOME"/.config/systemd/user/*.service "$HOME/.claude.json"; do
     [[ -f "$f" ]] || continue
+    # shellcheck disable=SC2088  # a literal "~/" is what we look for in the file
     for pre in "$HOME/" "%h/" "~/"; do
       if grep -qF -- "$pre$rel" "$f"; then printf '%s\n' "${f/#"$HOME"/\~}"; break; fi
     done
