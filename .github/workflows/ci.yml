@@ -71,7 +71,7 @@ jobs:
       # clauth is a cargo build (~6 min per job): the bench mounts this dir as mise's install dir for it.
       - id: clauth
         run: |
-          pins=$(sed -nE 's/^(clauth|rust) = "(.*)"/\2/p' mise/config.toml | paste -sd-)
+          pins=$(sed -nE 's/^(clauth|rust) = "([0-9][^"]*)"/\2/p' mise/config.toml | paste -sd-)
           echo "key=clauth-${{ matrix.image }}-${{ runner.arch }}-$pins" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
@@ -102,7 +102,7 @@ jobs:
       # clauth is a cargo build (~6 min per job): the bench mounts this dir as mise's install dir for it.
       - id: clauth
         run: |
-          pins=$(sed -nE 's/^(clauth|rust) = "(.*)"/\2/p' mise/config.toml | paste -sd-)
+          pins=$(sed -nE 's/^(clauth|rust) = "([0-9][^"]*)"/\2/p' mise/config.toml | paste -sd-)
           echo "key=clauth-${{ matrix.image }}-${{ runner.arch }}-$pins" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
@@ -136,7 +136,7 @@ jobs:
       # clauth is a cargo build (~6 min per job): the bench mounts this dir as mise's install dir for it.
       - id: clauth
         run: |
-          pins=$(sed -nE 's/^(clauth|rust) = "(.*)"/\2/p' mise/config.toml | paste -sd-)
+          pins=$(sed -nE 's/^(clauth|rust) = "([0-9][^"]*)"/\2/p' mise/config.toml | paste -sd-)
           echo "key=clauth-${{ matrix.image }}-${{ runner.arch }}-$pins" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
@@ -171,6 +171,7 @@ jobs:
         run: |
           ./scripts/bootstrap.sh --skip podman,wezterm,vscode
           mise trust -q mise/config.toml
+          mkdir -p ~/.config && ln -sfn "$PWD/mise" ~/.config/mise  # global, as on a host: locks/ paths in mise.lock
           mise lock
           git diff --exit-code mise/mise.lock
 
@@ -199,6 +200,7 @@ jobs:
         run: |
           ./scripts/bootstrap.sh --skip podman,wezterm,vscode
           mise trust -q mise/config.toml
+          mkdir -p ~/.config && ln -sfn "$PWD/mise" ~/.config/mise  # global, as on a host: locks/ paths in mise.lock
           mise run bump
           {
             echo "| tool | from | to |"

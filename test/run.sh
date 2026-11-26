@@ -52,6 +52,9 @@ PRELUDE='
 set -e
 cp -a /repo/. ~/repo/ && cd ~/repo
 git -c user.name=t -c user.email=t@t add -A >/dev/null
+# Global config from the start, as on a host: the pypi/npm lock paths in mise.lock
+# are written as locks/ for the global config and .mise/locks/ for a project one.
+mkdir -p ~/.config && ln -sfn ~/repo/mise ~/.config/mise
 tree_untouched() {
   local dirty; dirty=$(git -C ~/repo status --porcelain | grep -E "^.[^ ]" || true)
   if [ -n "$dirty" ]; then echo "    TREE MODIFIED:"; echo "$dirty" | sed "s/^/      /"; return 1; fi

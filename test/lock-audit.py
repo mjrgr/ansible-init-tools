@@ -31,6 +31,14 @@ for tool, spec in config["tools"].items():
         # Not downloads mise hashes: rustup verifies its toolchain, cargo the crate.
         if entry.get("backend", "").split(":")[0] in ("core", "cargo"):
             continue
+        # pypi/npm: platform-free packages, pinned by the uv / aube lock mise keeps next to the config.
+        kind = entry.get("backend", "").split(":")[0]
+        if kind in ("pypi", "npm"):
+            key, name = ("uv", "uv.lock") if kind == "pypi" else ("aube", "aube-lock.yaml")
+            sub = entry.get(key) or {}
+            if not re.fullmatch(r"sha256:[0-9a-f]{64}", str(sub.get("digest", ""))) or not (root / sub.get("path", "x") / name).is_file():
+                errors.append(f"{tool}@{entry.get('version')}: no {key} lock with a digest")
+            continue
         for platform in platforms:
             # mise writes the platform as one quoted key: [tools.x."platforms.linux-x64"]
             info = entry.get(f"platforms.{platform}") or entry.get("platforms", {}).get(platform)

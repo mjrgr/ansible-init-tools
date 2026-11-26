@@ -49,14 +49,17 @@ Pinned in `mise/config.toml`, installed under `~/.local/share/mise`:
 - argocd, kubectx/kubens, kubie, cilium, hubble, kyverno, vcluster, cmctl, k0sctl, telepresence, cloud-provider-kind, helm-schema
 - nerdctl, crictl
 - opentofu
-- trivy, cosign, oras, dive, ko
-- yq, jq, gh
+- trivy, gitleaks, cosign, oras, dive, ko
+- yq, jq, gh, glab
 - sops, age, certigo
 - starship, fzf, btop, lazygit, glow, gum, vhs, gitlogue
 - eza, ripgrep, fd, bat, zoxide, delta
 - neovim (LazyVim needs >= 0.11, newer than the distro package)
 - codex (OpenAI Codex CLI), claude (Claude Code), herdr (coding-agent session runtime), clauth
 - rust (the toolchain the herdr plugins are built with)
+- python, uv, node, bun (runtimes; python also lets mise lock the pypi dependency graph)
+- openstackclient (python-openstackclient + python-octaviaclient, from PyPI through uv)
+- ccstatusline, cloudcli (browser MCP), task-master-ai, open-meteo-mcp-server (npm packages, formerly `npm i -g` under nvm)
 
 Installed by `scripts/bootstrap.sh`, because they are system packages, GUI
 applications or need root:

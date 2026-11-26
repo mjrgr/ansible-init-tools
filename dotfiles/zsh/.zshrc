@@ -269,31 +269,6 @@ fi
 # After starship: the precmd hooks must run once the prompt is defined
 [[ -r ~/.config/zsh/wezterm.zsh ]] && source ~/.config/zsh/wezterm.zsh
 
-# ─── BUN ─────────────────────────────────────────────────────────────────────
-export BUN_INSTALL="$HOME/.bun"
-# Appended, like nvm below: mise keeps a later prepend ahead of its tool dirs (`mise doctor` warns).
-export PATH="$PATH:$BUN_INSTALL/bin"
-[[ -s "$BUN_INSTALL/_bun" ]] && source "$BUN_INSTALL/_bun"
-
-# ─── NVM ─────────────────────────────────────────────────────────────────────
-export NVM_DIR="$HOME/.nvm"
-
-# Static PATH: sourcing nvm.sh costs ~1.3s, almost all of it in alias resolution.
-# We walk the default -> lts/* -> lts/<name> -> vX chain ourselves (3 reads, 0 forks).
-() {
-  local v=default i=0
-  while [[ -f "$NVM_DIR/alias/$v" ]] && (( i++ < 10 )); do v=$(<"$NVM_DIR/alias/$v"); done
-  [[ -x "$NVM_DIR/versions/node/$v/bin/node" ]] && export PATH="$PATH:$NVM_DIR/versions/node/$v/bin"
-}
-
-# nvm.sh and its completion are sourced on the first `nvm` call only
-nvm() {
-  unset -f nvm
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-  nvm "$@"
-}
-
 # ─── MISC ────────────────────────────────────────────────────────────────────
 mywatch() {
   local interval=5

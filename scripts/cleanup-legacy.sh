@@ -57,6 +57,12 @@ rm_path "$HOME/.local/share/claude"
 echo "== krew and its plugins (stern, kubectl-cnpg, krelay, kubectl-whoami are mise tools now)"
 rm_path "${KREW_ROOT:-$HOME/.krew}"
 
+echo "== nvm, bun and the uv installer (node, bun, uv are mise tools now)"
+rm_path "${NVM_DIR:-$HOME/.nvm}"
+rm_path "${BUN_INSTALL:-$HOME/.bun}"
+rm_path "$HOME/.local/bin/uv"
+rm_path "$HOME/.local/bin/uvx"
+
 echo "== kept on purpose"
 echo "  /var/lib/docker (delete by hand once nothing in it is needed)"
 echo "  ~/.cargo, ~/.rustup (mise's rust toolchain lives there now)"

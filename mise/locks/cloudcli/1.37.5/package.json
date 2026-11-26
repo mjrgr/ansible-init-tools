@@ -1,0 +1,7 @@
+{
+  "name": "mise-npm-install",
+  "private": true,
+  "dependencies": {
+    "@cloudcli-ai/cloudcli": "1.37.5"
+  }
+}

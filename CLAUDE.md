@@ -19,6 +19,8 @@ du bootstrap). Plus aucun Ansible ; `MIGRATION.md` pour un poste provisionné pa
   fige l'asset rendu sur l'hôte, donc amd64 pour arm64).
 - Plugins kubectl sans krew : `kubectl-<nom>` sur PATH suffit (`kubectl-cnpg`, `krelay` → `kubectl-relay`, `kubectl-whoami` ;
   `stern` seul). `access-matrix` (rakkess) abandonné : v0.5.1 sans asset, v0.5.0 sans arm64 → le lock 2 plateformes refuse.
+- `pypi:` (openstackclient) et `npm:` (ccstatusline, cloudcli…) : pas d'URL par plateforme, mise écrit un lock uv / « aube » (hash de
+  chaque paquet) sous `mise/locks/`, référencé par digest dans `mise.lock` (versionné) ; `python` en outil mise pour que pypi résolve le graphe.
 - aqua d'abord (URL de release directe, checksums/cosign/SLSA du registry) ; `github:` seulement sans entrée registry — il passe par
   `api.github.com` (quota anonyme 60/h) → `MISE_GITHUB_TOKEN` en CI et derrière un proxy partagé.
 - `mise/tasks/` : file tasks auto-découvertes (`bootstrap`, `dotfiles/<group>` = `mise run dotfiles:<group>`, `check`,
@@ -57,7 +59,7 @@ make drift                # mise outdated
 make scan | hooks         # gitleaks (image pinnée par digest) ; hooks = core.hooksPath .githooks
 ```
 
-`mise run` installe les outils manquants avant d'exécuter une tâche : `make test` installe donc aussi les 61 outils
+`mise run` installe les outils manquants avant d'exécuter une tâche : `make test` installe donc aussi les 72 outils
 (`MISE_TASK_RUN_AUTO_INSTALL=false` pour l'éviter, comme le job `pin-bump`).
 
 Pas de `--check` : valider en conteneur. `mise lock` et `mise install` ont besoin du réseau ; `mise.lock` doit être en 0644 (mise
@@ -99,6 +101,8 @@ ne bouge). Prérequis repo : Settings → Actions → « Allow GitHub Actions to
 
 ## Pièges
 
+- Les locks uv/aube sont écrits sous `locks/` quand `mise/` est la config **globale** (`~/.config/mise` → repo) et sous `.mise/locks/`
+  quand c'est une config projet, chemins inscrits dans `mise.lock` : banc et jobs CI créent le symlink avant toute commande mise.
 - Lock généré sur un hôte : `mise lock` résout **toutes** les plateformes de `lockfile_platforms` ; un `matching_regex` qui n'en couvre
   qu'une fait échouer le lock entier.
 - GitHub 500/403 transitoires sur `mise lock` : relancer (403 = quota API → token).

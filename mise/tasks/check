@@ -12,14 +12,15 @@ if [[ -n "$missing" ]]; then say "missing: $missing (mise install)"; fail=1; fi
 n=0
 while read -r t; do
   case "$t" in
-    rust) bin=cargo ;; neovim) bin=nvim ;; ripgrep) bin=rg ;; opentofu) bin=tofu ;; krelay) bin=kubectl-relay ;; *) bin=$t ;;
+    rust) bin=cargo ;; neovim) bin=nvim ;; ripgrep) bin=rg ;; opentofu) bin=tofu ;; krelay) bin=kubectl-relay ;; openstackclient) bin=openstack ;; task-master-ai) bin=task-master ;; *) bin=$t ;;
   esac
   flags="--version version --help"
   [[ $t == popeye ]] && flags=version  # `popeye --version` prints an error and exits 0
   ok=0
   # shellcheck disable=SC2086
   for flag in $flags; do
-    if out="$("$bin" $flag 2>&1)"; then ok=1; break; fi
+    # No stdin and a deadline: an MCP server given a flag it ignores would wait for a client.
+    if out="$(timeout 15 "$bin" $flag </dev/null 2>&1)"; then ok=1; break; fi
   done
   if (( ok )); then
     n=$((n + 1))

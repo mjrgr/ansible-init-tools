@@ -33,6 +33,13 @@ clauth = "cargo:clauth"
 cloud-provider-kind = "aqua:kubernetes-sigs/cloud-provider-kind"
 codex = "aqua:openai/codex"
 gitlogue = "github:unhappychoice/gitlogue"
+# pypi: a uv lock (hashes of every wheel) sits in locks/, keyed by mise.lock.
+openstackclient = "pypi:python-openstackclient"
+# npm: same scheme, an "aube" lock (integrity of every package) in locks/.
+ccstatusline = "npm:ccstatusline"
+cloudcli = "npm:@cloudcli-ai/cloudcli"
+task-master-ai = "npm:task-master-ai"
+open-meteo-mcp-server = "npm:open-meteo-mcp-server"
 helm-schema = "aqua:dadav/helm-schema"
 helmfile = "aqua:helmfile/helmfile"
 hubble = "aqua:cilium/hubble"
@@ -79,6 +86,8 @@ helm-schema = "0.24.0"
 # ── IaC / supply chain ──────────────────────────────────────────────────────
 opentofu = "1.13.9"
 trivy = "0.76.2"
+# Also what the pre-commit hook runs (same version as the image `make scan` pins).
+gitleaks = "8.30.1"
 cosign = "3.1.4"
 oras = "1.4.0"
 dive = "0.13.1"
@@ -88,6 +97,7 @@ ko = "0.19.1"
 yq = "4.54.3"
 jq = "1.8.2"
 gh = "2.105.0"
+glab = "1.131.0"
 sops = "3.13.3"
 age = "1.3.2"
 # github, not aqua: the aqua package carries no linux-arm64 build, upstream does.
@@ -110,6 +120,14 @@ vhs = "0.12.1"
 gitlogue = "0.12.2"
 neovim = "0.12.6"
 
+# ── Runtimes / cloud ────────────────────────────────────────────────────────
+# python also locks the pypi: dependency graph (uv needs an interpreter to resolve it).
+python = "3.14.10"
+uv = "0.13.9"
+node = "24.22.3"
+bun = "1.4.5"
+openstackclient = { version = "10.5.0", with = ["python-octaviaclient"] }
+
 # ── Coding agents ───────────────────────────────────────────────────────────
 # One package: codex, codex-code-mode-host (code_mode_host ships enabled, fails without it), codex-exec-server.
 codex = "0.171.0"
@@ -120,6 +138,11 @@ herdr = "0.9.5"
 clauth = "0.18.2"
 # Toolchain for the herdr plugins that ship as source; clauth needs edition2024 (>= 1.85).
 rust = "1.100.0"
+# Formerly `npm i -g` under nvm: the Claude Code status line, the browser MCP (cloudcli), task-master, open-meteo MCP.
+ccstatusline = "2.2.27"
+cloudcli = "1.37.5"
+task-master-ai = "0.43.1"
+open-meteo-mcp-server = "2.5.2"
 
 # ── Tasks ───────────────────────────────────────────────────────────────────
 # File tasks live in mise/tasks/ (bootstrap, one script per dotfiles group);

@@ -1,0 +1,7 @@
+{
+  "name": "mise-npm-install",
+  "private": true,
+  "dependencies": {
+    "open-meteo-mcp-server": "2.5.2"
+  }
+}

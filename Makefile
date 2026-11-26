@@ -81,6 +81,8 @@ LOCK_SCOPE := $(shell [ "$$(readlink -f ~/.config/mise 2>/dev/null)" = "$$(readl
 .PHONY: lock
 lock: ## Refresh mise.lock (URLs and sha256 for linux x64/arm64) after editing a pin
 	mise lock $(LOCK_SCOPE)
+	# mise writes the lock files 0600; the container bench reads the repo as another user.
+	chmod 644 mise/mise.lock && chmod -R u=rwX,go=rX mise/locks
 
 .PHONY: lock-audit
 lock-audit: ## Offline: assert every tool is locked for both platforms with a checksum
