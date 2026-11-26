@@ -59,6 +59,7 @@ Pinned in `mise/config.toml`, installed under `~/.local/share/mise`:
 - nerdctl, crictl
 - opentofu
 - trivy, gitleaks, cosign, oras, dive, ko
+- shellcheck, yamllint (what `make lint` runs)
 - yq, jq, gh, glab
 - sops, age, certigo
 - starship, fzf, btop, lazygit, glow, gum, vhs, gitlogue
@@ -66,7 +67,7 @@ Pinned in `mise/config.toml`, installed under `~/.local/share/mise`:
 - neovim (LazyVim needs >= 0.11, newer than the distro package)
 - codex (OpenAI Codex CLI), claude (Claude Code), herdr (coding-agent session runtime), clauth
 - rust (the toolchain the herdr plugins are built with)
-- python, uv, node, bun (runtimes; python also lets mise lock the pypi dependency graph)
+- python, uv (with `uvx`, which MCP servers such as garmin and google-workspace run through), node, bun (runtimes; python also lets mise lock the pypi dependency graph)
 - openstackclient (python-openstackclient + python-octaviaclient, from PyPI through uv)
 - ccstatusline, cloudcli (browser MCP), task-master-ai, open-meteo-mcp-server (npm packages, formerly `npm i -g` under nvm)
 

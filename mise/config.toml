@@ -83,6 +83,11 @@ telepresence = "2.33.4"
 cloud-provider-kind = "0.12.0"
 helm-schema = "0.24.0"
 
+# ── Lint (what `make lint` runs) ────────────────────────────────────────────
+shellcheck = "0.11.0"
+# pypi: (registry entry), locked through uv in locks/ like openstackclient.
+yamllint = "1.38.0"
+
 # ── IaC / supply chain ──────────────────────────────────────────────────────
 opentofu = "1.13.9"
 trivy = "0.76.2"
