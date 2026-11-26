@@ -48,6 +48,13 @@ if command -v dpkg-query >/dev/null; then
   [[ -n "$pkgs" ]] && run sudo apt-get purge -y $pkgs
   sudo_rm_path /etc/apt/sources.list.d/github-cli.list
   sudo_rm_path /etc/apt/keyrings/githubcli.gpg
+  # The old bootstrap's lists: mise writes its own mise-*.sources for the same repositories,
+  # and apt refuses a repository configured twice.
+  for f in /etc/apt/sources.list.d/wezterm-fury.list /etc/apt/sources.list.d/vscode-msft.list \
+           /etc/apt/keyrings/wezterm-fury.gpg /etc/apt/keyrings/wezterm-fury.gpg.armored \
+           /etc/apt/keyrings/microsoft.gpg /etc/apt/keyrings/microsoft.asc.armored; do
+    sudo_rm_path "$f"
+  done
 fi
 
 echo "== native Claude Code install (claude is a mise tool now)"

@@ -258,8 +258,10 @@ fi
 # ── Login shell ───────────────────────────────────────────────────────────────
 # mise runs chsh without sudo and it asks for a password; the bootstrap task repeats
 # it through sudo where that is passwordless (the bench), so the part is harmless there.
+# The path, not the name: passwd holds /bin/zsh on a box chsh'd before, and mise
+# would resolve the name to /usr/bin/zsh and chsh again (same binary, merged /usr).
 [bootstrap.user]
-login_shell = "zsh"
+login_shell = "/bin/zsh"
 
 # ── Tasks ───────────────────────────────────────────────────────────────────
 # File tasks live in mise/tasks/ (bootstrap, one script per dotfiles group);

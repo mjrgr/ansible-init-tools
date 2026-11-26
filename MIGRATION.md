@@ -74,6 +74,7 @@ On an already provisioned box this is a no-op unless the pin moved.
 ```bash
 mise trust mise/config.toml
 ln -sfn "$PWD/mise" ~/.config/mise   # global config from the start: the lock paths depend on it
+scripts/cleanup-legacy.sh --yes      # apt: the old bootstrap's wezterm/vscode lists, or apt sees each repo twice
 mise bootstrap --dry-run             # read what would move
 mise bootstrap --yes
 exec zsh
