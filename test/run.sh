@@ -2,8 +2,8 @@
 # Run the bootstrap, the tool install and the dotfiles tasks against a
 # throwaway container.
 #
-#   ./test/run.sh dotfiles        # bootstrap + `mise run dotfiles` twice, asserts idempotence
-#   ./test/run.sh clis            # bootstrap + `mise run install` twice + `mise run bootstrap -- --upgrade`, asserts every tool runs
+#   ./test/run.sh dotfiles        # `mise bootstrap` twice (no tools), asserts idempotence and what landed
+#   ./test/run.sh clis            # mise binary + `mise install` twice + `mise bootstrap packages upgrade`, asserts every tool runs
 #   ./test/run.sh rollback        # deploy then roll back, asserts the restore
 #   ./test/run.sh wezterm         # installs wezterm and parses the versioned config
 #   ./test/run.sh shell           # interactive shell in the test bed
@@ -51,10 +51,9 @@ run() {
 PRELUDE='
 set -e
 cp -a /repo/. ~/repo/ && cd ~/repo
+# A git worktree carries a .git file pointing outside the mount: a fresh repo serves the snapshot as well.
+[ -d .git ] || { rm -f .git; git init -q; }
 git -c user.name=t -c user.email=t@t add -A >/dev/null
-# Global config from the start, as on a host: the pypi/npm lock paths in mise.lock
-# are written as locks/ for the global config and .mise/locks/ for a project one.
-mkdir -p ~/.config && ln -sfn ~/repo/mise ~/.config/mise
 tree_untouched() {
   local dirty; dirty=$(git -C ~/repo status --porcelain | grep -E "^.[^ ]" || true)
   if [ -n "$dirty" ]; then echo "    TREE MODIFIED:"; echo "$dirty" | sed "s/^/      /"; return 1; fi
@@ -63,25 +62,33 @@ tree_untouched() {
 export PATH="$HOME/.local/share/mise/shims:$PATH"
 # docker creates the mount path as root: hand the tree to the bench user before mise writes in it.
 [ ! -d ~/.local/share/mise/installs/clauth ] || sudo chown -R "$(id -u):$(id -g)" ~/.local
+# No auto-install before a task: `mise run rollback` would first fetch every tool.
+export MISE_YES=1 MISE_TASK_RUN_AUTO_INSTALL=false
+./scripts/bootstrap.sh >/tmp/b.log 2>&1 || { tail -30 /tmp/b.log; exit 1; }
+mise trust -q mise/config.toml
+# Global config from the start, as on a host: the pypi/npm lock paths in mise.lock
+# are written as locks/ for the global config and .mise/locks/ for a project one.
+mkdir -p ~/.config && ln -sfn ~/repo/mise ~/.config/mise
+# No user manager in a container: the services part is skipped and the bootstrap
+# task guards the unit itself. chsh: the bootstrap task does it through sudo.
+BOOTSTRAP="mise bootstrap --skip services,user"
 '
 
 case "$TARGET" in
   dotfiles)
     # Both runs in the SAME container: a fresh one would make anything look idempotent.
+    # --skip tools: the clis target covers them; the bootstrap task then skips what needs them.
     run "$PRELUDE"'
-      echo "==> bootstrap (base packages + mise)"
-      ./scripts/bootstrap.sh --skip podman,wezterm,vscode >/tmp/b.log 2>&1 || { tail -30 /tmp/b.log; exit 1; }
       mise --version | sed "s/^/    mise /"
-      mise trust -q mise/config.toml
-
-      echo "==> run 1 (fresh $HOME)"
-      mise run dotfiles >/tmp/r1.log 2>&1 || { tail -40 /tmp/r1.log; exit 1; }
-      printf "    %s change(s)\n" "$(grep -c "^changed: " /tmp/r1.log || true)"
+      echo "==> run 1 (fresh $HOME): $BOOTSTRAP --skip tools"
+      $BOOTSTRAP --skip tools >/tmp/r1.log 2>&1 || { tail -40 /tmp/r1.log; exit 1; }
+      printf "    mise: %s part(s) applied, task: %s change(s)\n" \
+        "$(grep -cE "^mise [a-z ]+: (added|installed|applied|created|cloned)" /tmp/r1.log || true)" "$(grep -c "^changed: " /tmp/r1.log || true)"
 
       echo
       echo "==> run 2 — must change nothing"
-      mise run dotfiles >/tmp/r2.log 2>&1 || { tail -40 /tmp/r2.log; exit 1; }
-      if grep "^changed: " /tmp/r2.log; then echo "IDEMPOTENCE FAILED"; exit 1; fi
+      $BOOTSTRAP --skip tools >/tmp/r2.log 2>&1 || { tail -40 /tmp/r2.log; exit 1; }
+      if grep -E "^mise [a-z ]+: (added|installed|applied|created|cloned)|^changed: " /tmp/r2.log; then echo "IDEMPOTENCE FAILED"; exit 1; fi
       echo "    idempotence OK"
 
       echo
@@ -107,7 +114,9 @@ case "$TARGET" in
 
       echo
       echo "==> mise config is global now"
-      (cd / && mise tasks ls | grep -q "^dotfiles " && echo "    tasks visible from /")
+      (cd / && mise tasks ls | grep -q "^bootstrap " && echo "    tasks visible from /")
+      echo "==> mise bootstrap status"
+      mise bootstrap status 2>&1 | grep -vE "^\s*$" | tail -12 | sed "s/^/    /"
 
       echo
       echo "==> zsh is the login shell"
@@ -133,12 +142,10 @@ case "$TARGET" in
     ;;
   clis)
     run "$PRELUDE"'
-      echo "==> bootstrap (everything root installs)"
-      echo "    Note: daemons install but do not start in a container."
-      ./scripts/bootstrap.sh >/tmp/b.log 2>&1 || { tail -40 /tmp/b.log; exit 1; }
-      grep -E "^==>" /tmp/b.log | sed "s/^/    /"
+      echo "==> system packages (mise bootstrap --only packages; daemons install but do not start in a container)"
+      mise bootstrap --only packages >/tmp/p.log 2>&1 || { tail -40 /tmp/p.log; exit 1; }
+      grep -E "^mise (apt|dnf):" /tmp/p.log | sed "s/^/    /"
       for c in podman docker mise; do printf "    %-8s %s\n" "$c" "$(command -v $c || echo MISSING)"; done
-      mise trust -q mise/config.toml
 
       echo
       echo "==> run 1: mise run install (every pinned tool, from mise.lock)"
@@ -155,11 +162,10 @@ case "$TARGET" in
       echo "    nothing reinstalled"
 
       echo
-      echo "==> mise run bootstrap -- --upgrade (the task path; nothing to upgrade right after a bootstrap)"
-      mise run bootstrap -- --upgrade >/tmp/b2.log 2>&1 || { tail -40 /tmp/b2.log; exit 1; }
-      grep -E "^==> upgrade" /tmp/b2.log | sed "s/^/    /" || { echo "    --upgrade never reached the script"; exit 1; }
-      if ! grep -qE "0 upgraded|Nothing to do" /tmp/b2.log; then
-        echo "    UPGRADED SOMETHING (or the summary line changed):"; grep -iE "upgrad|nothing" /tmp/b2.log | sed "s/^/      /"; exit 1
+      echo "==> mise bootstrap packages upgrade (nothing to move right after an install)"
+      mise bootstrap packages upgrade >/tmp/b2.log 2>&1 || { tail -40 /tmp/b2.log; exit 1; }
+      if grep -qE "^mise (apt|dnf): (installed|upgraded)" /tmp/b2.log; then
+        echo "    UPGRADED SOMETHING:"; grep -E "^mise (apt|dnf):" /tmp/b2.log | sed "s/^/      /"; exit 1
       fi
       echo "    nothing to upgrade"
 
@@ -174,36 +180,29 @@ case "$TARGET" in
     '
     ;;
   rollback)
-    # Seeds real files first, so the restore path is exercised and not just the
-    # symlink removal.
+    # Seeds a real file first: mise refuses to replace it unless told to, which is the
+    # point; --force-dotfiles is the explicit opt-in on a box with history.
     run "$PRELUDE"'
-      ./scripts/bootstrap.sh --skip podman,wezterm,vscode >/tmp/b.log 2>&1 || { tail -30 /tmp/b.log; exit 1; }
-      mise trust -q mise/config.toml
+      echo "==> seeding a pre-existing file"
+      echo "ORIGINAL ZSHRC" > ~/.zshrc
+      echo "==> deploy must refuse the conflict"
+      if $BOOTSTRAP --skip tools >/tmp/d0.log 2>&1; then echo "    deployed over a real file — failed"; exit 1; fi
+      grep -iE "conflict|force" /tmp/d0.log | head -2 | sed "s/^/    /"
+      grep -q "ORIGINAL ZSHRC" ~/.zshrc && echo "    ~/.zshrc untouched"
 
-      echo "==> seeding pre-existing files"
-      mkdir -p ~/.config
-      echo "ORIGINAL ZSHRC"    > ~/.zshrc
-      echo "ORIGINAL STARSHIP" > ~/.config/starship.toml
-
-      echo "==> deploy"
-      mise run dotfiles >/tmp/d.log 2>&1 || { tail -30 /tmp/d.log; exit 1; }
-      printf "    ~/.zshrc                is a symlink: %s\n" "$([ -L ~/.zshrc ] && echo yes || echo NO)"
-      printf "    ~/.config/starship.toml is a symlink: %s\n" "$([ -L ~/.config/starship.toml ] && echo yes || echo NO)"
-      printf "    ~/.config/mise          is a symlink: %s\n" "$([ -L ~/.config/mise ] && echo yes || echo NO)"
+      echo "==> deploy with --force-dotfiles"
+      $BOOTSTRAP --skip tools --force-dotfiles >/tmp/d.log 2>&1 || { tail -30 /tmp/d.log; exit 1; }
+      for f in ~/.zshrc ~/.config/starship.toml ~/.config/mise; do
+        printf "    %-26s is a symlink: %s\n" "${f#$HOME/}" "$([ -L "$f" ] && echo yes || echo NO)"
+      done
 
       echo
       echo "==> rollback"
       mise run rollback >/tmp/rb.log 2>&1 || { tail -30 /tmp/rb.log; exit 1; }
-      echo "    after rollback:"
-      for f in ~/.zshrc ~/.config/starship.toml; do
-        if [ -L "$f" ]; then echo "      ${f#$HOME/}: STILL A SYMLINK — failed"; exit 1
-        elif [ -f "$f" ]; then echo "      ${f#$HOME/}: restored -> $(head -1 "$f")"
-        else echo "      ${f#$HOME/}: MISSING — failed"; exit 1; fi
+      for f in ~/.zshrc ~/.config/starship.toml ~/.config/mise ~/.config/btop/themes; do
+        if [ -e "$f" ] || [ -L "$f" ]; then echo "      ${f#$HOME/}: STILL THERE — failed"; exit 1; fi
       done
-      grep -q "ORIGINAL ZSHRC"    ~/.zshrc                || { echo "      wrong content in ~/.zshrc"; exit 1; }
-      grep -q "ORIGINAL STARSHIP" ~/.config/starship.toml || { echo "      wrong content in ~/.config/starship.toml"; exit 1; }
-      [ -e ~/starship.toml ] && { echo "      starship.toml restored to \$HOME instead of ~/.config"; exit 1; }
-      [ -L ~/.config/mise ] && { echo "      ~/.config/mise still linked — failed"; exit 1; }
+      echo "      every entry unlinked"
       python3 -c "import json; d=json.load(open(\"$HOME/.claude/settings.json\")); assert not set(d.get(\"hooks\", {})) & {\"Stop\",\"SessionStart\"}" \
         && echo "      Claude hooks un-registered"
 
@@ -219,8 +218,8 @@ case "$TARGET" in
   wezterm)
     # Installs wezterm, then parses the versioned config with the real binary.
     run "$PRELUDE"'
-      echo "==> installing wezterm"
-      ./scripts/bootstrap.sh --skip podman,vscode >/tmp/wt.log 2>&1 || { tail -40 /tmp/wt.log; exit 1; }
+      echo "==> installing wezterm (mise bootstrap --only packages)"
+      mise bootstrap --only packages >/tmp/wt.log 2>&1 || { tail -40 /tmp/wt.log; exit 1; }
       echo "    $(wezterm --version)"
       echo "==> parsing dotfiles/wezterm/wezterm.lua"
       if wezterm --config-file ~/repo/dotfiles/wezterm/wezterm.lua show-keys >/tmp/keys.txt 2>/tmp/err.txt; then

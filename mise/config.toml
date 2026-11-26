@@ -144,6 +144,123 @@ cloudcli = "1.37.5"
 task-master-ai = "0.43.1"
 open-meteo-mcp-server = "2.5.2"
 
+# ── Machine setup: `mise bootstrap` (see CLAUDE.md) ─
+# ── System packages (mise skips the manager the host does not have) ─────────
+[bootstrap.packages]
+"apt:git" = "latest"
+"apt:curl" = "latest"
+"apt:wget" = "latest"
+"apt:gnupg" = "latest"
+"apt:unzip" = "latest"
+"apt:zsh" = "latest"
+"apt:fontconfig" = "latest"
+"apt:ca-certificates" = "latest"
+"apt:python3" = "latest"
+"apt:build-essential" = "latest"
+"apt:pkg-config" = "latest"
+"apt:libssl-dev" = "latest"
+"apt:podman" = "latest"
+"apt:podman-docker" = "latest"
+"apt:wezterm" = "latest"
+"apt:code" = "latest"
+"dnf:git" = "latest"
+"dnf:curl" = "latest"
+# Real package names, not provides: `wget` and `util-linux-user` would be reinstalled every run.
+"dnf:wget2-wget" = "latest"
+"dnf:gnupg2" = "latest"
+"dnf:unzip" = "latest"
+"dnf:zsh" = "latest"
+"dnf:fontconfig" = "latest"
+"dnf:ca-certificates" = "latest"
+"dnf:python3" = "latest"
+"dnf:make" = "latest"
+"dnf:gcc" = "latest"
+"dnf:gcc-c++" = "latest"
+"dnf:pkgconf-pkg-config" = "latest"
+"dnf:openssl-devel" = "latest"
+"dnf:util-linux" = "latest"
+"dnf:podman" = "latest"
+"dnf:podman-docker" = "latest"
+"dnf:wezterm" = "latest"
+"dnf:code" = "latest"
+
+[bootstrap.apt.sources.wezterm]
+uris = "https://apt.fury.io/wez/"
+suites = "*"
+components = "*"
+key = "https://apt.fury.io/wez/gpg.key"
+fingerprint = "0CA603116C960BAFB2BF310BD7BA31CF90C4B319"
+
+[bootstrap.apt.sources.vscode]
+uris = "https://packages.microsoft.com/repos/code"
+suites = "stable"
+components = "main"
+key = "https://packages.microsoft.com/keys/microsoft.asc"
+fingerprint = "BC528686B50D79E339D3721CEB3E94ADBE1229CF"
+
+[bootstrap.dnf.repos]
+wezterm = { copr = "wezfurlong/wezterm-nightly" }
+
+# Ubuntu ships no search registry: `docker run mcp/grafana` fails on short names.
+[bootstrap.files."/etc/containers/registries.conf.d/10-unqualified-search.conf"]
+content = """
+unqualified-search-registries = ["docker.io"]
+"""
+
+# Silences the podman-docker shim's "Emulate Docker CLI using podman" banner.
+[bootstrap.files."/etc/containers/nodocker"]
+content = ""
+
+# Per package manager, so not managed files: apt needs the debconf answer (the code
+# postinst adds its own copy of the repo), dnf needs the vscode repo (not a COPR).
+[bootstrap.hooks.pre-packages]
+description = "vscode: debconf opt-out (apt) or the repo file (dnf)"
+run = '''
+if command -v debconf-set-selections >/dev/null; then
+  echo 'code code/add-microsoft-repo boolean false' | sudo debconf-set-selections
+fi
+if command -v dnf >/dev/null && [ ! -f /etc/yum.repos.d/vscode.repo ]; then
+  printf '%s\n' '[code]' 'name=Visual Studio Code' 'baseurl=https://packages.microsoft.com/yumrepos/vscode' \
+    'enabled=1' 'gpgcheck=1' 'gpgkey=https://packages.microsoft.com/keys/microsoft.asc' | sudo tee /etc/yum.repos.d/vscode.repo >/dev/null
+fi
+'''
+
+# ── oh-my-zsh and its plugins: clones, not the curl|sh installer ─────────────
+[bootstrap.repos]
+"~/.oh-my-zsh" = { url = "https://github.com/ohmyzsh/ohmyzsh", depth = 1 }
+"~/.oh-my-zsh/custom/plugins/zsh-autosuggestions" = { url = "https://github.com/zsh-users/zsh-autosuggestions", depth = 1 }
+"~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" = { url = "https://github.com/zsh-users/zsh-syntax-highlighting", depth = 1 }
+"~/.oh-my-zsh/custom/plugins/zsh-history-substring-search" = { url = "https://github.com/zsh-users/zsh-history-substring-search", depth = 1 }
+"~/.oh-my-zsh/custom/plugins/fzf-tab" = { url = "https://github.com/Aloxaf/fzf-tab", depth = 1 }
+
+# ── Dotfiles: symlinks into the clone (sources are relative to this file) ────
+[dotfiles]
+"~/.config/mise" = { source = ".", mode = "symlink" }
+"~/.zshrc" = { source = "../dotfiles/zsh/.zshrc", mode = "symlink" }
+"~/.zshenv" = { source = "../dotfiles/zsh/.zshenv", mode = "symlink" }
+"~/.config/zsh/wezterm.zsh" = { source = "../dotfiles/zsh/config/wezterm.zsh", mode = "symlink" }
+"~/.kube/k8s-clusters.sh" = { source = "../dotfiles/kube/k8s-clusters.sh", mode = "symlink" }
+"~/.config/krelay/patch-hardened.json" = { source = "../dotfiles/kube/krelay-patch-hardened.json", mode = "symlink" }
+"~/.gitconfig" = { source = "../dotfiles/git/.gitconfig", mode = "symlink" }
+"~/.tmux.conf" = { source = "../dotfiles/tmux/.tmux.conf", mode = "symlink" }
+"~/.config/starship.toml" = { source = "../dotfiles/starship/starship.toml", mode = "symlink" }
+"~/.config/nvim" = { source = "../dotfiles/nvim", mode = "symlink" }
+"~/.config/btop/btop.conf" = { source = "../dotfiles/btop/btop.conf", mode = "symlink" }
+"~/.config/wezterm/wezterm.lua" = { source = "../dotfiles/wezterm/wezterm.lua", mode = "symlink" }
+"~/.config/wezterm/claude-state-hook.sh" = { source = "../dotfiles/wezterm/claude-state-hook.sh", mode = "symlink" }
+"~/.config/herdr/config.toml" = { source = "../dotfiles/herdr/config.toml", mode = "symlink" }
+"~/.config/herdr/herd-publish.sh" = { source = "../dotfiles/herdr/herd-publish.sh", mode = "symlink" }
+"~/.config/herdr/claude-statusline.sh" = { source = "../dotfiles/herdr/claude-statusline.sh", mode = "symlink" }
+"~/.config/herdr/quota-status.sh" = { source = "../dotfiles/herdr/quota-status.sh", mode = "symlink" }
+"~/.config/systemd/user/herd-publish.service" = { source = "../dotfiles/herdr/herd-publish.service", mode = "symlink" }
+"~/.config/herdr-automatic-rename/config.sh" = { source = "../dotfiles/herdr/automatic-rename.sh", mode = "symlink" }
+
+# ── Login shell ───────────────────────────────────────────────────────────────
+# mise runs chsh without sudo and it asks for a password; the bootstrap task repeats
+# it through sudo where that is passwordless (the bench), so the part is harmless there.
+[bootstrap.user]
+login_shell = "zsh"
+
 # ── Tasks ───────────────────────────────────────────────────────────────────
 # File tasks live in mise/tasks/ (bootstrap, one script per dotfiles group);
 # these only compose them. `mise tasks` lists everything with its description.
@@ -153,12 +270,12 @@ open-meteo-mcp-server = "2.5.2"
 # toolchain to be there first.
 
 [tasks.setup]
-description = "Bootstrap (sudo), every tool, every dotfiles group (= make setup, for a box already bootstrapped once)"
-run = ["mise run bootstrap", "mise run install", "mise run dotfiles"]
+description = "The whole machine: packages, repos, dotfiles, login shell, tools, then the bootstrap task (= make setup)"
+run = "mise bootstrap --yes"
 
 [tasks.upgrade]
 description = "Owned system packages to their latest (sudo), every pin to upstream's latest, then check (= make upgrade)"
-run = ["mise run bootstrap -- --upgrade", "mise run bump", "mise run check"]
+run = ["mise bootstrap packages upgrade --yes", "mise run bump", "mise run check"]
 
 [tasks.bump]
 description = "Every pin to upstream's latest, refresh mise.lock, install (= make bump; edits config.toml)"
@@ -171,14 +288,5 @@ description = "Install every pinned tool from mise.lock (= make install)"
 run = "mise install"
 
 [tasks.dotfiles]
-description = "Deploy every dotfiles group (= make dotfiles)"
-depends = [
-  "dotfiles:mise", "dotfiles:zsh", "dotfiles:starship", "dotfiles:tmux", "dotfiles:git",
-  "dotfiles:wezterm", "dotfiles:herdr", "dotfiles:fonts", "dotfiles:btop", "dotfiles:nvim",
-]
-run = """
-echo "Dotfiles linked from $(dirname "$(readlink -f ~/.config/mise)")/dotfiles"
-echo "Backups of replaced files: ~/.dotfiles-backup"
-echo "Still to fill in: ~/.zshenv.local (secrets), ~/.gitconfig.local (identity)"
-echo "Rollback: mise run rollback"
-"""
+description = "Dotfiles symlinks, then what the bootstrap task adds on top of them (= make dotfiles)"
+run = ["mise dot apply --yes", "mise run bootstrap"]

@@ -1,16 +1,19 @@
 # CLAUDE.md — ansible-init-tools
 
-Bootstrap d'un poste Debian/Ubuntu, Fedora/RHEL ou WSL (x86_64/aarch64) : `scripts/bootstrap.sh` (sudo : paquets de base,
-podman, wezterm, vscode, binaire mise pinné ; `--upgrade` ne remonte que ses propres paquets) puis **tout le reste par mise** —
-outils pinnés (`mise/config.toml` + `mise.lock`), `[env]`, et tâches de dotfiles (symlinks vers le repo, sans sudo sauf `chsh`).
-Le bootstrap est aussi une tâche (`mise run bootstrap`, wrapper `sudo` + `raw=true`) : une seule UX après le premier run, qui est
-forcément `make setup` (prérequis `git make`, car `mise run` installe les outils avant toute tâche et rust a besoin du toolchain
-du bootstrap). Plus aucun Ansible ; `MIGRATION.md` pour un poste provisionné par l'ancien setup.
+Bootstrap d'un poste Debian/Ubuntu, Fedora/RHEL ou WSL (x86_64/aarch64) : `scripts/bootstrap.sh` ne pose que le binaire mise
+pinné (sudo) ; **tout le reste est déclaré dans `mise/config.toml`** et appliqué par `mise bootstrap` dans un ordre fixe —
+`[bootstrap.packages]` + sources apt / COPR dnf (sudo), `[bootstrap.files]` (`/etc/containers`), `[bootstrap.repos]` (oh-my-zsh
+et plugins), `[dotfiles]` (symlinks vers le repo), `[bootstrap.user]` (login shell), `[tools]` pinnés par `mise.lock`, puis la
+**tâche fichier `bootstrap`** (`mise/tasks/bootstrap`, exécutée en dernier par `mise bootstrap`) pour ce qui ne se déclare pas :
+seeds `*.local`, Nerd Font, thèmes btop, fzf-git, hooks Claude (`claude-settings.py`), plugins/skill herdr, `chsh` via sudo,
+unit herd-publish. Premier run = `make setup` (prérequis `git make`). Plus aucun Ansible ; `MIGRATION.md` pour un poste provisionné
+par l'ancien setup.
 
 ## Layout (non évident)
 
-- `mise/config.toml` : config **globale** — `mise run dotfiles:mise` symlinke `~/.config/mise` → `mise/`, donc `[tools]`, `[env]`
-  et les tâches s'appliquent partout. Depuis le clone sans ce lien, c'est une config projet (`mise trust` requis).
+- `mise/config.toml` : config **globale** — l'entrée `[dotfiles]` `~/.config/mise` → `mise/` (posée par `make setup` avant même
+  `mise bootstrap`), donc `[tools]`, `[env]` et les tâches s'appliquent partout. Depuis le clone sans ce lien, c'est une config projet
+  (`mise trust` requis) et les chemins de locks diffèrent (voir Pièges).
 - `mise/mise.lock` : URLs + sha256 par outil pour `linux-x64` et `linux-arm64` (`lockfile_platforms`). Jamais édité à la main :
   `make lock` ; `make lock-audit` (offline) exige les deux plateformes avec digest (sha256, ou sha512 que `mise upgrade --bump` écrit pour
   la plateforme native), sauf backends `core:`/`cargo:` (rustup/cargo vérifient).
@@ -23,9 +26,12 @@ du bootstrap). Plus aucun Ansible ; `MIGRATION.md` pour un poste provisionné pa
   chaque paquet) sous `mise/locks/`, référencé par digest dans `mise.lock` (versionné) ; `python` en outil mise pour que pypi résolve le graphe.
 - aqua d'abord (URL de release directe, checksums/cosign/SLSA du registry) ; `github:` seulement sans entrée registry — il passe par
   `api.github.com` (quota anonyme 60/h) → `MISE_GITHUB_TOKEN` en CI et derrière un proxy partagé.
-- `mise/tasks/` : file tasks auto-découvertes (`bootstrap`, `dotfiles/<group>` = `mise run dotfiles:<group>`, `check`,
-  `rollback`). Chaque script (sauf `bootstrap`) source `scripts/lib/dotfiles.sh` (`REPO` via `readlink -f $0`, `link_dotfile` backup+symlink, `changed` = seul signal de
-  changement). cwd d'une tâche = `$HOME` (config root global), pas le repo.
+- `mise/tasks/` : file tasks auto-découvertes (`bootstrap`, `check`, `rollback`). Chaque script source `scripts/lib/dotfiles.sh`
+  (`REPO` via `readlink -f $0`, `link_dotfile`, `copy_template`, `fetch_if_changed`, `changed` = seul signal de changement).
+  cwd d'une tâche = `$HOME` (config root global), pas le repo. `mise bootstrap --skip services,user` en conteneur (pas de manager
+  systemd ; `[bootstrap.user]` lance `chsh` sans sudo et demande un mot de passe — la tâche le refait via `sudo -n`).
+- `[dotfiles]` : sources relatives à `mise/` (`../dotfiles/...`), mode `symlink` ; mise **refuse** d'écraser un vrai fichier
+  (`--force-dotfiles`, sans backup). `~/.config/mise` est une entrée comme les autres (source `.`).
 - `scripts/lib/claude-settings.py` : merge/strip des hooks et chaînage statusLine dans `~/.claude/settings.json` (fichier de l'utilisateur,
   jamais templaté). Par event, seule l'entrée dont la commande contient le basename du script est à nous (`is_ours`) : les autres
   (herdr, context-mode…) restent, à l'enregistrement comme au rollback ; un fichier déjà à jour ressort identique. `scripts/uninstall-ansible.sh`, `scripts/cleanup-legacy.sh` : dry-run par défaut, `--yes` pour appliquer.
@@ -33,7 +39,7 @@ du bootstrap). Plus aucun Ansible ; `MIGRATION.md` pour un poste provisionné pa
   `.zshenv` met les shims mise sur PATH (shells non interactifs : MCP, `wsl.exe -- herdr`, unit systemd) ; `.zshrc` active mise **avant**
   OMZ, car tous les `command -v` qui suivent en dépendent. `~/bin`, `~/.local/bin`, `~/go/bin` et `GOPATH` viennent de `[env]`
   (`_.path`, placé **devant** les outils mise : `~/.cargo/bin` n'y va pas, `.zshenv` source `~/.cargo/env`).
-- `mise/tasks/rollback` : liste **autoritative** `links` ; `EVENTS` de `claude-settings.py` pour les hooks Claude.
+- `mise/tasks/rollback` : unit → hooks Claude (`EVENTS` de `claude-settings.py`) → thèmes btop → `mise dot unapply --yes`.
 - `test/` : `run.sh` (banc conteneur, repo monté `:ro` puis copié ; `BASE_IMAGE=ubuntu:22.04|fedora:43`), `Dockerfile` (sudo + git +
   user, le bootstrap fait le reste), `lock-audit.py`.
 
@@ -41,17 +47,17 @@ du bootstrap). Plus aucun Ansible ; `MIGRATION.md` pour un poste provisionné pa
 
 ```bash
 make lint                 # shellcheck + yamllint + parse config mise + lock-audit
-make setup                # premier run : bootstrap (sudo) + trust + install + dotfiles ; ensuite `mise run setup`
-make bootstrap            # scripts/bootstrap.sh  (ARGS="--skip podman,wezterm,vscode" | "--upgrade") = mise run bootstrap
+make setup                # premier run : binaire mise (sudo) + trust + lien ~/.config/mise + `mise bootstrap --yes`
+make bootstrap            # mise bootstrap --yes (ARGS="--dry-run" | "--only packages" | "--skip tools") = mise run setup
 make install | bump       # mise run install (depuis le lock) | mise run bump = mise upgrade --bump (réécrit config + lock, installe)
-make upgrade              # bootstrap --upgrade (sudo, paquets du bootstrap seulement) + bump + check = mise run upgrade
+make upgrade              # mise bootstrap packages upgrade (sudo, paquets déclarés seulement) + bump + check = mise run upgrade
 make check                # mise run check : chaque outil répond, lock-audit, mise doctor sans problème, unit herd-publish active
-make bump-mise            # pin mise (version + sha256 x64/arm64) dans scripts/bootstrap.sh → latest (VERSION=vX pour choisir), puis make bootstrap
-make dotfiles | rollback  # mise run dotfiles | mise run rollback
-mise run dotfiles:starship                      # un seul groupe
+make bump-mise            # pin mise (version + sha256 x64/arm64) dans scripts/bootstrap.sh → latest (VERSION=vX pour choisir), puis scripts/bootstrap.sh
+make dotfiles | rollback  # mise dot apply + mise run bootstrap | mise run rollback
+mise bootstrap status | --dry-run                # état par partie | ce qui bougerait
 mise install kubectl helm                        # deux outils
-make test                 # bootstrap + dotfiles x2 en conteneur ; 2e run = aucune ligne "changed:" (BASE_IMAGE pour changer d'OS)
-make test-clis            # bootstrap complet + mise run install x2 + `mise run bootstrap -- --upgrade` (doit ne rien remonter) ;
+make test                 # `mise bootstrap --skip services,user,tools` x2 en conteneur ; 2e run = rien d'appliqué ni de "changed:"
+make test-clis            # packages + mise run install x2 + `mise bootstrap packages upgrade` (ne doit rien remonter) ;
                           # puis `mise run check` (CHECK_VERBOSE=1) ; lock inchangé
 make test-rollback | test-wezterm | shell
 make lock | lock-audit    # régénère mise.lock | audit offline
@@ -69,8 +75,8 @@ l'écrit en 0600, le conteneur ne le lirait pas).
 
 - Pins concrets partout ; `claude = "latest"` est l'exception (figé par le lock, `mise upgrade claude`).
 - Une tâche imprime `changed: …` pour chaque action réelle et rien sinon — c'est l'assertion d'idempotence du banc.
-- Tâche interactive (`chsh`) : `#MISE raw=true`. Dépendances : `#MISE depends=["dotfiles:common"]`.
-- Outil qui a besoin d'un paquet système (linker, lib) → `scripts/bootstrap.sh`, branché apt/dnf, jamais dans mise.
+- Outil qui a besoin d'un paquet système (linker, lib) → `[bootstrap.packages]` (`apt:` **et** `dnf:`, noms réels de paquets, pas
+  des provides : `wget2-wget`, `util-linux`), jamais dans `[tools]`.
 - `command-instead-of-shell`-like : tout `curl` passe par `fetch_if_changed` ou vérifie un sha256 ; pas de `curl | sh` non pinné sauf
   l'installeur oh-my-zsh (comportement historique, `creates`-guardé).
 - yamllint ne couvre plus que `.github/` (`truthy.check-keys: false` pour `on:`).
@@ -85,9 +91,10 @@ l'écrit en 0600, le conteneur ne le lirait pas).
 
 ## Ajouter un dotfile
 
-Source sous `dotfiles/<group>/`, tâche `mise/tasks/dotfiles/<group>` (source `dotfiles.sh`, `link_dotfile`), groupe dans `depends` de
-`[tasks.dotfiles]`, répertoire cible dans `dotfiles/common` si nouveau, **et** chemin dans `links` de `mise/tasks/rollback` — sinon le
-rollback ne le restaure pas. Nouvel event de hook Claude → `EVENTS` + `hooks_for` dans `claude-settings.py`.
+Source sous `dotfiles/<groupe>/`, une entrée `[dotfiles]` dans `mise/config.toml` (`"~/cible" = { source = "../dotfiles/...", mode =
+"symlink" }`) ; mise crée les répertoires parents et `mise dot unapply` défait l'entrée. Ce qui n'est pas un symlink (fichier
+téléchargé, merge JSON, lien vers un outil mise) va dans `mise/tasks/bootstrap`, avec son retrait dans `rollback`. Nouvel event de hook
+Claude → `EVENTS` + `hooks_for` dans `claude-settings.py`.
 
 ## CI (`.github/workflows/ci.yml`)
 
@@ -109,6 +116,9 @@ ne bouge). Prérequis repo : Settings → Actions → « Allow GitHub Actions to
 - `mise upgrade --bump` réécrit `config.toml` **avant** le lock : s'il échoue sur un outil, les autres pins sont bumpés sans lock
   (lock-audit le signale) → `make lock` puis `make test-clis`. Sur l'hôte migré, `~/.config/mise` → repo = config globale :
   `make lock` passe `--global` tout seul.
+- `mise bootstrap` exécute **la tâche nommée `bootstrap`** en fin de run : ne pas y mettre autre chose que le « finish » idempotent.
+  Le fichier dnf `vscode.repo` et le debconf apt passent par le hook `pre-packages` (un `[bootstrap.files]` s'appliquerait sur
+  toutes les distros et casserait sur apt : parent `/etc/yum.repos.d` absent).
 - `aqua.baked_registry = true` : mise embarque le registry aqua de sa date de build. Un fix registry plus récent (vu : kyverno 1.20.0,
   nouveau workflow signataire, cosign refuse au lock) n'est visible qu'avec une mise buildée après → `make bump-mise` puis
   `make bootstrap`. Sinon l'outil va dans `BUMP_EXCLUDE` (`env` de `[tasks.bump]`, seul endroit) le temps que mise suive.
@@ -117,7 +127,7 @@ ne bouge). Prérequis repo : Settings → Actions → « Allow GitHub Actions to
   2026-11-24 ; `aqua:openai/codex` = codex + codex-code-mode-host + codex-exec-server). Un lock qui 404 sur l'autre plateforme (vu
   codex 0.170.0) vient de mise-versions pas encore à jour pour ce tag, pas de la version de mise : réessayer au bump suivant.
 - `sudo mise …` (self-update, install) : sudo nu perd le proxy → timeouts sur mise.jdx.dev/GitHub. mise n'est jamais mis à jour par
-  `self-update` : c'est le pin du bootstrap qui compte, et `mise run bootstrap` porte le proxy.
+  `self-update` : c'est le pin de `scripts/bootstrap.sh` qui compte, et ce script porte le proxy à travers `sudo env`.
 - `mise run` cwd = `$HOME` : chemins relatifs interdits dans les tâches, tout passe par `$REPO`/`$DOTFILES`.
 - Les outils sont par utilisateur : `sudo kubectl` ne les voit pas (`sudo env "PATH=$PATH" …`).
 - WSL : `~/.kube` peut être un drvfs (chmod → EPERM) ; ne jamais réimposer un `mode` sur un répertoire existant. Unit systemd user

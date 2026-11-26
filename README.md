@@ -18,27 +18,36 @@ mise binary itself. Ansible used to orchestrate all of this; it is gone, and
 - ✅ Secret scanning in CI and in a pre-commit hook
 - ✅ Tested against throwaway containers (Ubuntu 22.04, 26.04, Fedora 43, arm64), not just against the machine that wrote it
 
-## Three steps, two privilege scopes
+## One declaration, one command
 
-| | `scripts/bootstrap.sh` (then `mise run bootstrap`) | `mise run install` | `mise run dotfiles` |
-|---|---|---|---|
-| Privileges | sudo | none | none, except the one-off `chsh` (your own password) |
-| Writes to | `/usr/local/bin/mise`, `/etc/apt`, `/etc/yum.repos.d`, `/etc/containers` | `~/.local/share/mise` | `$HOME`, `~/.config` |
-| Purpose | what only root can install | every CLI tool, pinned | per-user configuration |
+Everything the machine needs is declared in `mise/config.toml` and applied by
+`mise bootstrap`, in a fixed order: system packages and their repositories
+(`[bootstrap.packages]`, `[bootstrap.apt.sources]`, `[bootstrap.dnf.repos]`),
+system files, git clones (oh-my-zsh and its plugins), the dotfiles symlinks
+(`[dotfiles]`), the login shell, every pinned tool (`[tools]`), then the
+`bootstrap` task for what cannot be declared (the Nerd Font, the Claude Code
+hooks, herdr's plugins, the publisher unit).
+
+| | `scripts/bootstrap.sh` | `mise bootstrap` |
+|---|---|---|
+| Privileges | sudo | sudo for the packages and system files, none for the rest |
+| Writes to | `/usr/local/bin/mise` | `/etc/apt`, `/etc/yum.repos.d`, `/etc/containers`, `$HOME`, `~/.local/share/mise` |
+| Purpose | the pinned mise binary | everything else |
 
 ```bash
 sudo apt install -y git make       # dnf on Fedora; the only thing the repo does not install itself
 git clone <this-repo> && cd ansible-init-tools
-make setup                         # bootstrap (sudo), mise trust, mise run install, mise run dotfiles
+make setup                         # mise binary (sudo), trust, link ~/.config/mise, mise bootstrap
 exec zsh
 ```
 
-`make setup` is the one path that starts without mise: the bootstrap installs
-it. From then on the same three layers are mise tasks (`mise run bootstrap`,
-`mise run install`, `mise run dotfiles`, or `mise run setup` for all three),
-and `make <target>` is only a shorter spelling. The bootstrap asks for sudo
-itself and carries your proxy variables through it; a hand-typed `sudo
-scripts/bootstrap.sh` would drop them before the first `curl`.
+`make setup` is the one path that starts without mise. From then on `mise
+bootstrap` (or `mise run setup`) is the whole thing, `mise bootstrap --dry-run`
+and `mise bootstrap status` say what would move, `--only`/`--skip` pick a part
+(`packages`, `repos`, `dotfiles`, `user`, `tools`, `task`...), and `make <target>`
+is only a shorter spelling. The bootstrap script asks for sudo itself and
+carries your proxy variables through it; a hand-typed `sudo scripts/bootstrap.sh`
+would drop them before the first `curl`.
 
 ## Included CLIs / utilities
 
@@ -83,7 +92,7 @@ that `latest` resolved to, `mise upgrade claude` moves it, and
 `DISABLE_AUTOUPDATER=1` in `[env]` keeps its self-updater from fighting the pin.
 
 `rust` is a build toolchain, not a CLI anyone runs directly here: it exists so
-the `dotfiles:herdr` task can build the herdr plugins that ship as source
+the `bootstrap` task can build the herdr plugins that ship as source
 (herdr-agent-usage, herdr-navigator) and so mise can build `clauth` from
 crates.io. The distro's cargo (1.75 on Ubuntu 22.04/24.04) is years behind and
 cannot build clauth, which needs the `edition2024` cargo feature — stabilized in
@@ -99,18 +108,22 @@ their upstream names.
 
 ## Managed dotfiles
 
-| Group | Deployed to |
+Symlinks into `dotfiles/` in this repo, declared as `[dotfiles]` entries in
+`mise/config.toml` and applied by `mise bootstrap` (or `mise dot apply`); what a
+symlink cannot express is done by the `bootstrap` task right after.
+
+| | Deployed to |
 |---|---|
-| `zsh` | `~/.zshrc`, `~/.zshenv`, oh-my-zsh + 3 external plugins, `~/.config/zsh/wezterm.zsh`, `~/.kube/k8s-clusters.sh`, `~/.config/krelay/patch-hardened.json` |
-| `starship` | `~/.config/starship.toml` |
-| `fonts` | JetBrainsMono Nerd Font into `~/.local/share/fonts` |
-| `tmux` | `~/.tmux.conf` |
-| `git` | `~/.gitconfig` |
-| `wezterm` | `~/.config/wezterm/wezterm.lua`, `~/.config/wezterm/claude-state-hook.sh`, and the hook registration merged into `~/.claude/settings.json` |
-| `btop` | `~/.config/btop/btop.conf`, and `~/.config/btop/themes` → the themes shipped in the btop release mise unpacks |
-| `nvim` | `~/.config/nvim` (LazyVim starter, whole directory; `lazy-lock.json` lands in the repo) |
-| `mise` | `~/.config/mise` → `mise/` in this repo: the tool pins, `mise.lock`, `[env]` and the tasks become global |
-| `herdr` | `~/.config/herdr/config.toml`, `herd-publish.sh` + its user unit, `claude-statusline.sh`, `quota-status.sh`, `~/.config/herdr-automatic-rename/config.sh`, the generated `~/.claude/skills/herdr/SKILL.md`, and the pinned marketplace plugins |
+| zsh | `~/.zshrc`, `~/.zshenv`, `~/.config/zsh/wezterm.zsh`, `~/.kube/k8s-clusters.sh`, `~/.config/krelay/patch-hardened.json`; oh-my-zsh + 4 plugins cloned by `[bootstrap.repos]` |
+| starship | `~/.config/starship.toml` |
+| fonts (task) | JetBrainsMono Nerd Font into `~/.local/share/fonts` |
+| tmux | `~/.tmux.conf` |
+| git | `~/.gitconfig` |
+| wezterm | `~/.config/wezterm/wezterm.lua`, `~/.config/wezterm/claude-state-hook.sh`; the hook registration merged into `~/.claude/settings.json` (task) |
+| btop | `~/.config/btop/btop.conf`; `~/.config/btop/themes` → the themes shipped in the btop release mise unpacks (task) |
+| nvim | `~/.config/nvim` (LazyVim starter, whole directory; `lazy-lock.json` lands in the repo) |
+| mise | `~/.config/mise` → `mise/` in this repo: the tool pins, `mise.lock`, `[env]` and the tasks become global |
+| herdr | `~/.config/herdr/config.toml`, `herd-publish.sh` + its user unit, `claude-statusline.sh`, `quota-status.sh`, `~/.config/herdr-automatic-rename/config.sh`; the generated `~/.claude/skills/herdr/SKILL.md` and the pinned marketplace plugins (task) |
 
 Each one is a symlink into this repo, so an edit made in `$HOME` shows up in
 `git status` with no copy-back step — including `mise.lock`, which `mise install`
@@ -184,7 +197,7 @@ the binary is pinned — the version is decided by `mise/config.toml`, not by a
 background call to herdr.dev.
 
 Marketplace plugins are pinned the same way, to a commit rather than a tag, in
-the `dotfiles:herdr` task (`mise/tasks/dotfiles/herdr`). A plugin is code that runs as you with your whole
+the `bootstrap` task (`mise/tasks/bootstrap`). A plugin is code that runs as you with your whole
 environment — tokens, kubeconfigs — so `--ref` has to name bytes someone read, and a
 tag can be moved after the fact. `herdr plugin install` re-clones and replaces on
 every call, so the task reads `herdr plugin list --json` first and installs only
@@ -228,7 +241,7 @@ after a bump, then put the two hand edits back:
   The last row is the plugin's context meter, `cx ▰▱▱▱▱▱ 16%`, which it only
   publishes in its `gauges` layout, green, then yellow past 50 % used and red past
   80 %. The layout and the used-not-remaining style are two files in the plugin's
-  state directory; the `dotfiles:herdr` task writes them directly
+  state directory; the `bootstrap` task writes them directly
   because `configure` would rewrite the rows and the statusLine along with them.
   The second row is herdr's `terminal_title_stripped`, the session title Claude Code
   sets after a few turns (`Claude Code` before that, nothing for Codex), rather than
@@ -392,16 +405,16 @@ on the symlink when the target distro no longer exists.
 `make help` lists everything. The common paths:
 
 ```bash
-make setup       # fresh box: bootstrap (sudo), then every tool and the dotfiles
-make bootstrap   # system packages, podman, wezterm, vscode, mise (sudo); ARGS="--skip podman,wezterm,vscode"
+make setup       # fresh box: the mise binary (sudo), then `mise bootstrap` for everything else
+make bootstrap   # apply the declared setup; ARGS="--dry-run" | "--only packages" | "--skip tools"
 make install     # every pinned tool from mise.lock
-make upgrade     # the packages the bootstrap owns to their latest (sudo), every pin to upstream's latest, then check
+make upgrade     # the declared packages to their latest (sudo), every pin to upstream's latest, then check
 make bump        # the pins only: upstream's latest, refresh the lock, install (no sudo)
-make bump-mise   # the mise pin itself (version + sha256) in scripts/bootstrap.sh, then make bootstrap
+make bump-mise   # the mise pin itself (version + sha256) in scripts/bootstrap.sh, then scripts/bootstrap.sh
 make check       # this host: every tool answers, lock audited, mise doctor clean, herd-publish unit up
-make dotfiles    # deploy the dotfiles (asks your password once, for chsh)
-make rollback    # remove the symlinks, restore the backups
-make test        # bootstrap + dotfiles in a container, assert idempotence
+make dotfiles    # the dotfiles symlinks, then the bootstrap task (fonts, hooks, herdr, chsh, unit)
+make rollback    # unlink every dotfiles entry, un-register the Claude hooks, stop the unit
+make test        # `mise bootstrap` twice in a container, assert idempotence
 make lint        # shellcheck + yamllint + config parse + lock audit
 make lock        # refresh mise.lock after editing a pin
 make drift       # which pins upstream has moved past
@@ -412,11 +425,13 @@ make hooks       # enable the pre-commit secret scan
 The underlying commands, when you need finer control:
 
 ```bash
-scripts/bootstrap.sh --skip podman,wezterm,vscode   # only what mise needs
-mise run bootstrap -- --upgrade                         # the bootstrap's packages to their latest, nothing else
-mise install kubectl helm                               # two tools
-mise run dotfiles:starship                              # one dotfiles group
-mise tasks                                              # every task, with its description
+mise bootstrap --dry-run                 # what a run would change, nothing applied
+mise bootstrap status                    # every part, converged or not
+mise bootstrap packages upgrade          # the declared packages to their latest, nothing else
+mise dot apply / mise dot status         # the [dotfiles] entries alone
+mise install kubectl helm                # two tools
+mise run bootstrap                       # the task alone: fonts, Claude hooks, herdr, chsh, unit
+mise tasks                               # every task, with its description
 ```
 
 Useful knobs:
@@ -459,8 +474,8 @@ A re-run is idempotent: `mise install` skips every tool already at its pin.
 Moving a pin is detected and reinstalls. `make bump` (`mise upgrade --bump`)
 is the explicit opt-in to move every pin past what is written — it rewrites the
 config and the lock, so the result is a diff to review, not a surprise. `make
-upgrade` does the same after `scripts/bootstrap.sh --upgrade`, which moves the
-packages the bootstrap installed (and only those) to their latest, and ends
+upgrade` does the same after `mise bootstrap packages upgrade`, which moves the
+declared system packages (and only those) to their latest, and ends
 with `make check`: every tool answers, the lock is audited, `mise doctor` is
 clean, the herd-publish unit is up. `make check` on its own is the thing to run
 when a shell looks wrong after a `git pull`.
@@ -537,18 +552,17 @@ Actions to create and approve pull requests" (Settings → Actions → General).
 sudo apt install -y git make      # dnf on Fedora
 git clone <this-repo> && cd ansible-init-tools
 
-# 1-3 in one go: make setup. Step by step:
-# 1. What needs root: base packages, podman, wezterm, vscode, mise
-scripts/bootstrap.sh         # from now on: mise run bootstrap
+# 1-2 in one go: make setup. Step by step:
+# 1. The pinned mise binary (sudo)
+scripts/bootstrap.sh
 
-# 2. Every pinned tool
-make install
-
-# 3. Dotfiles + set zsh as the login shell (asks your password once)
-make dotfiles
+# 2. Everything else: packages (sudo), repos, dotfiles, login shell, tools, the bootstrap task
+mise trust mise/config.toml
+ln -sfn "$PWD/mise" ~/.config/mise      # mise bootstrap would link it too, but the lock paths depend on it being global
+mise bootstrap --yes                     # --dry-run first if you want to read it
 exec zsh
 
-# 4. Fill in the local, non-versioned files
+# 3. Fill in the local, non-versioned files
 $EDITOR ~/.zshenv.local     # secrets, tokens, proxy (mode 0600)
 $EDITOR ~/.gitconfig.local  # git identity, credential helper
 ```
@@ -557,8 +571,9 @@ The repo must stay in place after deployment: `$HOME` symlinks point into it,
 `~/.config/mise` among them.
 
 On WSL, the `herd-publish` user unit needs systemd: `systemd=true` under
-`[boot]` in `/etc/wsl.conf`, then `wsl --shutdown`. Without it the task skips
-the unit and says so.
+`[boot]` in `/etc/wsl.conf`, then `wsl --shutdown`. Without it the bootstrap
+task skips the unit and says so. On a box with a history, `mise bootstrap` stops
+on a real file where a symlink should go; `--force-dotfiles` replaces it.
 
 ## Local overrides
 
@@ -592,9 +607,9 @@ The whole flow can be exercised against a throwaway container, which is the
 only honest way to check what happens on a machine that has never been touched:
 
 ```bash
-./test/run.sh dotfiles        # bootstrap + `mise run dotfiles` twice, asserts idempotence
-./test/run.sh clis            # bootstrap + `mise run install` twice + `mise run bootstrap -- --upgrade` + `mise run check`
-./test/run.sh rollback        # deploy then roll back, asserts the restore
+./test/run.sh dotfiles        # `mise bootstrap` twice (no tools), asserts idempotence and what landed
+./test/run.sh clis            # packages + `mise install` twice + `mise bootstrap packages upgrade` + `mise run check`
+./test/run.sh rollback        # refuses a conflicting file, deploys with --force-dotfiles, rolls back
 ./test/run.sh wezterm         # installs wezterm and parses the versioned config
 ./test/run.sh shell           # interactive shell in the test bed
 ```
@@ -639,27 +654,24 @@ Caveat: daemons install but do not start in a container. The `chsh` does run —
 test user holds a `NOPASSWD` sudoers entry — and it is part of what the second run
 proves.
 
-## Backups and rollback
-
-The first deployment moves any pre-existing real file to
-`~/.dotfiles-backup/<name>.<timestamp>` before symlinking. Stale symlinks are replaced
-silently — they carry no user data. Nothing is ever deleted.
-
-To undo a deployment:
+## Rollback
 
 ```bash
-make rollback
+make rollback          # = mise run rollback
 ```
 
-It removes only the symlinks that point into this repo — anything else in those paths
-predates the deploy and is left alone — then restores the most recent backup of each
-file, and takes the five hook events back out of `~/.claude/settings.json`. The
-backups stay on disk, and the three `*.local` files are never touched. `~/.config/mise`
-is unlinked last: the tools stay installed under `~/.local/share/mise`, they just stop
-being on PATH until a config names them again.
+It stops the `herd-publish` unit, takes the five hook events back out of
+`~/.claude/settings.json`, unlinks `~/.config/btop/themes`, then `mise dot
+unapply` removes every `[dotfiles]` symlink, `~/.config/mise` last. The three
+`*.local` files, oh-my-zsh, the fonts and the tools under `~/.local/share/mise`
+stay; the tools just leave PATH until a config names them again. System packages
+are not removed (`mise bootstrap packages status` lists them).
 
-The login shell is **not** reverted: `chsh` overwrote the previous value rather than
-saving it, so `chsh -s /bin/bash` is the manual step if you want it back.
+mise never overwrites a real file where a symlink should go: a first deploy on
+a box with history stops and names the conflicts, and `mise bootstrap
+--force-dotfiles` is the explicit opt-in to replace them (nothing is backed up:
+copy what you want to keep first). The login shell is **not** reverted:
+`chsh -s /bin/bash` is the manual step if you want it back.
 
 ## Secret scanning
 

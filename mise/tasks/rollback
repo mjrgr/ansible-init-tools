@@ -1,50 +1,26 @@
 #!/usr/bin/env bash
-#MISE description="Remove the dotfiles symlinks this repo owns, restore the backups, un-register the Claude hooks"
+#MISE description="Unlink every [dotfiles] entry, un-register the Claude hooks, stop the publisher unit"
 source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../scripts/lib/dotfiles.sh"
 
-# Authoritative list of what the deploy may have symlinked. Backups are named
-# after the basename only, so this is what puts a restored file back in the right
-# directory. ~/.config/mise is last: the task is running through it.
-links=(
-  "$HOME/.zshrc" "$HOME/.zshenv" "$HOME/.tmux.conf" "$HOME/.gitconfig"
-  "$HOME/.config/starship.toml" "$HOME/.config/zsh/wezterm.zsh"
-  "$HOME/.config/wezterm/wezterm.lua" "$HOME/.config/wezterm/claude-state-hook.sh"
-  "$HOME/.config/btop/btop.conf" "$HOME/.config/btop/themes" "$HOME/.config/nvim"
-  "$HOME/.config/herdr/config.toml" "$HOME/.config/herdr/herd-publish.sh"
-  "$HOME/.config/herdr/claude-statusline.sh" "$HOME/.config/herdr/quota-status.sh"
-  "$HOME/.config/systemd/user/herd-publish.service"
-  "$HOME/.config/herdr-automatic-rename/config.sh"
-  "$HOME/.kube/k8s-clusters.sh" "$HOME/.config/krelay/patch-hardened.json"
-  "$HOME/.config/mise"
-)
+# The unit's file is one of the entries: stop it before the link goes.
+if [[ -S "/run/user/$(id -u)/systemd/private" ]] && systemctl --user is-enabled --quiet herd-publish.service 2>/dev/null; then
+  systemctl --user disable --now herd-publish.service; changed "disabled herd-publish.service"
+fi
 
-# Only links pointing into this repo are ours; anything else predates the
-# deploy or belongs to another tool, and is left alone.
-for path in "${links[@]}"; do
-  if [[ -L "$path" ]]; then
-    case "$(readlink "$path")" in
-      "$REPO"/*|"$(mise where btop 2>/dev/null || echo /nonexistent)"/*)
-        rm -f -- "$path"; changed "unlinked $path" ;;
-    esac
-  fi
-  if [[ ! -e "$path" ]]; then
-    newest="$(ls -1dt -- "$BACKUP_DIR/$(basename "$path")".* 2>/dev/null | head -1 || true)"
-    if [[ -n "$newest" ]]; then
-      mkdir -p -- "$(dirname -- "$path")"
-      cp -a -- "$newest" "$path"
-      changed "restored $path from $(basename -- "$newest")"
-    else
-      say "no backup for $(basename "$path")"
-    fi
-  fi
-done
-
-# settings.json was merged, not symlinked: take our own event keys back out and
-# leave the rest (tokens, statusLine, plugins) alone.
+# settings.json was merged, not linked: take our own event keys back out and leave the rest alone.
 settings="$HOME/.claude/settings.json"
 if [[ -f "$settings" ]] && [[ "$(python3 "$REPO/scripts/lib/claude-settings.py" unhooks "$settings" "$HOME/.config/wezterm/claude-state-hook.sh")" == "changed" ]]; then
   changed "Claude Code state hooks un-registered from $settings"
 fi
 
-say "Backups kept in $BACKUP_DIR, nothing deleted."
-say "The three *.local files are untouched; the login shell is not reverted (chsh -s /bin/bash)."
+# btop themes is linked by the bootstrap task, not declared, so it goes by hand.
+if [[ -L "$HOME/.config/btop/themes" ]]; then rm -f "$HOME/.config/btop/themes"; changed "unlinked ~/.config/btop/themes"; fi
+
+# ~/.config/mise is the last entry mise removes: the config it reads lives behind it,
+# so this runs from the clone (`mise --cd <clone> dot unapply` works too).
+before="$(mise dot status 2>/dev/null | grep -c 'applied' || true)"
+mise dot unapply --yes 2>&1 | sed 's/^/  /'
+changed "unlinked $before dotfiles entr(y|ies)"
+
+say "Kept: the three *.local files, ~/.oh-my-zsh, the fonts, the tools under ~/.local/share/mise."
+say "Not reverted: the login shell (chsh -s /bin/bash), the system packages (mise bootstrap packages status)."
