@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Starship prompt config"
-#MISE depends=["dotfiles:common"]
-source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../../scripts/lib/dotfiles.sh"
-link_dotfile "$DOTFILES/starship/starship.toml" "$HOME/.config/starship.toml"

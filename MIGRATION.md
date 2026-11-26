@@ -14,13 +14,13 @@ Fresh machine: skip this, follow the README.
 | clauth | `cargo install` from the dotfiles play | `cargo:clauth` mise tool |
 | Claude Code | native installer into `~/.local/share/claude`, self-updating | `aqua:anthropics/claude-code`, pinned by the lock, `DISABLE_AUTOUPDATER=1` |
 | krew | bootstrapped into `~/.krew`, plugins from the clis play (as the user) | no krew: `stern`, `kubectl-cnpg`, `krelay`, `kubectl-whoami` are mise tools |
-| System packages, podman, wezterm, vscode | apt roles | `scripts/bootstrap.sh` (apt and dnf) |
+| System packages, podman, wezterm, vscode | apt roles | `[bootstrap.packages]`, `[bootstrap.apt.sources]`, `[bootstrap.dnf.repos]` in `mise/config.toml`, applied by `mise bootstrap` |
 | mise | `mise` role | `scripts/bootstrap.sh`, pinned and checksummed |
-| Dotfiles | `dotfiles.yml`, one role per group | `mise run dotfiles`, one task per group under `mise/tasks/dotfiles/` |
+| Dotfiles | `dotfiles.yml`, one role per group | `[dotfiles]` symlink entries + `[bootstrap.repos]` clones; the `bootstrap` task for the rest (fonts, hooks, herdr, chsh, unit) |
 | Rollback | `dotfiles_rollback.yml` | `mise run rollback` |
 | `K9S_FEATURE_GATE_NODE_SHELL`, `BAT_THEME` | exported in `.zshrc` | `[env]` in `mise/config.toml`, plus `KIND_EXPERIMENTAL_PROVIDER=podman` |
 | Version drift, checksums | `test/pin-drift.sh`, `test/bump-pins.sh`, `test/checksums.py` | `mise outdated`, `make bump` (`mise upgrade --bump`), `mise lock` |
-| `clis_state=latest` | apt packages to their latest | `scripts/bootstrap.sh --upgrade` (its own packages only); `make upgrade` = that + `make bump` |
+| `clis_state=latest` | apt packages to their latest | `mise bootstrap packages upgrade` (the declared packages only); `make upgrade` = that + `make bump` |
 | Tests | ansible in a container | bootstrap + mise in a container (Ubuntu 22.04, 26.04, Fedora 43, arm64) |
 
 Not migrated, and why:
@@ -31,8 +31,8 @@ Not migrated, and why:
 | podman + podman-docker, `/etc/containers/*` | system package with subuid/netavark/systemd integration; config under `/etc` |
 | wezterm, vscode | GUI applications with desktop integration (`.desktop`, xdg, terminfo), from their official repositories; root-only |
 | mise | the bootstrap, by definition |
-| `chsh` | per-user, but it is the login shell: stays a task that asks your password, not a tool |
-| `herd-publish.service` | a user unit, not a tool: enabled by the `dotfiles:herdr` task |
+| `chsh` | `[bootstrap.user] login_shell`; mise asks your password, the bootstrap task does it through sudo where that is passwordless |
+| `herd-publish.service` | a user unit, not a tool: its file is a dotfiles entry, the bootstrap task enables it |
 
 Nothing left requires Ansible.
 
@@ -52,8 +52,8 @@ cat ~/.config/mise/config.toml 2>/dev/null   # anything in here must move to mis
 
 If you had a global mise config of your own, copy its `[tools]`/`[env]` into
 `mise/config.local.toml` (gitignored, loaded after the versioned one) before
-step 4, or they are backed up to `~/.dotfiles-backup/mise.<stamp>/` and stop
-applying.
+step 2: a real `~/.config/mise` directory is a conflict `mise bootstrap` stops on
+(move it away, or `--force-dotfiles` replaces it without a backup).
 
 Optional belt and braces:
 
@@ -61,43 +61,42 @@ Optional belt and braces:
 tar czf ~/pre-mise-$(date +%F).tgz ~/.claude/settings.json ~/.config/mise ~/.zshrc ~/.zshenv 2>/dev/null
 ```
 
-### 1. Bootstrap (sudo)
+### 1. The mise binary (sudo)
 
 ```bash
-scripts/bootstrap.sh         # later runs: mise run bootstrap (-- --upgrade)
+scripts/bootstrap.sh
 ```
 
-On an already provisioned box this is mostly a no-op: packages are present,
-podman is present, the apt sources are rewritten in place, and mise is
-reinstalled only if the installed version differs from the pin. It adds the
-cargo build prerequisites (C/C++ toolchain, OpenSSL headers, pkg-config) and
-`python3` if they were missing.
+On an already provisioned box this is a no-op unless the pin moved.
 
-### 2. Install the tools (no sudo)
+### 2. Everything else (sudo for the packages, your user for the rest)
 
 ```bash
 mise trust mise/config.toml
-mise run install        # ~1.5 GB of downloads; rust + the clauth build take a few minutes
-```
-
-`mise run install` reads `mise/mise.lock` and verifies every download against
-it. Tools you already had through another mise config are reused. The `github:`
-backend tools ask `api.github.com` for release metadata: on a shared egress
-(corporate proxy, CI), set `MISE_GITHUB_TOKEN` to any token first.
-
-### 3. Deploy the dotfiles (no sudo)
-
-```bash
-mise run dotfiles
+ln -sfn "$PWD/mise" ~/.config/mise   # global config from the start: the lock paths depend on it
+mise bootstrap --dry-run             # read what would move
+mise bootstrap --yes
 exec zsh
 ```
 
-What is new for a machine that already had the dotfiles: `~/.config/mise` is
-linked to `mise/` in the repo (the tools, env and tasks become global),
-`.zshenv` now puts the mise shims on PATH, `.zshrc` activates mise before
-anything probes for a tool, `~/.config/btop/themes` links to the themes mise
-unpacked, and the `herd-publish` unit is restarted with a PATH that can find
-`herdr` and `jq`. Everything else is the same symlink it was.
+`mise bootstrap` applies in order: the apt/dnf sources and packages (podman,
+wezterm, code, the cargo build prerequisites — mostly "already installed" here),
+`/etc/containers/*`, the oh-my-zsh clones, the dotfiles symlinks, the login
+shell, every pinned tool from `mise/mise.lock` (~1.5 GB of downloads; rust + the
+clauth build take a few minutes), then the `bootstrap` task: Nerd Font, Claude
+Code hooks merged into `~/.claude/settings.json`, herdr plugins and skill, the
+`herd-publish` unit. Tools you already had through another mise config are
+reused. The `github:` backend tools ask `api.github.com` for release metadata: on
+a shared egress (corporate proxy, CI), set `MISE_GITHUB_TOKEN` to any token first.
+
+A real file where a symlink should go stops the run and is named: move it
+away, or rerun with `--force-dotfiles` (no backup is taken). What is new for a
+machine that already had the dotfiles: `~/.config/mise` is linked to `mise/` in
+the repo (the tools, env and tasks become global), `.zshenv` now puts the mise
+shims on PATH, `.zshrc` activates mise before anything probes for a tool,
+`~/.config/btop/themes` links to the themes mise unpacked, and the
+`herd-publish` unit is restarted with a PATH that can find `herdr` and `jq`.
+Everything else is the same symlink it was.
 
 ### 4. Verify
 
@@ -162,19 +161,21 @@ Run it only after step 4 passed: until then the old copies are the fallback.
   the `git-core` PPA or override `merge.conflictStyle` in `~/.gitconfig.local`.
 - Also on 22.04: the memex herdr plugin has no prebuilt binary for its glibc
   and its source build needs a gcc newer than 11 (AVX512-FP16 intrinsics), so
-  `mise run dotfiles` fails on the herdr group unless
+  the `bootstrap` task fails on that plugin unless
   `DOTFILES_HERDR_PLUGINS=false` is set. CI runs 22.04 that way.
 
 ### Fedora / RHEL
 
-- The bootstrap uses `dnf`. `chsh` comes from `util-linux-user`, installed if
-  missing. `gnupg2` is the package name.
-- WezTerm: Fedora goes through `dnf copr enable wezfurlong/wezterm-nightly`
-  (upstream's documented route). RHEL-family has no repository: the bootstrap
-  prints where to get the rpm and continues.
-- podman: Fedora's `/etc/containers/registries.conf` already lists `docker.io`
-  in `unqualified-search-registries`, so the Ubuntu drop-in is not written.
-  Docker CE removal uses the same package names.
+- The packages go through `dnf`, under their real names (`wget2-wget`,
+  `util-linux` for `chsh`, `gnupg2`): a provides name would be reinstalled on
+  every run.
+- WezTerm: Fedora goes through the `wezfurlong/wezterm-nightly` COPR
+  (`[bootstrap.dnf.repos]`, upstream's documented route). RHEL-family has no
+  repository: `dnf:wezterm` fails there, `mise bootstrap --skip packages` or
+  a `mise/config.local.toml` without it.
+- podman: the `docker.io` drop-in under `/etc/containers/registries.conf.d`
+  is written on every distro; Fedora's `registries.conf` lists it already, the
+  drop-in is redundant there and harmless.
 - SELinux: everything mise installs lives under `$HOME` and runs as you; no
   policy change needed. The bootstrap writes nothing under `/opt`.
 - Not tested on RHEL/Rocky/Alma itself, only on Fedora 43 in CI.
@@ -190,14 +191,16 @@ Run it only after step 4 passed: until then the old copies are the fallback.
   that exists, same as before.
 - WSL's `autoProxy` injects `HTTP(S)_PROXY`; mise honours it, and `.zshrc`
   adds the loopback `NO_PROXY` it forgets.
-- The Linux `wezterm` and `code` packages are installed as before (the
-  bootstrap does not special-case WSL); `--skip wezterm,vscode` if you only
-  want the Windows-side ones.
+- The Linux `wezterm` and `code` packages are installed as before (nothing
+  special-cases WSL); drop them in a `mise/config.local.toml` if you only want
+  the Windows-side ones.
 
 ## Behaviour differences worth knowing
 
 - Tools are per-user. `sudo kubectl` finds nothing; `sudo env "PATH=$PATH" kubectl` does.
 - `mise install` rewrites `mise/mise.lock` through the `~/.config/mise` link.
+  The pypi/npm lock paths it writes depend on that link being there (`locks/`
+  for the global config, `.mise/locks/` for a project one), hence step 2's `ln`.
   That is the point (the lock is versioned), so expect it in `git status` after
   a `make bump` or `make upgrade`, and commit it.
 - Claude Code no longer self-updates; `mise upgrade claude` does, and `mise
@@ -213,8 +216,9 @@ Run it only after step 4 passed: until then the old copies are the fallback.
 
 ## Rolling the migration back
 
-`mise run rollback` unlinks the dotfiles (including `~/.config/mise`) and
-restores the backups. The tools stay under `~/.local/share/mise` and leave PATH
+`mise run rollback` unlinks the dotfiles (including `~/.config/mise`); there
+are no backups to restore, mise never replaced a real file without
+`--force-dotfiles`. The tools stay under `~/.local/share/mise` and leave PATH
 with the config. If `cleanup-legacy.sh` has not run, the old `/usr/local/bin`
 binaries are still there. The Ansible playbooks are in git history: `git log
 --diff-filter=D --name-only -- playbooks | head` finds the commit that removed

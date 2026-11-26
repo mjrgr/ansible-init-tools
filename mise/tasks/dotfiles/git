@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="git config; identity and credential helper stay in ~/.gitconfig.local"
-#MISE depends=["dotfiles:common"]
-source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../../scripts/lib/dotfiles.sh"
-link_dotfile "$DOTFILES/git/.gitconfig" "$HOME/.gitconfig"
-copy_template "$DOTFILES/git/.gitconfig.local.example" "$HOME/.gitconfig.local" 0644

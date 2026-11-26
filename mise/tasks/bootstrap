@@ -1,7 +1,136 @@
 #!/usr/bin/env bash
-#MISE description="System packages, podman, wezterm, vscode and the mise binary (sudo; = make bootstrap)"
-#MISE raw=true
-# Arguments go to scripts/bootstrap.sh (which asks for sudo): mise run bootstrap -- --upgrade | --skip podman,wezterm,vscode
-set -euo pipefail
-REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
-exec "$REPO/scripts/bootstrap.sh" "$@"
+#MISE description="Runs last in `mise bootstrap`: *.local seeds, Nerd Font, btop themes, fzf-git, Claude hooks, herdr, login shell, publisher unit"
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../scripts/lib/dotfiles.sh"
+
+# ---- Local overrides: seeded once from their templates, never overwritten ----
+copy_template "$DOTFILES/zsh/.zshenv.local.example"   "$HOME/.zshenv.local"   0600
+copy_template "$DOTFILES/zsh/.zshrc.local.example"    "$HOME/.zshrc.local"    0644
+copy_template "$DOTFILES/git/.gitconfig.local.example" "$HOME/.gitconfig.local" 0644
+
+# ---- Nerd Font: starship.toml and wezterm.lua use its glyphs ----
+name=JetBrainsMono
+version=v3.5.1
+sha256=fab782a66f7d3019da64f6572db9fc5d3a4bcb19f9fa13e2d8a62e3693d6396e
+fontdir="$HOME/.local/share/fonts"
+if ! compgen -G "$fontdir/$name*.ttf" >/dev/null; then
+  ensure_dir "$fontdir"
+  tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+  curl -fsSL --retry 5 --retry-all-errors --retry-max-time 120 --connect-timeout 15 \
+    -o "$tmp/$name.zip" "https://github.com/ryanoasis/nerd-fonts/releases/download/$version/$name.zip"
+  echo "$sha256  $tmp/$name.zip" | sha256sum -c --quiet - || die "checksum mismatch for $name.zip"
+  unzip -q -o "$tmp/$name.zip" "JetBrainsMonoNerdFont-Regular.ttf" "JetBrainsMonoNerdFont-Bold.ttf" \
+    "JetBrainsMonoNerdFont-Italic.ttf" "JetBrainsMonoNerdFont-BoldItalic.ttf" -d "$fontdir"
+  fc-cache -f "$fontdir"
+  changed "installed $name Nerd Font $version"
+fi
+
+# ---- btop themes live in the release tarball mise unpacked, so the link follows the version ----
+if themes="$(mise where btop 2>/dev/null)/btop/themes" && [[ -d "$themes" ]]; then
+  link_dotfile "$themes" "$HOME/.config/btop/themes"
+fi
+
+# Left by an earlier deploy; `fzf --zsh` in .zshrc replaced it.
+if [[ -e "$HOME/.fzf-key-bindings.zsh" ]]; then
+  rm -f "$HOME/.fzf-key-bindings.zsh"; changed "removed ~/.fzf-key-bindings.zsh"
+fi
+fetch_if_changed https://raw.githubusercontent.com/junegunn/fzf-git.sh/main/fzf-git.sh "$HOME/.fzf-git.sh"
+
+# ---- Claude Code state hooks: merged into the user's settings.json, never templated over it ----
+ensure_dir "$HOME/.claude"
+settings="$HOME/.claude/settings.json"
+hook="$HOME/.config/wezterm/claude-state-hook.sh"
+if [[ -f "$settings" ]]; then
+  python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$settings" \
+    || die "$settings did not parse as JSON — fix or move it, refusing to overwrite"
+fi
+if [[ "$(python3 "$REPO/scripts/lib/claude-settings.py" hooks "$settings" "$hook" --dry-run)" == "changed" ]]; then
+  if [[ -f "$settings" ]]; then
+    ensure_dir "$BACKUP_DIR"
+    install -m 0600 -- "$settings" "$BACKUP_DIR/settings.json.$STAMP"; changed "backed up $settings"
+  fi
+  python3 "$REPO/scripts/lib/claude-settings.py" hooks "$settings" "$hook" >/dev/null
+  changed "registered the Claude Code state hooks in $settings"
+fi
+
+# ---- herdr: pinned plugins, Claude Code wiring, rendered skill ----
+# Plugins are pinned to a commit, not a tag: a plugin runs as you with your whole
+# environment, so --ref must name bytes someone read. Each entry lists the tool its
+# build needs; a host without it skips that plugin and says so.
+plugins=(
+  "qu8n/herdr-automatic-rename 081489b4d961d0d9c0c8b6a02d472e5cfe125ad5 -"
+  "persiyanov/herdr-reviewr    dca1fb88a56c0d6246a2e9004ecbe27fd11a4436 -"
+  "nicosuave/memex             649355e4b442de9b63c24a3702f5c765233a84e4 -"
+  "mjrgr/herdr-agent-usage     1c2bae4cb440dddb4296af4eeb1ef5bd7dbd8455 cargo"
+  "thanhdat77/herdr-navigator  9bdf30f03f53730e6232377a3fca3bdc6ed9f3ca cargo"
+  "uwuclxdy/clauth/herdr-plugin e6f6cdb50b53fc516c90f7a6b3b72b1a0187039a clauth"
+)
+if have herdr; then
+  # `plugin install` always re-clones and replaces, so the guard is here: install only
+  # when the source is absent or on another commit. DOTFILES_HERDR_PLUGINS=false skips
+  # them (memex has no prebuilt for the glibc of Ubuntu 22.04, and its build needs gcc > 11).
+  installed="$(herdr plugin list --json 2>/dev/null || echo '{}')"
+  [[ "${DOTFILES_HERDR_PLUGINS:-true}" == "true" ]] || { say "herdr plugins skipped (DOTFILES_HERDR_PLUGINS=false)"; plugins=(); }
+  for entry in "${plugins[@]}"; do
+    read -r source ref requires <<<"$entry"
+    owner="${source%%/*}"; repo="${source#*/}"; repo="${repo%%/*}"
+    if [[ "$requires" != "-" ]] && ! have "$requires"; then say "$source: needs $requires — skipped"; continue; fi
+    current="$(jq -r --arg o "$owner" --arg r "$repo" \
+      '.result.plugins[]? | select(.source.kind=="github" and .source.owner==$o and .source.repo==$r) | .source.resolved_commit' \
+      <<<"$installed" | head -1)"
+    [[ "$current" == "$ref" ]] && continue
+    # GIT_CONFIG_GLOBAL: the deployed ~/.gitconfig carries zdiff3, fatal for the git 2.34 of Ubuntu 22.04.
+    GIT_CONFIG_GLOBAL=/dev/null herdr plugin install "$source" --ref "$ref" --yes >/dev/null
+    changed "herdr plugin $source @ ${ref:0:12}"
+  done
+
+  # agent-usage keeps these in its state dir; `configure` would also rewrite the sidebar and the statusLine.
+  state="$HOME/.local/state/herdr/plugins/herdr-agent-usage"
+  if [[ -d "$state" ]]; then
+    for kv in "sidebar-layout=gauges" "quota-percent=used"; do
+      k="${kv%%=*}"; v="${kv#*=}"
+      if [[ "$(cat "$state/$k" 2>/dev/null)" != "$v" ]]; then printf '%s' "$v" > "$state/$k"; changed "herdr-agent-usage $k=$v"; fi
+    done
+  fi
+  # The server caches config.toml at startup; rc != 0 just means no server runs.
+  herdr server reload-config >/dev/null 2>&1 || true
+
+  # The SessionStart hook tells herdr which pane holds which Claude session; `integration
+  # install` prints the same lines whether or not anything changed, hence the probe.
+  if ! grep -q 'herdr-agent-state.sh' "$settings" 2>/dev/null; then
+    herdr integration install claude >/dev/null; changed "herdr Claude Code integration installed"
+  else
+    herdr integration install claude >/dev/null 2>&1 || true
+  fi
+  # The statusLine feeds agent-usage its quota data; chained, so a project's own line still draws.
+  if [[ "$(python3 "$REPO/scripts/lib/claude-settings.py" statusline "$settings" "$HOME/.config/herdr/claude-statusline.sh")" == "changed" ]]; then
+    changed "herdr statusLine wrapper chained into $settings"
+  fi
+  # `herdr --skill` documents the CLI of the herdr that printed it, so it is rendered, not versioned.
+  ensure_dir "$HOME/.claude/skills/herdr"
+  skill="$HOME/.claude/skills/herdr/SKILL.md"
+  if rendered="$(herdr --skill 2>/dev/null)" && [[ "$(cat "$skill" 2>/dev/null)" != "$rendered" ]]; then
+    printf '%s\n' "$rendered" > "$skill"; changed "rendered $skill"
+  fi
+else
+  say "herdr not installed — plugins, skill and Claude Code wiring skipped (mise install, then re-run)"
+fi
+
+# ---- Login shell: [bootstrap.user] runs chsh without sudo, which asks a password; passwordless sudo does not ----
+if [[ "${DOTFILES_SET_DEFAULT_SHELL:-true}" == "true" ]] && zsh_bin="$(command -v zsh)"; then
+  current="$(getent passwd "$(id -un)" | cut -d: -f7)"
+  if [[ "$current" != "$zsh_bin" && "$current" != "/bin/zsh" && "$current" != "/usr/bin/zsh" ]] && sudo -n true 2>/dev/null; then
+    sudo chsh -s "$zsh_bin" "$(id -un)"; changed "login shell -> $zsh_bin"
+  fi
+fi
+
+# ---- Status publisher: a user unit that outlives the shell; gated on the manager's socket ----
+# (`is-system-running` answers "degraded" with rc 1 on a healthy WSL, and a container has no manager.)
+if [[ -S "/run/user/$(id -u)/systemd/private" ]]; then
+  if ! systemctl --user is-enabled --quiet herd-publish.service 2>/dev/null; then
+    systemctl --user daemon-reload; systemctl --user enable --now herd-publish.service; changed "enabled herd-publish.service"
+  elif ! systemctl --user is-active --quiet herd-publish.service; then
+    systemctl --user daemon-reload; systemctl --user start herd-publish.service; changed "started herd-publish.service"
+  elif [[ "$(systemctl --user show -p NeedDaemonReload --value herd-publish.service)" == yes ]]; then
+    systemctl --user daemon-reload; systemctl --user try-restart herd-publish.service; changed "reloaded herd-publish.service"
+  fi
+fi

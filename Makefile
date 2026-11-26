@@ -8,15 +8,15 @@ help: ## Show this help
 # ─── Provisioning ────────────────────────────────────────────────────────────
 
 .PHONY: setup
-setup: ## Fresh box, the whole thing: bootstrap (sudo), trust, every tool, dotfiles
+setup: ## Fresh box, the whole thing: the mise binary (sudo), then `mise bootstrap` (packages, dotfiles, tools, login shell)
 	scripts/bootstrap.sh
 	mise trust -q mise/config.toml
-	mise run install
-	mise run dotfiles
+	mkdir -p ~/.config && ln -sfn "$(CURDIR)/mise" ~/.config/mise
+	mise bootstrap --yes
 
 .PHONY: bootstrap
-bootstrap: ## System packages, podman, wezterm, vscode and the mise binary (sudo; ARGS="--skip podman,wezterm,vscode")
-	scripts/bootstrap.sh $(ARGS)
+bootstrap: ## Apply the machine setup declared in mise/config.toml (ARGS="--dry-run" | "--only packages" | "--skip tools")
+	mise bootstrap --yes $(ARGS)
 
 .PHONY: install
 install: ## Install every pinned tool from mise.lock
@@ -40,22 +40,21 @@ bump-mise: ## Move the mise pin in scripts/bootstrap.sh to the latest release (V
 	scripts/bump-mise.sh $(VERSION)
 
 .PHONY: dotfiles
-dotfiles: ## Deploy the dotfiles (asks your password once, to chsh to zsh)
-	mise trust -q mise/config.toml
+dotfiles: ## Dotfiles symlinks, then the bootstrap task (fonts, Claude hooks, herdr, login shell, unit)
 	mise run dotfiles
 
 .PHONY: rollback
-rollback: ## Remove the dotfiles symlinks and restore the backups
+rollback: ## Unlink every dotfiles entry, un-register the Claude hooks, stop the publisher unit
 	mise run rollback
 
 # ─── Testing ─────────────────────────────────────────────────────────────────
 
 .PHONY: test
-test: ## Bootstrap + dotfiles twice in a container, assert the second run changes nothing (BASE_IMAGE=fedora:43 to switch)
+test: ## `mise bootstrap` twice in a container, assert the second run changes nothing (BASE_IMAGE=fedora:43 to switch)
 	./test/run.sh dotfiles
 
 .PHONY: test-clis
-test-clis: ## Bootstrap + mise install twice + bootstrap --upgrade in a container, assert every tool runs and nothing reinstalls
+test-clis: ## mise install twice + packages upgrade in a container, assert every tool runs and nothing reinstalls
 	./test/run.sh clis
 
 .PHONY: test-rollback
@@ -92,7 +91,7 @@ lock-audit: ## Offline: assert every tool is locked for both platforms with a ch
 
 .PHONY: lint
 lint: ## shellcheck + yamllint + mise config parse + lock audit
-	shellcheck -S warning scripts/*.sh scripts/lib/dotfiles.sh test/run.sh mise/tasks/bootstrap mise/tasks/check mise/tasks/rollback mise/tasks/dotfiles/*
+	shellcheck -S warning scripts/*.sh scripts/lib/dotfiles.sh test/run.sh mise/tasks/bootstrap mise/tasks/check mise/tasks/rollback
 	yamllint .
 	python3 -m py_compile scripts/lib/claude-settings.py test/lock-audit.py
 	mise --cd mise tasks ls >/dev/null && echo "mise config OK"

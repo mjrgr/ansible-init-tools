@@ -31,7 +31,7 @@ jobs:
       - name: Install yamllint and the pinned mise
         run: |
           pip install yamllint
-          ./scripts/bootstrap.sh --skip podman,wezterm,vscode
+          ./scripts/bootstrap.sh
           mise trust -q mise/config.toml
 
       - name: shellcheck, yamllint, config parse, lock audit
@@ -169,7 +169,7 @@ jobs:
 
       - name: Locked assets still hash to what the repo says
         run: |
-          ./scripts/bootstrap.sh --skip podman,wezterm,vscode
+          ./scripts/bootstrap.sh
           mise trust -q mise/config.toml
           mkdir -p ~/.config && ln -sfn "$PWD/mise" ~/.config/mise  # global, as on a host: locks/ paths in mise.lock
           mise lock
@@ -198,7 +198,7 @@ jobs:
           # The task would first install all the tools; the bump installs what moved.
           MISE_TASK_RUN_AUTO_INSTALL: 'false'
         run: |
-          ./scripts/bootstrap.sh --skip podman,wezterm,vscode
+          ./scripts/bootstrap.sh
           mise trust -q mise/config.toml
           mkdir -p ~/.config && ln -sfn "$PWD/mise" ~/.config/mise  # global, as on a host: locks/ paths in mise.lock
           mise run bump

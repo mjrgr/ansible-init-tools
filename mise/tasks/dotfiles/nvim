@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="LazyVim config (whole directory; lazy-lock.json lands in the repo)"
-#MISE depends=["dotfiles:common"]
-source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../../scripts/lib/dotfiles.sh"
-link_dotfile "$DOTFILES/nvim" "$HOME/.config/nvim"
