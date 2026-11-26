@@ -126,6 +126,10 @@ fi
 # ---- Status publisher: a user unit that outlives the shell; gated on the manager's socket ----
 # (`is-system-running` answers "degraded" with rc 1 on a healthy WSL, and a container has no manager.)
 if [[ -S "/run/user/$(id -u)/systemd/private" ]]; then
+  # The manager runs, but this shell may not know where (su, sudo -u, a terminal started outside
+  # the login session): without these, `systemctl --user` fails with "Failed to connect to bus".
+  export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+  export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=$XDG_RUNTIME_DIR/bus}"
   if ! systemctl --user is-enabled --quiet herd-publish.service 2>/dev/null; then
     systemctl --user daemon-reload; systemctl --user enable --now herd-publish.service; changed "enabled herd-publish.service"
   elif ! systemctl --user is-active --quiet herd-publish.service; then
